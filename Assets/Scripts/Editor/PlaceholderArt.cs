@@ -1,0 +1,245 @@
+using System;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+namespace DesertGecko.EditorTools
+{
+    /// <summary>
+    /// Gerçek görseller gelene kadar kullanılan basit piksel çizimler. Her çağrıda PNG'yi
+    /// yeniden yazar ve sprite olarak (32 PPU, Point filtre) içe aktarır.
+    /// </summary>
+    public static class PlaceholderArt
+    {
+        public const string Folder = "Assets/Sprites/Placeholder";
+        const float PixelsPerUnit = 32f;
+
+        static readonly Color32 Clear = new Color32(0, 0, 0, 0);
+        static readonly Color32 Outline = new Color32(0x2B, 0x1A, 0x12, 0xFF);
+
+        /// <summary>Basit piksel tuvali; (0,0) sol alt köşe.</summary>
+        public class Canvas
+        {
+            public readonly int Width, Height;
+            public readonly Color32[] Pixels;
+
+            public Canvas(int width, int height)
+            {
+                Width = width;
+                Height = height;
+                Pixels = new Color32[width * height];
+                for (int i = 0; i < Pixels.Length; i++) Pixels[i] = Clear;
+            }
+
+            public void Set(int x, int y, Color32 c)
+            {
+                if (x >= 0 && y >= 0 && x < Width && y < Height)
+                    Pixels[y * Width + x] = c;
+            }
+
+            public void Rect(int x0, int y0, int x1, int y1, Color32 c)
+            {
+                for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
+                    Set(x, y, c);
+            }
+
+            /// <summary>İç dolgu ve 1 piksel dış çizgiyle dikdörtgen.</summary>
+            public void Box(int x0, int y0, int x1, int y1, Color32 fill)
+            {
+                Rect(x0, y0, x1, y1, Outline);
+                Rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill);
+            }
+
+            public void Disc(float cx, float cy, float r, Color32 c)
+            {
+                for (int y = 0; y < Height; y++)
+                for (int x = 0; x < Width; x++)
+                    if ((x + 0.5f - cx) * (x + 0.5f - cx) + (y + 0.5f - cy) * (y + 0.5f - cy) <= r * r)
+                        Set(x, y, c);
+            }
+        }
+
+        public static Sprite Create(string fileName, int width, int height, Vector2 pivot, Action<Canvas> draw)
+        {
+            string path = $"{Folder}/{fileName}.png";
+            var canvas = new Canvas(width, height);
+            draw(canvas);
+
+            var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            tex.SetPixels32(canvas.Pixels);
+            tex.Apply();
+            File.WriteAllBytes(path, tex.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+
+            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = PixelsPerUnit;
+            importer.filterMode = FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.mipmapEnabled = false;
+            var settings = new TextureImporterSettings();
+            importer.ReadTextureSettings(settings);
+            settings.spriteMeshType = SpriteMeshType.FullRect; // Tiled çizim için gerekli
+            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+            settings.spritePivot = pivot;
+            importer.SetTextureSettings(settings);
+            importer.SaveAndReimport();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        static readonly Vector2 Center = new Vector2(0.5f, 0.5f);
+        static readonly Vector2 BottomCenter = new Vector2(0.5f, 0f);
+
+        // --- Seviye ---
+
+        public static Sprite Tile() => Create("tile_placeholder", 32, 32, Center, c =>
+        {
+            c.Rect(0, 0, 31, 31, new Color32(200, 200, 200, 255));
+            c.Rect(1, 1, 30, 30, new Color32(255, 255, 255, 255));
+        });
+
+        // Sağa bakan basit kertenkele silueti; gerçek Gila kareleri gelince kullanılmaz.
+        public static Sprite Gila() => Create("gila_placeholder", 32, 32, Center, c =>
+        {
+            var body = new Color32(0xE8, 0xA0, 0x4A, 255);
+            c.Box(9, 2, 22, 20, body);
+            c.Box(13, 18, 27, 29, body);
+            c.Rect(13, 17, 22, 19, new Color32(0xB5, 0x45, 0x2B, 255));
+            c.Rect(22, 23, 25, 26, Outline);
+            c.Rect(23, 24, 24, 25, new Color32(0xF4, 0xD3, 0x5E, 255));
+            c.Box(2, 4, 9, 7, body);
+            c.Rect(10, 0, 13, 2, Outline);
+            c.Rect(18, 0, 21, 2, Outline);
+        });
+
+        // Kaktüs totemi (checkpoint): 1x2 tile, alttan pivotlu.
+        public static Sprite Totem() => Create("totem_placeholder", 32, 64, BottomCenter, c =>
+        {
+            var green = new Color32(0x5E, 0x8C, 0x3A, 255);
+            var face = new Color32(0xF4, 0xD3, 0x5E, 255);
+            c.Box(10, 0, 21, 52, green);
+            c.Box(3, 22, 10, 40, green);   // sol kol
+            c.Box(21, 28, 28, 46, green);  // sağ kol
+            c.Rect(13, 40, 14, 43, face);  // gözler
+            c.Rect(17, 40, 18, 43, face);
+            c.Rect(13, 33, 18, 34, face);  // ağız
+            c.Box(11, 52, 20, 58, new Color32(0xB5, 0x45, 0x2B, 255)); // tepe çiçeği
+        });
+
+        // --- Düşman ---
+
+        // Sola bakan akrep: gövde, kıskaçlar, yukarı kıvrık kuyruk ve iğne. Alttan pivotlu.
+        public static Sprite Scorpion() => Create("akrep_placeholder", 32, 32, BottomCenter, c =>
+        {
+            var shell = new Color32(0x8E, 0x2E, 0x1E, 255);
+            var light = new Color32(0xC9, 0x5A, 0x3A, 255);
+            c.Box(6, 2, 22, 9, shell);          // gövde
+            c.Rect(8, 7, 20, 8, light);
+            c.Box(1, 6, 7, 11, shell);          // kıskaç
+            c.Box(1, 11, 4, 14, shell);
+            c.Box(21, 6, 25, 11, shell);        // kuyruk kökü
+            c.Box(23, 10, 27, 17, shell);
+            c.Box(20, 16, 26, 21, shell);       // kuyruk ucu öne kıvrılır
+            c.Rect(18, 18, 20, 19, Outline);    // iğne
+            c.Rect(7, 9, 8, 10, new Color32(0xF4, 0xD3, 0x5E, 255)); // göz
+            for (int i = 0; i < 4; i++)         // bacaklar
+                c.Rect(8 + i * 4, 0, 9 + i * 4, 2, Outline);
+        });
+
+        // --- Toplanabilirler ve oyuncu ---
+
+        public static Sprite Bug() => Create("bocek_placeholder", 16, 16, Center, c =>
+        {
+            var shell = new Color32(0x4C, 0xA0, 0x3A, 255);
+            c.Disc(8f, 7f, 5.5f, Outline);
+            c.Disc(8f, 7f, 4.5f, shell);
+            c.Rect(8, 3, 8, 11, Outline);                          // kanat çizgisi
+            c.Rect(6, 12, 10, 14, Outline);                        // kafa
+            c.Set(5, 15, Outline); c.Set(11, 15, Outline);         // antenler
+            c.Rect(5, 8, 6, 9, new Color32(0x9A, 0xE0, 0x6A, 255)); // parlama
+        });
+
+        public static Sprite Crystal() => Create("kristal_placeholder", 16, 16, Center, c =>
+        {
+            var blue = new Color32(0x5A, 0xB8, 0xE8, 255);
+            var shine = new Color32(0xD8, 0xF4, 0xFF, 255);
+            for (int y = 0; y < 16; y++)
+            {
+                int half = y < 8 ? y : 15 - y;     // elmas şekli
+                c.Rect(7 - half, y, 8 + half, y, Outline);
+                if (half > 0)
+                    c.Rect(8 - half, y, 7 + half, y, blue);
+            }
+            c.Rect(5, 8, 6, 10, shine);
+        });
+
+        public static Sprite TailProjectile() => Create("kuyruk_placeholder", 16, 16, Center, c =>
+        {
+            var tail = new Color32(0xE8, 0xA0, 0x4A, 255);
+            c.Disc(8f, 8f, 6.5f, Outline);
+            c.Disc(8f, 8f, 5.5f, tail);
+            c.Disc(8f, 8f, 3f, Outline);
+            c.Disc(8f, 8f, 2f, tail);
+            c.Rect(8, 2, 14, 3, new Color32(0xB5, 0x45, 0x2B, 255)); // spiral ucu
+        });
+
+        // 1 birim genişliğinde dil; pivot sol kenarda, scale.x ile uzatılır.
+        public static Sprite Tongue() => Create("dil_placeholder", 32, 6, new Vector2(0f, 0.5f), c =>
+        {
+            var pink = new Color32(0xE8, 0x6A, 0x8A, 255);
+            c.Rect(0, 1, 27, 4, pink);
+            c.Rect(0, 4, 27, 4, new Color32(0xF5, 0xA0, 0xB5, 255));
+            c.Rect(26, 0, 31, 5, new Color32(0xC8, 0x3A, 0x5A, 255)); // yapışkan uç
+        });
+
+        // --- Arayüz ---
+
+        public static Sprite Heart(int fill) => Create($"kalp_{(fill == 2 ? "dolu" : fill == 1 ? "yarim" : "bos")}", 16, 16, Center, c =>
+        {
+            var red = new Color32(0xD8, 0x3A, 0x3A, 255);
+            var empty = new Color32(0x4A, 0x3A, 0x40, 255);
+            // X = dış çizgi, # = iç; yarım kalpte sol yarı (x <= 7) dolu.
+            string[] shape =
+            {
+                "................",
+                "..XXX.....XXX...",
+                ".X###X...X###X..",
+                "X#####X.X#####X.",
+                "X######X######X.",
+                "X#############X.",
+                "X#############X.",
+                ".X###########X..",
+                "..X#########X...",
+                "...X#######X....",
+                "....X#####X.....",
+                ".....X###X......",
+                "......X#X.......",
+                ".......X........",
+                "................",
+                "................",
+            };
+            for (int row = 0; row < 16; row++)
+            for (int x = 0; x < 16; x++)
+            {
+                int y = 15 - row; // tablo yukarıdan aşağı, tuval aşağıdan yukarı
+                char cell = shape[row][x];
+                if (cell == 'X')
+                    c.Set(x, y, Outline);
+                else if (cell == '#')
+                    c.Set(x, y, fill == 2 || (fill == 1 && x <= 7) ? red : empty);
+            }
+        });
+
+        // Kuyruk bekleme çemberi: Image (Filled, Radial 360) için halka.
+        public static Sprite Ring() => Create("halka_placeholder", 32, 32, Center, c =>
+        {
+            var white = new Color32(255, 255, 255, 255);
+            c.Disc(16f, 16f, 15f, white);
+            c.Disc(16f, 16f, 10f, Clear);
+        });
+    }
+}

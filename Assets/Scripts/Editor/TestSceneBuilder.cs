@@ -10,16 +10,14 @@ using UnityEngine.Rendering.Universal;
 namespace DesertGecko.EditorTools
 {
     /// <summary>
-    /// Placeholder sprite'larla hareket test sahnesini sıfırdan kurar.
+    /// Placeholder sprite'larla test sahnesini sıfırdan kurar: seviye, oyuncu, düşmanlar,
+    /// toplanabilirler, checkpoint'ler, arayüz ve (görseller varsa) paralaks arka plan.
     /// Menü: Desert Gecko → Test Sahnesini Kur. Komut satırından -executeMethod ile de çalışır.
     /// </summary>
     public static class TestSceneBuilder
     {
         const int PixelsPerUnit = 32;
         const string ScenePath = "Assets/Scenes/TestLevel_Movement.unity";
-        const string PlaceholderDir = "Assets/Sprites/Placeholder";
-        const string TilePath = PlaceholderDir + "/tile_placeholder.png";
-        const string GilaPath = PlaceholderDir + "/gila_placeholder.png";
         const string PlayerPrefabPath = "Assets/Prefabs/Player.prefab";
         const string NoFrictionPath = "Assets/Materials/NoFriction.physicsMaterial2D";
 
@@ -28,7 +26,7 @@ namespace DesertGecko.EditorTools
             "Assets/Scripts/Player", "Assets/Scripts/Environment", "Assets/Scripts/Enemies",
             "Assets/Scripts/Collectibles", "Assets/Scripts/UI", "Assets/Scripts/DevTools",
             "Assets/Sprites/Player", "Assets/Sprites/Enemies", "Assets/Sprites/Environment",
-            "Assets/Sprites/UI", "Assets/Sprites/_Gelen", PlaceholderDir,
+            "Assets/Sprites/UI", "Assets/Sprites/_Gelen", PlaceholderArt.Folder,
             "Assets/Prefabs", "Assets/Scenes", "Assets/Audio", "Assets/Materials",
         };
 
@@ -50,10 +48,12 @@ namespace DesertGecko.EditorTools
             int groundLayer = EnsureLayer("Ground", 6);
             EnsureLayer("Player", 7);
             EnsureLayer("Enemy", 8);
+            EnsureLayer("PlayerAttack", 9);
 
-            Sprite tile = CreatePlaceholderSprite(TilePath, DrawTile);
-            Sprite gila = CreatePlaceholderSprite(GilaPath, DrawGila);
+            Sprite tile = PlaceholderArt.Tile();
+            Sprite gila = PlaceholderArt.Gila();
             PhysicsMaterial2D noFriction = CreateNoFrictionMaterial();
+            CombatSetupBuilder.CombatAssets combat = CombatSetupBuilder.BuildPrefabs();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -65,13 +65,13 @@ namespace DesertGecko.EditorTools
             var level = new GameObject("Level").transform;
             BuildLevel(level, tile, groundLayer);
 
-            GameObject playerPrefab = BuildPlayerPrefab(gila, noFriction);
+            GameObject playerPrefab = BuildPlayerPrefab(gila, noFriction, combat);
             GilaSpriteBinder.Bind(); // gerçek Gila kareleri varsa placeholder'ın yerine geçer
             var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-            player.transform.position = new Vector3(0f, 1f, 0f);
+            player.transform.position = Vector3.zero;
 
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
-            camGo.transform.position = new Vector3(0f, 2.5f, -10f);
+            camGo.transform.position = new Vector3(0f, 1.5f, -10f);
             var cam = camGo.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 360f / PixelsPerUnit / 2f; // 640x360 referans çözünürlük
@@ -86,12 +86,28 @@ namespace DesertGecko.EditorTools
             SetField(helper, "player", player.GetComponent<PlayerController>());
             SetField(helper, "cameraFollow", follow);
 
+            CombatSetupBuilder.PopulateLevel(combat);
+            CombatSetupBuilder.BuildHud(cam, player, combat);
             BackgroundBuilder.Build(); // arka plan görselleri varsa paralaks katmanlarını ekler
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuild(ScenePath);
             AssetDatabase.SaveAssets();
             Debug.Log("[DesertGecko] Test sahnesi kuruldu: " + ScenePath);
+        }
+
+        /// <summary>
+        /// Komut satırı: sahneyi yeniden kurar ve oyun kamerasından ekran görüntüleri alır.
+        /// -executeMethod DesertGecko.EditorTools.TestSceneBuilder.BuildAndCaptureBatch -shotDir klasör
+        /// </summary>
+        public static void BuildAndCaptureBatch()
+        {
+            string shotDir = SceneCapture.ArgumentValue("-shotDir") ?? "Temp/Screenshots";
+            Build();
+            SceneCapture.Capture(Path.Combine(shotDir, "sahne_baslangic.png"), new Vector3(6f, 1.5f, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "sahne_platformlar.png"), new Vector3(17f, 3f, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "sahne_checkpoint.png"), new Vector3(40f, 3f, -10f));
+            EditorApplication.Exit(0);
         }
 
         // Birim = 1 tile = 32 piksel. Sahne soldan sağa: düz zemin, basamaklar, boşluk,
@@ -149,7 +165,7 @@ namespace DesertGecko.EditorTools
             sr.sortingOrder = -1;
         }
 
-        static GameObject BuildPlayerPrefab(Sprite sprite, PhysicsMaterial2D noFriction)
+        static GameObject BuildPlayerPrefab(Sprite sprite, PhysicsMaterial2D noFriction, CombatSetupBuilder.CombatAssets combat)
         {
             var root = new GameObject("Player") { layer = LayerMask.NameToLayer("Player") };
 
@@ -177,81 +193,11 @@ namespace DesertGecko.EditorTools
             SetField(visual, "controller", controller);
             SetField(visual, "spriteRenderer", sr);
 
+            CombatSetupBuilder.AddPlayerCombat(root, sr, combat);
+
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefabPath);
             Object.DestroyImmediate(root);
             return prefab;
-        }
-
-        // --- Placeholder sprite çizimleri (32x32) ---
-
-        static void DrawTile(Color32[] px)
-        {
-            var fill = new Color32(255, 255, 255, 255);
-            var edge = new Color32(200, 200, 200, 255);
-            for (int y = 0; y < PixelsPerUnit; y++)
-            for (int x = 0; x < PixelsPerUnit; x++)
-            {
-                bool border = x == 0 || y == 0 || x == PixelsPerUnit - 1 || y == PixelsPerUnit - 1;
-                px[y * PixelsPerUnit + x] = border ? edge : fill;
-            }
-        }
-
-        // Sağa bakan basit kertenkele silueti: gövde, kafa, göz, kuyruk. Yönü görmeye yeter.
-        static void DrawGila(Color32[] px)
-        {
-            var clear = new Color32(0, 0, 0, 0);
-            var body = new Color32(0xE8, 0xA0, 0x4A, 255);
-            var outline = new Color32(0x2B, 0x1A, 0x12, 255);
-            var bandana = new Color32(0xB5, 0x45, 0x2B, 255);
-            var eye = new Color32(0xF4, 0xD3, 0x5E, 255);
-
-            for (int i = 0; i < px.Length; i++) px[i] = clear;
-
-            void Rect(int x0, int y0, int x1, int y1, Color32 c)
-            {
-                for (int y = y0; y <= y1; y++)
-                for (int x = x0; x <= x1; x++)
-                    px[y * PixelsPerUnit + x] = c;
-            }
-
-            Rect(9, 2, 22, 20, outline);   // gövde dış çizgi
-            Rect(10, 3, 21, 19, body);
-            Rect(13, 18, 27, 29, outline); // kafa
-            Rect(14, 19, 26, 28, body);
-            Rect(13, 17, 22, 19, bandana); // boyundaki bandana
-            Rect(22, 23, 25, 26, outline); // göz
-            Rect(23, 24, 24, 25, eye);
-            Rect(2, 4, 9, 7, outline);     // kuyruk
-            Rect(3, 5, 9, 6, body);
-            Rect(10, 0, 13, 2, outline);   // ayaklar
-            Rect(18, 0, 21, 2, outline);
-        }
-
-        static Sprite CreatePlaceholderSprite(string path, System.Action<Color32[]> draw)
-        {
-            var tex = new Texture2D(PixelsPerUnit, PixelsPerUnit, TextureFormat.RGBA32, false);
-            var pixels = new Color32[PixelsPerUnit * PixelsPerUnit];
-            draw(pixels);
-            tex.SetPixels32(pixels);
-            tex.Apply();
-            File.WriteAllBytes(path, tex.EncodeToPNG());
-            Object.DestroyImmediate(tex);
-            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
-
-            var importer = (TextureImporter)AssetImporter.GetAtPath(path);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = PixelsPerUnit;
-            importer.filterMode = FilterMode.Point;
-            importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.mipmapEnabled = false;
-            var settings = new TextureImporterSettings();
-            importer.ReadTextureSettings(settings);
-            settings.spriteMeshType = SpriteMeshType.FullRect; // Tiled çizim için gerekli
-            importer.SetTextureSettings(settings);
-            importer.SaveAndReimport();
-
-            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
         static PhysicsMaterial2D CreateNoFrictionMaterial()

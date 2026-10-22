@@ -98,11 +98,15 @@ namespace DesertGecko.Player
             body = GetComponent<Rigidbody2D>();
             box = GetComponent<BoxCollider2D>();
             input = GetComponent<PlayerInputReader>();
+            if (groundMask == 0)
+                groundMask = LayerMask.GetMask("Ground"); // koddan eklenince (testler) Reset çalışmaz
 
             body.gravityScale = baseGravityScale;
             body.freezeRotation = true;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            // Uyuyan gövde, hareket eden trigger'ları (düşen kristal, süzülen böcek) fark etmez.
+            body.sleepMode = RigidbodySleepMode2D.NeverSleep;
         }
 
         void Update()
@@ -326,6 +330,29 @@ namespace DesertGecko.Player
             transform.position = position;
             body.linearVelocity = Vector2.zero;
             State = MoveState.Airborne;
+        }
+
+        /// <summary>Hasar alınca geri itme: hızı doğrudan ayarlar ve kısa süre yön kontrolünü kilitler.</summary>
+        public void Knockback(Vector2 velocity, float controlLock)
+        {
+            body.linearVelocity = velocity;
+            controlLockUntil = Time.time + controlLock;
+            wallRegrabAllowedAt = Time.time + controlLock;
+            State = MoveState.Airborne;
+            rising = false;
+            jumpCut = false;
+        }
+
+        /// <summary>Ölüm gibi durumlarda fiziği tamamen durdurur (düşmez, çarpışmaz).</summary>
+        public bool Frozen
+        {
+            get => !body.simulated;
+            set
+            {
+                body.simulated = !value;
+                if (value)
+                    body.linearVelocity = Vector2.zero;
+            }
         }
 
         void OnDrawGizmosSelected()

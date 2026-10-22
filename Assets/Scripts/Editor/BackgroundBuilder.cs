@@ -3,7 +3,6 @@ using DesertGecko.Environment;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace DesertGecko.EditorTools
@@ -99,8 +98,7 @@ namespace DesertGecko.EditorTools
         /// </summary>
         public static void BuildAndCaptureBatch()
         {
-            string shotDir = ArgumentValue("-shotDir") ?? "Temp/Screenshots";
-            Directory.CreateDirectory(shotDir);
+            string shotDir = SceneCapture.ArgumentValue("-shotDir") ?? "Temp/Screenshots";
 
             // Görseller bu scriptler derlenmeden içe aktarıldıysa kurallar uygulanmamış olabilir.
             foreach (string guid in AssetDatabase.FindAssets("t:Texture2D", new[] { SpriteImportRules.BackgroundFolder.TrimEnd('/') }))
@@ -116,61 +114,11 @@ namespace DesertGecko.EditorTools
                 player.transform.position = Vector3.zero;
             EditorSceneManager.SaveScene(scene);
 
-            // Batch modda ilk çizimde dokular henüz GPU'ya yüklenmemiş oluyor; bir kez boşa çiz.
-            Capture(Path.Combine(shotDir, "_isinma.png"), new Vector3(2f, CameraOrigin.y, -10f));
-            File.Delete(Path.Combine(shotDir, "_isinma.png"));
-
-            Capture(Path.Combine(shotDir, "arkaplan_baslangic.png"), new Vector3(2f, CameraOrigin.y, -10f));
-            Capture(Path.Combine(shotDir, "arkaplan_baca.png"), new Vector3(48f, 6f, -10f));
-            Capture(Path.Combine(shotDir, "arkaplan_ucurum.png"), new Vector3(64f, 6f, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "arkaplan_baslangic.png"), new Vector3(2f, CameraOrigin.y, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "arkaplan_baca.png"), new Vector3(48f, 6f, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "arkaplan_ucurum.png"), new Vector3(64f, 6f, -10f));
 
             EditorApplication.Exit(built ? 0 : 1);
-        }
-
-        static void Capture(string path, Vector3 cameraPosition)
-        {
-            Camera cam = Camera.main;
-            Vector3 saved = cam.transform.position;
-            cam.transform.position = cameraPosition;
-            foreach (ParallaxLayer layer in Object.FindObjectsByType<ParallaxLayer>())
-            {
-                layer.Setup();
-                layer.Follow(cameraPosition);
-            }
-
-            const int width = 640, height = 360;
-            var rt = new RenderTexture(width, height, 24);
-            var request = new RenderPipeline.StandardRequest { destination = rt };
-            if (RenderPipeline.SupportsRenderRequest(cam, request))
-                RenderPipeline.SubmitRenderRequest(cam, request);
-            else
-            {
-                cam.targetTexture = rt;
-                cam.Render();
-                cam.targetTexture = null;
-            }
-
-            RenderTexture.active = rt;
-            var tex = new Texture2D(width, height, TextureFormat.RGB24, false);
-            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-            tex.Apply();
-            RenderTexture.active = null;
-            File.WriteAllBytes(path, tex.EncodeToPNG());
-
-            Object.DestroyImmediate(tex);
-            rt.Release();
-            Object.DestroyImmediate(rt);
-
-            // Sahne kaydedildikten sonra çağrıldığı için kalıcı değişiklik bırakmasın.
-            cam.transform.position = saved;
-            Debug.Log("[DesertGecko] Ekran görüntüsü: " + path);
-        }
-
-        static string ArgumentValue(string name)
-        {
-            string[] args = System.Environment.GetCommandLineArgs();
-            int i = System.Array.IndexOf(args, name);
-            return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
     }
 }

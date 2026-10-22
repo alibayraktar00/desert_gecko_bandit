@@ -5,27 +5,61 @@ using UnityEngine;
 namespace DesertGecko.DevTools
 {
     /// <summary>
-    /// Sadece test sahnesi için: düşen oyuncuyu başlangıca döndürür,
-    /// ekranda kontrolleri ve oyuncunun durumunu gösterir.
+    /// Sadece test sahnesi için: uçuruma düşen oyuncuyu son checkpoint'e döndürür (1 kalp hasarla),
+    /// ekranın altında kontrolleri ve oyuncunun durumunu gösterir.
     /// </summary>
     public class TestLevelHelper : MonoBehaviour
     {
         [SerializeField] PlayerController player;
         [SerializeField] CameraFollow cameraFollow;
-        [SerializeField] Vector2 spawnPoint = new Vector2(0f, 1f);
         [SerializeField] float killY = -12f;
+        [SerializeField] int pitDamage = 2;
         [SerializeField] bool showHelp = true;
 
+        PlayerHealth health;
         GUIStyle style;
+
+        void Awake()
+        {
+            if (player != null)
+                health = player.GetComponent<PlayerHealth>();
+        }
+
+        void OnEnable()
+        {
+            if (health != null)
+                health.Respawned += SnapCamera;
+        }
+
+        void OnDisable()
+        {
+            if (health != null)
+                health.Respawned -= SnapCamera;
+        }
 
         void Update()
         {
-            if (player != null && player.transform.position.y < killY)
+            if (player == null || player.transform.position.y >= killY)
+                return;
+
+            if (health != null)
             {
-                player.Teleport(spawnPoint);
-                if (cameraFollow != null)
-                    cameraFollow.SnapToTarget();
+                bool wasAlive = health.IsAlive;
+                health.FallIntoPit(pitDamage);
+                if (wasAlive && health.IsAlive)
+                    SnapCamera();
             }
+            else
+            {
+                player.Teleport(Vector2.up);
+                SnapCamera();
+            }
+        }
+
+        void SnapCamera()
+        {
+            if (cameraFollow != null)
+                cameraFollow.SnapToTarget();
         }
 
         void OnGUI()
@@ -33,14 +67,13 @@ namespace DesertGecko.DevTools
             if (!showHelp || player == null)
                 return;
 
-            style ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, fontSize = 14, padding = new RectOffset(10, 10, 8, 8) };
+            style ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, fontSize = 13, padding = new RectOffset(10, 10, 6, 6) };
             string text =
-                "A/D veya oklar: koş\n" +
-                "Space: zıpla (havada tekrar bas: çift zıplama)\n" +
-                "Space basılı tut (düşerken): süzül\n" +
-                "Duvara doğru bas: yapış  |  W/S: tırman  |  Space: duvar zıplaması\n" +
+                "A/D: koş   Space: zıpla (havada tekrar: çift zıplama, basılı tut: süzül)\n" +
+                "Duvara doğru bas: yapış   W/S: tırman   Space: duvar zıplaması\n" +
+                "J: dil (W/S ile yukarı/aşağı)   K: kuyruk fırlat\n" +
                 $"Durum: {player.State}   Hız: {player.Velocity.x:0.0}, {player.Velocity.y:0.0}";
-            GUI.Box(new Rect(10, 10, 520, 104), text, style);
+            GUI.Box(new Rect(10, Screen.height - 92, 560, 82), text, style);
         }
     }
 }
