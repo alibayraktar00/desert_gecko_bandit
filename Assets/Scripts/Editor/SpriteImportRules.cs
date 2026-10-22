@@ -14,6 +14,7 @@ namespace DesertGecko.EditorTools
         public const string GilaFolder = "Assets/Sprites/Player/Gila/";
         public const string BackgroundFolder = "Assets/Sprites/Environment/Background/";
         public const string PropsFolder = "Assets/Sprites/Environment/Props/";
+        public const string GroundFolder = "Assets/Sprites/Environment/Ground/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
 
@@ -28,9 +29,10 @@ namespace DesertGecko.EditorTools
             bool isGila = assetPath.StartsWith(GilaFolder);
             bool isBackground = assetPath.StartsWith(BackgroundFolder);
             bool isProp = assetPath.StartsWith(PropsFolder);
+            bool isGround = assetPath.StartsWith(GroundFolder);
             // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
             // Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !isBackground && !isProp && !assetImporter.importSettingsMissing)
+            if (!isGila && !isBackground && !isProp && !isGround && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -65,6 +67,15 @@ namespace DesertGecko.EditorTools
                 var settings = new TextureImporterSettings();
                 importer.ReadTextureSettings(settings);
                 settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+                importer.SetTextureSettings(settings);
+            }
+            else if (isGround)
+            {
+                // Zemin dokusu üst kenarından pivotlu: blok yüzeyine oturur, aşağı doğru yan yana tekrar eder.
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)SpriteAlignment.TopCenter;
+                settings.spriteMeshType = SpriteMeshType.FullRect;
                 importer.SetTextureSettings(settings);
             }
         }

@@ -115,19 +115,19 @@ namespace DesertGecko.EditorTools
         // tırmanma duvarı, baca (duvar zıplaması), yüksek platformdan süzülerek geçilecek uçurum.
         static void BuildLevel(Transform parent, Sprite tile, int layer)
         {
-            Block(parent, "Zemin_1", -12, 30, -4, 0, Sand, tile, layer);
+            Ground(parent, "Zemin_1", -12, 30, -4, 0, tile, layer);
             PropPlatform(parent, "Platform_1", 7f, 2.5f, "platform_00", tile, layer);
             PropPlatform(parent, "Platform_2", 12.5f, 4.5f, "platform_03", tile, layer);
             PropPlatform(parent, "Platform_3", 18.5f, 6.5f, "platform_02", tile, layer);
             Block(parent, "SolDuvar", -13, -12, -4, 12, Rock, tile, layer);
 
-            Block(parent, "Zemin_2", 34, 58, -4, 0, Sand, tile, layer);
+            Ground(parent, "Zemin_2", 34, 58, -4, 0, tile, layer);
             Block(parent, "TirmanmaDuvari", 40, 41, 0, 7, Rock, tile, layer);
             Block(parent, "Baca_Sol", 46, 47, 0, 11, Rock, tile, layer);
             Block(parent, "Baca_Sag", 49, 50, 3, 10.5f, Rock, tile, layer);
             Block(parent, "YuksekPlatform", 49, 58, 10.5f, 11, Plank, tile, layer);
 
-            Block(parent, "Zemin_3", 72, 100, -4, 0, Sand, tile, layer);
+            Ground(parent, "Zemin_3", 72, 100, -4, 0, tile, layer);
             Block(parent, "SagDuvar", 100, 101, -4, 12, Rock, tile, layer);
 
             // Son bölüm: yerde masa tipi platformlar (akrepler altından geçer), havada uzun halatlı platformlar.
@@ -148,6 +148,34 @@ namespace DesertGecko.EditorTools
             foreach (var (spriteName, x) in plants)
                 PropDecor(decor, spriteName, x, 0f, tile);
             Decor(parent, "Bitis", 95, 0, 0.3f, 4, Color.red, tile);
+        }
+
+        /// <summary>
+        /// Toprak dokulu zemin: doku üst kenardan pivotlu, yatayda tekrar eder.
+        /// Doku yoksa eski düz kum rengi kutu.
+        /// </summary>
+        static void Ground(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Sprite fallbackTile, int layer)
+        {
+            var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.png");
+            if (texture == null)
+            {
+                Block(parent, name, xMin, xMax, yMin, yMax, Sand, fallbackTile, layer);
+                return;
+            }
+
+            var size = new Vector2(xMax - xMin, yMax - yMin);
+            var go = new GameObject(name) { layer = layer };
+            go.transform.SetParent(parent);
+            go.transform.position = new Vector3(xMin + size.x / 2f, yMax, 0f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = texture;
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = new Vector2(size.x, Mathf.Min(size.y, texture.bounds.size.y));
+
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = size;
+            col.offset = new Vector2(0f, -size.y / 2f);
         }
 
         static Sprite Prop(string name) =>
