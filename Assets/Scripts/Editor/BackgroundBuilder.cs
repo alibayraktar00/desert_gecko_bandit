@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using DesertGecko.Environment;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -26,16 +26,18 @@ namespace DesertGecko.EditorTools
         {
             public string Name, Sprite;
             public Vector2 Follow;
-            public float HorizonY;   // katmanın asıl alt kenarının dünyadaki yüksekliği (kamera CameraOrigin'deyken)
+            public float HorizonY;   // katmanın asıl alt kenarının dünyadaki yüksekliği veya dikey ofseti
             public int Order;
             public bool Repeat;
+            public int TileCount;
         }
 
         static readonly Layer[] DayLayers =
         {
-            new Layer { Name = "Gokyuzu", Sprite = "bg_gunduz_gokyuzu", Follow = new Vector2(1f, 1f), Order = -100, Repeat = false },
-            new Layer { Name = "UzakMesalar", Sprite = "bg_gunduz_uzak", Follow = new Vector2(0.85f, 0.75f), HorizonY = 1.2f, Order = -90, Repeat = true },
-            new Layer { Name = "OrtaTepeler", Sprite = "bg_gunduz_orta", Follow = new Vector2(0.6f, 0.5f), HorizonY = 0.2f, Order = -80, Repeat = true },
+            // Gökyüzü kameraya 1:1 kilitli; HorizonY ile dikey konumu biraz aşağı çekilir (-1.2f). TileCount=5 ile kenar boşluğu kalmaz.
+            new Layer { Name = "Gokyuzu", Sprite = "bg_gunduz_gokyuzu", Follow = new Vector2(1f, 1f), HorizonY = -1.2f, Order = -100, Repeat = true, TileCount = 5 },
+            new Layer { Name = "UzakMesalar", Sprite = "bg_gunduz_uzak", Follow = new Vector2(0.85f, 0.75f), HorizonY = 1.2f, Order = -90, Repeat = true, TileCount = 4 },
+            new Layer { Name = "OrtaTepeler", Sprite = "bg_gunduz_orta", Follow = new Vector2(0.6f, 0.5f), HorizonY = 0f, Order = -80, Repeat = true, TileCount = 4 },
         };
 
         [MenuItem("Desert Gecko/Arka Planı Kur")]
@@ -69,10 +71,11 @@ namespace DesertGecko.EditorTools
                 sr.sprite = sprite;
                 sr.sortingOrder = layer.Order;
 
-                // Gökyüzü ortadan, diğerleri alt kenardan pivotlu; alttaki dolgu payı kadar aşağı it.
-                Vector2 origin = layer.Repeat
-                    ? new Vector2(CameraOrigin.x, layer.HorizonY - BottomPadPixels / PixelsPerUnit)
-                    : CameraOrigin;
+                // Gökyüzü ortadan, diğerleri alt kenardan pivotlu.
+                // Gökyüzü kameraya 1:1 kilitli ve HorizonY ile aşağı kaydırılır; diğer katmanlar ufuk hizasına göre konumlanır.
+                Vector2 origin = (layer.Follow == Vector2.one)
+                    ? new Vector2(CameraOrigin.x, CameraOrigin.y + layer.HorizonY)
+                    : new Vector2(CameraOrigin.x, layer.HorizonY - BottomPadPixels / PixelsPerUnit);
 
                 var parallax = go.AddComponent<ParallaxLayer>();
                 var so = new SerializedObject(parallax);
@@ -81,6 +84,8 @@ namespace DesertGecko.EditorTools
                 so.FindProperty("cameraOrigin").vector2Value = CameraOrigin;
                 so.FindProperty("layerOrigin").vector2Value = origin;
                 so.FindProperty("repeatX").boolValue = layer.Repeat;
+                if (layer.TileCount > 0)
+                    so.FindProperty("tileCount").intValue = layer.TileCount;
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 parallax.Setup();
@@ -89,8 +94,13 @@ namespace DesertGecko.EditorTools
             return true;
         }
 
-        static Sprite LoadSprite(string name) =>
-            AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.BackgroundFolder + name + ".png");
+        static Sprite LoadSprite(string name)
+        {
+            var s = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.BackgroundFolder + name + ".png");
+            if (s == null)
+                s = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.BackgroundFolder + name + ".jpg");
+            return s;
+        }
 
         /// <summary>
         /// Komut satırı: test sahnesine arka planı kurar, kaydeder ve oyun kamerasından ekran görüntüleri alır.
@@ -100,7 +110,6 @@ namespace DesertGecko.EditorTools
         {
             string shotDir = SceneCapture.ArgumentValue("-shotDir") ?? "Temp/Screenshots";
 
-            // Görseller bu scriptler derlenmeden içe aktarıldıysa kurallar uygulanmamış olabilir.
             foreach (string guid in AssetDatabase.FindAssets("t:Texture2D", new[] { SpriteImportRules.BackgroundFolder.TrimEnd('/') }))
                 AssetDatabase.ImportAsset(AssetDatabase.GUIDToAssetPath(guid), ImportAssetOptions.ForceUpdate);
 
@@ -108,7 +117,6 @@ namespace DesertGecko.EditorTools
             bool built = Build();
             Debug.Log($"[DesertGecko] Arka plan kuruldu: {built}");
 
-            // Oyuncu başlangıçta havada duruyor; görüntü için yere koy.
             GameObject player = GameObject.Find("Player");
             if (player != null)
                 player.transform.position = Vector3.zero;

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using DesertGecko.DevTools;
 using DesertGecko.Environment;
 using DesertGecko.Player;
@@ -76,7 +76,7 @@ namespace DesertGecko.EditorTools
             cam.orthographic = true;
             cam.orthographicSize = 360f / PixelsPerUnit / 2f; // 640x360 referans çözünürlük
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = Sky;
+            cam.backgroundColor = new Color32(0x05, 0x7C, 0x9C, 0xFF); // Gokyuzu tepe mavisi
             camGo.AddComponent<UniversalAdditionalCameraData>();
             var follow = camGo.AddComponent<CameraFollow>();
             SetField(follow, "target", player.transform);
@@ -115,20 +115,20 @@ namespace DesertGecko.EditorTools
         // tırmanma duvarı, baca (duvar zıplaması), yüksek platformdan süzülerek geçilecek uçurum.
         static void BuildLevel(Transform parent, Sprite tile, int layer)
         {
-            Ground(parent, "Zemin_1", -12, 30, -4, 0, tile, layer);
+            Ground(parent, "Zemin_1", -12, 30, -12, 0, tile, layer);
             PropPlatform(parent, "Platform_1", 7f, 2.5f, "platform_00", tile, layer);
             PropPlatform(parent, "Platform_2", 12.5f, 4.5f, "platform_03", tile, layer);
             PropPlatform(parent, "Platform_3", 18.5f, 6.5f, "platform_02", tile, layer);
-            Block(parent, "SolDuvar", -13, -12, -4, 12, Rock, tile, layer);
+            Block(parent, "SolDuvar", -13, -12, -12, 12, Rock, tile, layer);
 
-            Ground(parent, "Zemin_2", 34, 58, -4, 0, tile, layer);
+            Ground(parent, "Zemin_2", 34, 58, -12, 0, tile, layer);
             Block(parent, "TirmanmaDuvari", 40, 41, 0, 7, Rock, tile, layer);
             Block(parent, "Baca_Sol", 46, 47, 0, 11, Rock, tile, layer);
             Block(parent, "Baca_Sag", 49, 50, 3, 10.5f, Rock, tile, layer);
             Block(parent, "YuksekPlatform", 49, 58, 10.5f, 11, Plank, tile, layer);
 
-            Ground(parent, "Zemin_3", 72, 100, -4, 0, tile, layer);
-            Block(parent, "SagDuvar", 100, 101, -4, 12, Rock, tile, layer);
+            Ground(parent, "Zemin_3", 72, 100, -12, 0, tile, layer);
+            Block(parent, "SagDuvar", 100, 101, -12, 12, Rock, tile, layer);
 
             // Son bölüm: yerde masa tipi platformlar (akrepler altından geçer), havada uzun halatlı platformlar.
             PropPlatform(parent, "Masa_1", 77f, 0f, "platform_10", tile, layer, onGround: true);
@@ -156,7 +156,7 @@ namespace DesertGecko.EditorTools
         /// </summary>
         static void Ground(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Sprite fallbackTile, int layer)
         {
-            var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.png");
+            var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.jpg");
             if (texture == null)
             {
                 Block(parent, name, xMin, xMax, yMin, yMax, Sand, fallbackTile, layer);
@@ -171,7 +171,7 @@ namespace DesertGecko.EditorTools
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = texture;
             sr.drawMode = SpriteDrawMode.Tiled;
-            sr.size = new Vector2(size.x, Mathf.Min(size.y, texture.bounds.size.y));
+            sr.size = new Vector2(size.x, size.y);
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = size;
