@@ -231,6 +231,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 64
+  killY: -12
   visual: {fileID: 2841557787699341410}
   bobHeight: 0.05
   bobFrequency: 9

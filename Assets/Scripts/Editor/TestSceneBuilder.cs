@@ -107,6 +107,7 @@ namespace DesertGecko.EditorTools
             SceneCapture.Capture(Path.Combine(shotDir, "sahne_baslangic.png"), new Vector3(6f, 1.5f, -10f));
             SceneCapture.Capture(Path.Combine(shotDir, "sahne_platformlar.png"), new Vector3(17f, 3f, -10f));
             SceneCapture.Capture(Path.Combine(shotDir, "sahne_checkpoint.png"), new Vector3(40f, 3f, -10f));
+            SceneCapture.Capture(Path.Combine(shotDir, "sahne_son_bolum.png"), new Vector3(85f, 3f, -10f));
             EditorApplication.Exit(0);
         }
 
@@ -115,9 +116,9 @@ namespace DesertGecko.EditorTools
         static void BuildLevel(Transform parent, Sprite tile, int layer)
         {
             Block(parent, "Zemin_1", -12, 30, -4, 0, Sand, tile, layer);
-            Block(parent, "Platform_1", 5, 9, 2, 2.5f, Plank, tile, layer);
-            Block(parent, "Platform_2", 11, 14, 4, 4.5f, Plank, tile, layer);
-            Block(parent, "Platform_3", 17, 20, 6, 6.5f, Plank, tile, layer);
+            PropPlatform(parent, "Platform_1", 7f, 2.5f, "platform_00", tile, layer);
+            PropPlatform(parent, "Platform_2", 12.5f, 4.5f, "platform_03", tile, layer);
+            PropPlatform(parent, "Platform_3", 18.5f, 6.5f, "platform_02", tile, layer);
             Block(parent, "SolDuvar", -13, -12, -4, 12, Rock, tile, layer);
 
             Block(parent, "Zemin_2", 34, 58, -4, 0, Sand, tile, layer);
@@ -129,10 +130,73 @@ namespace DesertGecko.EditorTools
             Block(parent, "Zemin_3", 72, 100, -4, 0, Sand, tile, layer);
             Block(parent, "SagDuvar", 100, 101, -4, 12, Rock, tile, layer);
 
-            Decor(parent, "Kaktus_1", 2, 0, 1, 2, Cactus, tile);
-            Decor(parent, "Kaktus_2", 24, 0, 1, 3, Cactus, tile);
-            Decor(parent, "Kaktus_3", 80, 0, 1, 2, Cactus, tile);
+            // Son bölüm: yerde masa tipi platformlar (akrepler altından geçer), havada uzun halatlı platformlar.
+            PropPlatform(parent, "Masa_1", 77f, 0f, "platform_10", tile, layer, onGround: true);
+            PropPlatform(parent, "Masa_2", 93f, 0f, "platform_13", tile, layer, onGround: true);
+            PropPlatform(parent, "Platform_4", 81.5f, 3.5f, "platform_04", tile, layer);
+            PropPlatform(parent, "Platform_5", 89f, 5.5f, "platform_05", tile, layer);
+
+            // Dekor: çarpışması yok, oyuncunun arkasında. Sprite yoksa eski düz kutu.
+            var decor = new GameObject("Dekor").transform;
+            decor.SetParent(parent);
+            (string sprite, float x)[] plants =
+            {
+                ("kaktus_00", 2f), ("kaktus_21", 4.5f), ("kaktus_12", 15f), ("kaktus_16", 22.5f), ("kaktus_01", 27f),
+                ("kaktus_03", 38f), ("kaktus_22", 43f), ("kaktus_05", 55f),
+                ("kaktus_25", 75.5f), ("kaktus_17", 79.5f), ("kaktus_02", 85f), ("kaktus_19", 91f), ("kaktus_28", 97.5f),
+            };
+            foreach (var (spriteName, x) in plants)
+                PropDecor(decor, spriteName, x, 0f, tile);
             Decor(parent, "Bitis", 95, 0, 0.3f, 4, Color.red, tile);
+        }
+
+        static Sprite Prop(string name) =>
+            AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.PropsFolder + name + ".png");
+
+        /// <summary>
+        /// Görseli olan platform: sprite alt ortadan pivotlu, üst kenarı topY'de durur.
+        /// Sadece üstteki tahta katı; altındaki ip, kiriş ve ayaklar içinden geçilebilir.
+        /// </summary>
+        static void PropPlatform(Transform parent, string name, float centerX, float topY, string spriteName, Sprite fallbackTile, int layer, bool onGround = false)
+        {
+            Sprite sprite = Prop(spriteName);
+            if (sprite == null)
+            {
+                Block(parent, name, centerX - 1.5f, centerX + 1.5f, topY - 0.5f, topY, Plank, fallbackTile, layer);
+                return;
+            }
+
+            Vector2 size = sprite.bounds.size;
+            var go = new GameObject(name) { layer = layer };
+            go.transform.SetParent(parent);
+            // Yerdeki masa: ayakları zemine bassın, yani alt kenar topY'de.
+            float bottom = onGround ? topY : topY - size.y;
+            go.transform.position = new Vector3(centerX, bottom, 0f);
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 1;
+
+            const float plankThickness = 0.3f;
+            var col = go.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(size.x * 0.94f, plankThickness);
+            col.offset = new Vector2(0f, size.y - plankThickness / 2f);
+        }
+
+        static void PropDecor(Transform parent, string spriteName, float x, float groundY, Sprite fallbackTile)
+        {
+            Sprite sprite = Prop(spriteName);
+            if (sprite == null)
+            {
+                Decor(parent, spriteName, x, groundY, 1, 2, Cactus, fallbackTile);
+                return;
+            }
+            var go = new GameObject(spriteName);
+            go.transform.SetParent(parent);
+            go.transform.position = new Vector3(x, groundY, 0f);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = -1;
         }
 
         static void Block(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Color color, Sprite sprite, int layer)

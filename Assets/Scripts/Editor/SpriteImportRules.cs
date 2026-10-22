@@ -13,6 +13,7 @@ namespace DesertGecko.EditorTools
     {
         public const string GilaFolder = "Assets/Sprites/Player/Gila/";
         public const string BackgroundFolder = "Assets/Sprites/Environment/Background/";
+        public const string PropsFolder = "Assets/Sprites/Environment/Props/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
 
@@ -26,9 +27,10 @@ namespace DesertGecko.EditorTools
 
             bool isGila = assetPath.StartsWith(GilaFolder);
             bool isBackground = assetPath.StartsWith(BackgroundFolder);
+            bool isProp = assetPath.StartsWith(PropsFolder);
             // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
             // Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !isBackground && !assetImporter.importSettingsMissing)
+            if (!isGila && !isBackground && !isProp && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -55,6 +57,14 @@ namespace DesertGecko.EditorTools
                 bool isSky = assetPath.Contains("gokyuzu");
                 settings.spriteAlignment = (int)(isSky ? SpriteAlignment.Center : SpriteAlignment.BottomCenter);
                 settings.spriteMeshType = SpriteMeshType.FullRect; // yan yana tekrar (Tiled) için gerekli
+                importer.SetTextureSettings(settings);
+            }
+            else if (isProp)
+            {
+                // Kaktüsler yere, platformlar üst kenarlarından yerleştirilir; ikisi için de alt orta pivot.
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
                 importer.SetTextureSettings(settings);
             }
         }
