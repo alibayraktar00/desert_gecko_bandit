@@ -86,6 +86,8 @@ namespace DesertGecko.EditorTools
             SetField(helper, "player", player.GetComponent<PlayerController>());
             SetField(helper, "cameraFollow", follow);
 
+            BackgroundBuilder.Build(); // arka plan görselleri varsa paralaks katmanlarını ekler
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuild(ScenePath);
             AssetDatabase.SaveAssets();

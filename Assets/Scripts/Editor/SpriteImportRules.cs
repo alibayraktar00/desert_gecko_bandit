@@ -5,12 +5,14 @@ namespace DesertGecko.EditorTools
 {
     /// <summary>
     /// Assets/Sprites altındaki görseller için piksel sanat içe aktarma ayarları:
-    /// Sprite, 32 PPU, Point filtre, sıkıştırmasız. Gila kareleri ayak hizasından pivotlanır.
+    /// Sprite, 32 PPU, Point filtre, sıkıştırmasız. Gila kareleri ayak hizasından,
+    /// arka plan katmanları alt kenarından pivotlanır (gökyüzü ortadan).
     /// _Gelen klasörü (Gemini'nin ham çıktıları) dokunulmadan bırakılır.
     /// </summary>
     public class SpriteImportRules : AssetPostprocessor
     {
         public const string GilaFolder = "Assets/Sprites/Player/Gila/";
+        public const string BackgroundFolder = "Assets/Sprites/Environment/Background/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
 
@@ -23,8 +25,10 @@ namespace DesertGecko.EditorTools
                 return;
 
             bool isGila = assetPath.StartsWith(GilaFolder);
-            // Gila kareleri script ile üretiliyor, ayarları hep zorla. Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !assetImporter.importSettingsMissing)
+            bool isBackground = assetPath.StartsWith(BackgroundFolder);
+            // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
+            // Diğerlerinde elle yapılan değişikliklere saygı duy.
+            if (!isGila && !isBackground && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -42,6 +46,15 @@ namespace DesertGecko.EditorTools
                 importer.ReadTextureSettings(settings);
                 settings.spriteAlignment = (int)SpriteAlignment.Custom;
                 settings.spritePivot = GilaPivot;
+                importer.SetTextureSettings(settings);
+            }
+            else if (isBackground)
+            {
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                bool isSky = assetPath.Contains("gokyuzu");
+                settings.spriteAlignment = (int)(isSky ? SpriteAlignment.Center : SpriteAlignment.BottomCenter);
+                settings.spriteMeshType = SpriteMeshType.FullRect; // yan yana tekrar (Tiled) için gerekli
                 importer.SetTextureSettings(settings);
             }
         }
