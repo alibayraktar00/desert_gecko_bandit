@@ -78,10 +78,56 @@ def quantize(rgb, colors):
     return np.array(img.convert("RGB"))
 
 
+def extend_down(tile, total_rows, steps=4):
+    """Dokunun altını, derinleştikçe birkaç basamakta koyulaşan düz toprakla doldurur.
+    (Alttaki katmanı tekrar etmek ya da aynalamak göze batan yapay desenler oluşturuyordu.)
+    Basamak geçişleri dama deseniyle yumuşatılır, piksel sanat görünümü bozulmaz."""
+    if tile.shape[0] >= total_rows:
+        return tile[:total_rows]
+    bottom = tile[-6:].reshape(-1, 3)
+    colors, counts = np.unique(bottom, axis=0, return_counts=True)
+    base = colors[counts.argmax()].astype(float)
+
+    rows = total_rows - tile.shape[0]
+    width = tile.shape[1]
+    fill = np.zeros((rows, width, 3), dtype=np.uint8)
+    step_h = max(1, rows // steps)
+    for y in range(rows):
+        level = min(steps - 1, y // step_h)
+        # Basamağın ilk 2 satırında bir önceki tonla dama deseni
+        checker = (y % step_h) < 2 and level > 0
+        for parity in (0, 1):
+            shade = level - (1 if checker and parity else 0)
+            color = (base * (1 - 0.12 * shade)).astype(np.uint8)
+            fill[y, parity::2] = color
+    return np.concatenate([tile, fill], axis=0)
+
+
+def from_upscaled(path, factor, depth):
+    """Önceden büyütülmüş (ör. elle düzenlenip 6.25x büyütülmüş) bir dokuyu oyun piksel boyuna indirir."""
+    img = Image.open(path).convert("RGB")
+    size = (round(img.width / factor), round(img.height / factor))
+    small = np.array(img.resize(size, Image.NEAREST))  # NEAREST büyük piksel bloklarının ortasından örnekler
+    small = quantize(small.astype(np.uint8), PALETTE)
+    return extend_down(small, depth)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--preview", type=Path)
+    parser.add_argument("--buyutulmus", type=Path, help="önceden büyütülmüş hazır doku (Gemini şeridi yerine)")
+    parser.add_argument("--carpan", type=float, default=6.25, help="--buyutulmus dokunun büyütme oranı")
+    parser.add_argument("--derinlik", type=int, default=DEPTH, help="çıktı yüksekliği (oyun pikseli)")
     args = parser.parse_args()
+
+    if args.buyutulmus:
+        tile = from_upscaled(args.buyutulmus, args.carpan, args.derinlik)
+        OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(tile.astype(np.uint8), "RGB").save(OUTPUT)
+        print(f"{OUTPUT.relative_to(ROOT)}  ({tile.shape[1]}x{tile.shape[0]})")
+        if args.preview:
+            Image.fromarray(tile.astype(np.uint8), "RGB").resize((tile.shape[1] * 2, tile.shape[0] * 2), Image.NEAREST).save(args.preview)
+        return
 
     rgb = np.array(Image.open(SOURCE).convert("RGB"), dtype=np.int32)
     strip = rgb[find_strip_top(rgb):]

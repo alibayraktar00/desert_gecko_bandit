@@ -64,6 +64,21 @@ namespace DesertGecko.EditorTools
             return png;
         }
 
+        /// <summary>
+        /// Komut satırı: test sahnesini OLDUĞU GİBİ açar (yeniden kurmaz) ve ekran görüntüleri alır.
+        /// Elle düzenlenmiş sahneyi bozmadan kontrol etmek için.
+        /// -executeMethod DesertGecko.EditorTools.SceneCapture.CaptureTestSceneBatch -shotDir klasör
+        /// </summary>
+        public static void CaptureTestSceneBatch()
+        {
+            string shotDir = ArgumentValue("-shotDir") ?? "Temp/Screenshots";
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/TestLevel_Movement.unity");
+            Capture(Path.Combine(shotDir, "sahne_baslangic.png"), new Vector3(6f, 1.5f, -10f));
+            Capture(Path.Combine(shotDir, "sahne_derin.png"), new Vector3(20f, -2f, -10f));
+            Capture(Path.Combine(shotDir, "sahne_son_bolum.png"), new Vector3(85f, 3f, -10f));
+            UnityEditor.EditorApplication.Exit(0);
+        }
+
         public static string ArgumentValue(string name)
         {
             string[] args = System.Environment.GetCommandLineArgs();
