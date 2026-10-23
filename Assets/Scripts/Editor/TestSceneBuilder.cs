@@ -156,7 +156,8 @@ namespace DesertGecko.EditorTools
         /// </summary>
         static void Ground(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Sprite fallbackTile, int layer)
         {
-            var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.jpg");
+            var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.png")
+                ?? AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.jpg");
             if (texture == null)
             {
                 Block(parent, name, xMin, xMax, yMin, yMax, Sand, fallbackTile, layer);
