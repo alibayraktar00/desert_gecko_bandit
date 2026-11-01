@@ -31,13 +31,23 @@ namespace DesertGecko.EditorTools
         };
 
         static readonly Color Sand = new Color32(0xE8, 0xA0, 0x4A, 0xFF);
-        static readonly Color Rock = new Color32(0xB5, 0x45, 0x2B, 0xFF);
+        internal static readonly Color Rock = new Color32(0xB5, 0x45, 0x2B, 0xFF);
         static readonly Color Plank = new Color32(0x7A, 0x4B, 0x2A, 0xFF);
         static readonly Color Sky = new Color32(0xF6, 0xD8, 0xA0, 0xFF);
         static readonly Color Cactus = new Color32(0x5E, 0x8C, 0x3A, 0xFF);
 
-        [MenuItem("Desert Gecko/Test Sahnesini Kur")]
-        public static void Build()
+        /// <summary>Sahne kurucularının ortak ihtiyaçları (Prepare ile bir kez hazırlanır).</summary>
+        internal class SceneContext
+        {
+            public Sprite Tile;
+            public Sprite Solid;
+            public int GroundLayer;
+            public CombatSetupBuilder.CombatAssets Combat;
+            public GameObject PlayerPrefab;
+        }
+
+        /// <summary>Klasörler, katmanlar, geçici çizimler ve prefablar (oyuncu dahil).</summary>
+        internal static SceneContext Prepare()
         {
             PlayerSettings.productName = "Desert Gecko Bandit";
             PlayerSettings.companyName = "Desert Gecko";
@@ -45,49 +55,80 @@ namespace DesertGecko.EditorTools
             foreach (string folder in Folders)
                 EnsureFolder(folder);
 
-            int groundLayer = EnsureLayer("Ground", 6);
+            var ctx = new SceneContext { GroundLayer = EnsureLayer("Ground", 6) };
             EnsureLayer("Player", 7);
             EnsureLayer("Enemy", 8);
             EnsureLayer("PlayerAttack", 9);
 
-            Sprite tile = PlaceholderArt.Tile();
+            ctx.Tile = PlaceholderArt.Tile();
+            ctx.Solid = PlaceholderArt.Solid();
             Sprite gila = PlaceholderArt.Gila();
             PhysicsMaterial2D noFriction = CreateNoFrictionMaterial();
-            CombatSetupBuilder.CombatAssets combat = CombatSetupBuilder.BuildPrefabs();
+            ctx.Combat = CombatSetupBuilder.BuildPrefabs();
+            BuildPlayerPrefab(gila, noFriction, ctx.Combat);
+            GilaSpriteBinder.Bind(); // gerçek Gila kareleri varsa placeholder'ın yerine geçer
+            // Bind prefab'ı yeniden kaydettiği için eldeki referans eskir; dosyadan taze yükle.
+            ctx.PlayerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
+            return ctx;
+        }
 
+        /// <summary>Boş sahne + global ışık.</summary>
+        internal static UnityEngine.SceneManagement.Scene NewSceneWithLight()
+        {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-
-            var lightGo = new GameObject("Global Light 2D");
-            var light = lightGo.AddComponent<Light2D>();
+            var light = new GameObject("Global Light 2D").AddComponent<Light2D>();
             light.lightType = Light2D.LightType.Global;
             light.intensity = 1f;
+            return scene;
+        }
 
-            var level = new GameObject("Level").transform;
-            BuildLevel(level, tile, groundLayer);
-
-            GameObject playerPrefab = BuildPlayerPrefab(gila, noFriction, combat);
-            GilaSpriteBinder.Bind(); // gerçek Gila kareleri varsa placeholder'ın yerine geçer
-            var player = (GameObject)PrefabUtility.InstantiatePrefab(playerPrefab);
-            player.transform.position = Vector3.zero;
-
+        /// <summary>Kamera (640x360 referans, ortografik). Takip hedefi verilirse CameraFollow eklenir.</summary>
+        internal static Camera CreateCamera(Vector2 position, Transform followTarget, out CameraFollow follow)
+        {
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
-            camGo.transform.position = new Vector3(0f, 1.5f, -10f);
+            camGo.transform.position = new Vector3(position.x, position.y, -10f);
             var cam = camGo.AddComponent<Camera>();
             cam.orthographic = true;
             cam.orthographicSize = 360f / PixelsPerUnit / 2f; // 640x360 referans çözünürlük
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color32(0x05, 0x7C, 0x9C, 0xFF); // Gokyuzu tepe mavisi
             camGo.AddComponent<UniversalAdditionalCameraData>();
-            var follow = camGo.AddComponent<CameraFollow>();
-            SetField(follow, "target", player.transform);
+            camGo.AddComponent<AudioListener>(); // ses eklenince duyulsun, ses ayarı işe yarasın
+            follow = null;
+            if (followTarget != null)
+            {
+                follow = camGo.AddComponent<CameraFollow>();
+                SetField(follow, "target", followTarget);
+            }
+            return cam;
+        }
+
+        internal static GameObject SpawnPlayer(SceneContext ctx, Vector2 position)
+        {
+            var player = (GameObject)PrefabUtility.InstantiatePrefab(ctx.PlayerPrefab);
+            player.transform.position = position;
+            return player;
+        }
+
+        [MenuItem("Desert Gecko/Test Sahnesini Kur")]
+        public static void Build()
+        {
+            SceneContext ctx = Prepare();
+            var scene = NewSceneWithLight();
+
+            var level = new GameObject("Level").transform;
+            BuildLevel(level, ctx.Tile, ctx.GroundLayer);
+
+            GameObject player = SpawnPlayer(ctx, Vector2.zero);
+            Camera cam = CreateCamera(new Vector2(0f, 1.5f), player.transform, out CameraFollow follow);
 
             var helperGo = new GameObject("TestLevelHelper");
             var helper = helperGo.AddComponent<TestLevelHelper>();
             SetField(helper, "player", player.GetComponent<PlayerController>());
             SetField(helper, "cameraFollow", follow);
 
-            CombatSetupBuilder.PopulateLevel(combat);
-            CombatSetupBuilder.BuildHud(cam, player, combat);
+            CombatSetupBuilder.PopulateLevel(ctx.Combat);
+            CombatSetupBuilder.BuildHud(cam, player, ctx.Combat);
             BackgroundBuilder.Build(); // arka plan görselleri varsa paralaks katmanlarını ekler
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -154,7 +195,7 @@ namespace DesertGecko.EditorTools
         /// Toprak dokulu zemin: doku üst kenardan pivotlu, yatayda tekrar eder.
         /// Doku yoksa eski düz kum rengi kutu.
         /// </summary>
-        static void Ground(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Sprite fallbackTile, int layer)
+        internal static void Ground(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Sprite fallbackTile, int layer)
         {
             var texture = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.png")
                 ?? AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_toprak.jpg");
@@ -169,24 +210,46 @@ namespace DesertGecko.EditorTools
             go.transform.SetParent(parent);
             go.transform.position = new Vector3(xMin + size.x / 2f, yMax, 0f);
 
+            // Doku yatayda tekrar eder ama dikeyde etmez: blok dokudan derinse altı koyu toprakla dolar
+            // (yoksa uçurumdan bakınca toprak katmanları ikinci kez görünür).
+            float textureHeight = texture.bounds.size.y;
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = texture;
             sr.drawMode = SpriteDrawMode.Tiled;
-            sr.size = new Vector2(size.x, size.y);
+            sr.size = new Vector2(size.x, Mathf.Min(size.y, textureHeight));
+            if (size.y > textureHeight)
+            {
+                var deep = new GameObject("Derinlik");
+                deep.transform.SetParent(go.transform, false);
+                float depth = size.y - textureHeight;
+                deep.transform.localPosition = new Vector3(0f, -textureHeight - depth / 2f, 0f);
+                var deepSr = deep.AddComponent<SpriteRenderer>();
+                Sprite solid = SolidSprite;
+                deepSr.sprite = solid != null ? solid : fallbackTile;
+                deepSr.drawMode = SpriteDrawMode.Tiled;
+                deepSr.size = new Vector2(size.x, depth);
+                deepSr.color = DeepSoil;
+            }
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = size;
             col.offset = new Vector2(0f, -size.y / 2f);
         }
 
-        static Sprite Prop(string name) =>
+        // Kenarlıksız dolgu görseli (Prepare'de yüklenir)
+        static Sprite SolidSprite => AssetDatabase.LoadAssetAtPath<Sprite>(PlaceholderArt.Folder + "/duz_placeholder.png");
+
+        // Zemin dokusunun en alt tonu (tools/gemini_zemin_isle.py dolgusunun son basamağı)
+        static readonly Color DeepSoil = new Color32(0x1A, 0x0C, 0x09, 0xFF);
+
+        internal static Sprite Prop(string name) =>
             AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.PropsFolder + name + ".png");
 
         /// <summary>
         /// Görseli olan platform: sprite alt ortadan pivotlu, üst kenarı topY'de durur.
         /// Sadece üstteki tahta katı; altındaki ip, kiriş ve ayaklar içinden geçilebilir.
         /// </summary>
-        static void PropPlatform(Transform parent, string name, float centerX, float topY, string spriteName, Sprite fallbackTile, int layer, bool onGround = false)
+        internal static void PropPlatform(Transform parent, string name, float centerX, float topY, string spriteName, Sprite fallbackTile, int layer, bool onGround = false)
         {
             Sprite sprite = Prop(spriteName);
             if (sprite == null)
@@ -212,7 +275,7 @@ namespace DesertGecko.EditorTools
             col.offset = new Vector2(0f, size.y - plankThickness / 2f);
         }
 
-        static void PropDecor(Transform parent, string spriteName, float x, float groundY, Sprite fallbackTile)
+        internal static void PropDecor(Transform parent, string spriteName, float x, float groundY, Sprite fallbackTile)
         {
             Sprite sprite = Prop(spriteName);
             if (sprite == null)
@@ -228,7 +291,7 @@ namespace DesertGecko.EditorTools
             sr.sortingOrder = -1;
         }
 
-        static void Block(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Color color, Sprite sprite, int layer)
+        internal static void Block(Transform parent, string name, float xMin, float xMax, float yMin, float yMax, Color color, Sprite sprite, int layer)
         {
             var go = new GameObject(name) { layer = layer };
             go.transform.SetParent(parent);
@@ -339,11 +402,11 @@ namespace DesertGecko.EditorTools
             var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
             if (scenes.Exists(s => s.path == path))
                 return;
-            scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            scenes.Add(new EditorBuildSettingsScene(path, true)); // sona: açılış sahnesi ana menü kalsın
             EditorBuildSettings.scenes = scenes.ToArray();
         }
 
-        static void SetField(Object target, string field, Object value)
+        internal static void SetField(Object target, string field, Object value)
         {
             var so = new SerializedObject(target);
             so.FindProperty(field).objectReferenceValue = value;

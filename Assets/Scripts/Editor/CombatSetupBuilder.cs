@@ -117,8 +117,9 @@ namespace DesertGecko.EditorTools
             var root = new GameObject("Checkpoint");
             var col = root.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(1f, 2f);
-            col.offset = new Vector2(0f, 1f);
+            // Uzun sütun: üstünden zıplayarak ya da süzülerek geçen oyuncu da checkpoint'i alır.
+            col.size = new Vector2(1f, 12f);
+            col.offset = new Vector2(0f, 6f);
             SpriteRenderer totem = AddSprite(root.transform, "Totem", sprite, 2);
             var checkpoint = root.AddComponent<Checkpoint>();
             SetField(checkpoint, "totem", totem);
@@ -173,11 +174,12 @@ namespace DesertGecko.EditorTools
             Place(a.Checkpoint, root, "Checkpoint_2", 73.5f, 0f);
         }
 
-        static void Place(Component prefab, Transform parent, string name, float x, float y)
+        internal static GameObject Place(Component prefab, Transform parent, string name, float x, float y)
         {
             var go = (GameObject)PrefabUtility.InstantiatePrefab(Fresh(prefab).gameObject, parent);
             go.name = name;
             go.transform.position = new Vector3(x, y, 0f);
+            return go;
         }
 
         // --- Arayüz ---

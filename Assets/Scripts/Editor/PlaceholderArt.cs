@@ -196,6 +196,53 @@ namespace DesertGecko.EditorTools
             c.Rect(26, 0, 31, 5, new Color32(0xC8, 0x3A, 0x5A, 255)); // yapışkan uç
         });
 
+        // --- Level ---
+
+        // Eğitim tabelası: direk üstünde ahşap levha. Alttan pivotlu.
+        public static Sprite SignBoard() => Create("tabela_placeholder", 32, 32, BottomCenter, c =>
+        {
+            var wood = new Color32(0xA8, 0x6A, 0x3A, 255);
+            var dark = new Color32(0x7A, 0x4B, 0x2A, 255);
+            c.Box(14, 0, 17, 18, dark);            // direk
+            c.Box(3, 14, 28, 28, wood);            // levha
+            c.Rect(6, 23, 25, 23, dark);           // yazı çizgileri
+            c.Rect(6, 19, 21, 19, dark);
+        });
+
+        // Bitiş direği: uzun ahşap direk. Alttan pivotlu, 3 birim.
+        public static Sprite GoalPole() => Create("bitis_direk_placeholder", 16, 96, BottomCenter, c =>
+        {
+            var wood = new Color32(0x7A, 0x4B, 0x2A, 255);
+            c.Box(6, 0, 9, 92, wood);
+            c.Box(4, 90, 11, 95, new Color32(0xF4, 0xD3, 0x5E, 255)); // tepe topuzu
+        });
+
+        // "ARANIYOR" posteri bayrak gibi: direğe sol kenarından tutturulur (pivot sol orta).
+        public static Sprite GoalFlag() => Create("bitis_bayrak_placeholder", 32, 24, new Vector2(0f, 0.5f), c =>
+        {
+            var paper = new Color32(0xF2, 0xE6, 0xD0, 255);
+            var red = new Color32(0xB5, 0x45, 0x2B, 255);
+            c.Box(0, 0, 31, 23, paper);
+            c.Rect(3, 18, 28, 20, red);            // "ARANIYOR" şeridi
+            c.Box(10, 4, 21, 15, new Color32(0xE8, 0xA0, 0x4A, 255)); // gecko yüzü
+            c.Rect(18, 10, 19, 11, Outline);       // göz
+        });
+
+        // Düz beyaz kare: renklendirilip kenarlıksız dolgu olarak kullanılır (tile'ın ızgara çizgisi yok).
+        public static Sprite Solid() => Create("duz_placeholder", 4, 4, Center, c => c.Rect(0, 0, 3, 3, new Color32(255, 255, 255, 255)));
+
+        // Uçurum ağzı: yukarıda şeffaf, aşağıda koyu toprak (2x32, 1 birim). Ölçeklenerek kullanılır.
+        public static Sprite PitGradient() => Create("ucurum_gecis", 2, 32, new Vector2(0.5f, 1f), c =>
+        {
+            for (int y = 0; y < 32; y++)
+            {
+                // Piksel sanat görünümü için 8 basamaklı geçiş (yumuşak değil)
+                byte alpha = (byte)(Mathf.Floor((31 - y) / 4f) / 7f * 255f);
+                c.Set(0, y, new Color32(0x0E, 0x07, 0x05, alpha));
+                c.Set(1, y, new Color32(0x0E, 0x07, 0x05, alpha));
+            }
+        });
+
         // --- Arayüz ---
 
         public static Sprite Heart(int fill) => Create($"kalp_{(fill == 2 ? "dolu" : fill == 1 ? "yarim" : "bos")}", 16, 16, Center, c =>

@@ -3,6 +3,7 @@
     "rootNamespace": "DesertGecko.Tests",
     "references": [
         "DesertGecko",
+        "Unity.InputSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
