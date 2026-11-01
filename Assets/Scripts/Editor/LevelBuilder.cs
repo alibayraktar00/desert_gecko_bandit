@@ -26,14 +26,15 @@ namespace DesertGecko.EditorTools
         const string SceneFolder = "Assets/Scenes";
 
         // Gila'nın hareket menzilleri (PlayerController varsayılanlarından, biraz pay bırakılarak).
-        const float SingleJumpRise = 2.5f, SingleJumpGap = 4f;
-        const float DoubleJumpRise = 4.5f, DoubleJumpGap = 6.5f;
-        // Süzülüş: yatay 6.5, düşüş ~2.14 birim/sn (1.8 sınırı + o fizik adımındaki yerçekimi). Bot ölçümü.
-        const float GlideRatio = 6.5f / 2.14f;
+        // Koşu 5.5, zıplama 2.8 + çift zıplama 2.2. Hareket değerleri değişirse bunları da güncelleyin.
+        const float SingleJumpRise = 2.3f, SingleJumpGap = 3.3f;
+        const float DoubleJumpRise = 4.3f, DoubleJumpGap = 5.5f;
+        // Süzülüş: yatay 4.5, düşüş ~2.14 birim/sn (1.8 sınırı + o fizik adımındaki yerçekimi). Bot ölçümü.
+        const float GlideRatio = 4.5f / 2.14f;
         const float GlideRunPerDrop = GlideRatio * 0.85f;    // menzil kontrolünde payla
-        const float JumpApexRun = 3.5f, JumpApexRise = 3.2f; // tek zıplamada tepe noktasına kadar
-        const float MaxApexRun = 5f, MaxApexRise = 5f;       // çift zıplamada tepe noktası (en uzun süzülüş)
-        const float ClingGap = 6f;                          // atlayıp karşı duvara yapışabileceği boşluk
+        const float JumpApexRun = 2.2f, JumpApexRise = 2.8f; // tek zıplamada tepe noktasına kadar
+        const float MaxApexRun = 4f, MaxApexRise = 5f;       // çift zıplamada tepe noktası (en uzun süzülüş)
+        const float ClingGap = 5f;                          // atlayıp karşı duvara yapışabileceği boşluk
 
         // Zeminlerin alt sınırı. Oyuncu killY'ye (-14) düşerken kamera ~-20'ye kadar görür;
         // zemin daha yukarıda bitseydi uçurum kenarlarının altında gökyüzü görünürdü.
