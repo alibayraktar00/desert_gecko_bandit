@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using DesertGecko.DevTools;
 using DesertGecko.Environment;
 using DesertGecko.Player;

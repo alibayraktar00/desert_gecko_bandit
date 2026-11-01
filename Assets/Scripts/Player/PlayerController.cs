@@ -14,14 +14,14 @@ namespace DesertGecko.Player
         public enum MoveState { Grounded, Airborne, WallCling, Gliding }
 
         [Header("Koşma")]
-        [SerializeField] float runSpeed = 8f;
-        [SerializeField] float groundAcceleration = 90f;
-        [SerializeField] float groundDeceleration = 110f;
-        [SerializeField] float airAcceleration = 55f;
-        [SerializeField] float airDeceleration = 35f;
+        [SerializeField] float runSpeed = 5.5f;
+        [SerializeField] float groundAcceleration = 60f;
+        [SerializeField] float groundDeceleration = 75f;
+        [SerializeField] float airAcceleration = 40f;
+        [SerializeField] float airDeceleration = 25f;
 
         [Header("Zıplama")]
-        [SerializeField] float jumpHeight = 3.2f;
+        [SerializeField] float jumpHeight = 2.8f;
         [SerializeField] float doubleJumpHeight = 2.2f;
         [Tooltip("Kuyruk fırlatılmışken (yeniden çıkana kadar) çift zıplama yüksekliği")]
         [SerializeField] float weakDoubleJumpHeight = 0.9f;
@@ -33,14 +33,14 @@ namespace DesertGecko.Player
         [SerializeField] float fallGravityMultiplier = 1.6f;
         [Tooltip("Zıplama tuşu erken bırakılınca yükselişi kesen çarpan")]
         [SerializeField] float jumpCutGravityMultiplier = 2.4f;
-        [SerializeField] float maxFallSpeed = 18f;
+        [SerializeField] float maxFallSpeed = 14f;
 
         [Header("Süzülme")]
         [SerializeField] float glideFallSpeed = 1.8f;
-        [SerializeField] float glideHorizontalSpeed = 6.5f;
+        [SerializeField] float glideHorizontalSpeed = 4.5f;
 
         [Header("Duvar")]
-        [SerializeField] float wallClimbSpeed = 3.5f;
+        [SerializeField] float wallClimbSpeed = 2.5f;
         [Tooltip("Yön tuşuna basılmıyorken duvardan kayma hızı (0 = tam yapışır)")]
         [SerializeField] float wallSlideSpeed = 0f;
         [SerializeField] Vector2 wallJumpVelocity = new Vector2(7f, 13f);

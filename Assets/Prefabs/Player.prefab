@@ -369,12 +369,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7664c67c1eb31694a8c51eae1bfc7a44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Player.PlayerController
-  runSpeed: 8
-  groundAcceleration: 90
-  groundDeceleration: 110
-  airAcceleration: 55
-  airDeceleration: 35
-  jumpHeight: 3.2
+  runSpeed: 5.5
+  groundAcceleration: 60
+  groundDeceleration: 75
+  airAcceleration: 40
+  airDeceleration: 25
+  jumpHeight: 2.8
   doubleJumpHeight: 2.2
   weakDoubleJumpHeight: 0.9
   coyoteTime: 0.1
@@ -382,10 +382,10 @@ MonoBehaviour:
   baseGravityScale: 3.5
   fallGravityMultiplier: 1.6
   jumpCutGravityMultiplier: 2.4
-  maxFallSpeed: 18
+  maxFallSpeed: 14
   glideFallSpeed: 1.8
-  glideHorizontalSpeed: 6.5
-  wallClimbSpeed: 3.5
+  glideHorizontalSpeed: 4.5
+  wallClimbSpeed: 2.5
   wallSlideSpeed: 0
   wallJumpVelocity: {x: 7, y: 13}
   wallJumpControlLock: 0.18
