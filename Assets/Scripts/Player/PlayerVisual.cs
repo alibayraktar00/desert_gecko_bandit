@@ -112,8 +112,8 @@ namespace DesertGecko.Player
 
                 case PlayerController.MoveState.WallCling:
                     frames = HasFrames(wallFrames) ? wallFrames : idleFrames;
-                    // Sadece tırmanırken oynat, dururken ilk karede kal.
-                    fps = Mathf.Abs(v.y) > 0.1f ? wallFps : 0f;
+                    // Sadece tırmanırken oynat (inerken geriye doğru), dururken o karede kal.
+                    fps = Mathf.Abs(v.y) > 0.1f ? wallFps * Mathf.Sign(v.y) : 0f;
                     break;
 
                 case PlayerController.MoveState.Gliding:
@@ -138,7 +138,7 @@ namespace DesertGecko.Player
             }
 
             animTime += Time.deltaTime * fps;
-            int index = Mathf.FloorToInt(animTime) % frames.Length;
+            int index = (int)Mathf.Repeat(Mathf.Floor(animTime), frames.Length);
             spriteRenderer.sprite = frames[index];
         }
 

@@ -41,6 +41,10 @@ SHEETS = [
      "frames": [("run", i, "bottom") for i in range(8)]},
     {"file": "gila_jump_fall.jpg", "cols": 4, "rows": 1,
      "frames": [("crouch", 0, "bottom"), ("rise", 1, "top"), ("apex", 2, "top"), ("fall", 3, "top")]},
+    # Duvara tırmanma: kalın siyah ızgara çizgileri var (geniş kenar payı). Gemini bu sheet'i farklı
+    # ölçekte çizdi; kendi ilk karesinden TARGET_HEIGHT'a ölçeklenir. Baş sabit dursun diye "top".
+    {"file": "gila_wall.jpg", "cols": 4, "rows": 2, "margin": 24, "own_scale": True,
+     "frames": [("wall", i, "top") for i in range(8)]},
 ]
 SCALE_REFERENCE = ("gila_idle.jpg", 0)  # ölçek bu karedeki karakter boyuna göre hesaplanır
 
@@ -50,12 +54,12 @@ def background_mask(rgb):
     return (r > 130) & (b > 130) & (g < 120) & (np.abs(r - b) < 100)
 
 
-def cells(image, cols, rows):
+def cells(image, cols, rows, margin=CELL_MARGIN):
     w, h = image.shape[1] / cols, image.shape[0] / rows
     for row in range(rows):
         for col in range(cols):
-            x0, y0 = int(col * w) + CELL_MARGIN, int(row * h) + CELL_MARGIN
-            x1, y1 = int((col + 1) * w) - CELL_MARGIN, int((row + 1) * h) - CELL_MARGIN
+            x0, y0 = int(col * w) + margin, int(row * h) + margin
+            x1, y1 = int((col + 1) * w) - margin, int((row + 1) * h) - margin
             yield image[y0:y1, x0:x1]
 
 
@@ -130,25 +134,35 @@ def place_on_canvas(sprite, anchor, reference_height):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--preview", type=Path, help="tüm kareleri büyütülmüş tek bir görselde göster")
+    parser.add_argument("--sadece", nargs="+", metavar="ANIM",
+                        help="sadece bu animasyonların karelerini yaz (diğer kareler değişmesin)")
     args = parser.parse_args()
 
     images = {s["file"]: np.array(Image.open(SOURCE_DIR / s["file"]).convert("RGB"), dtype=np.int32) for s in SHEETS}
 
     ref_file, ref_index = SCALE_REFERENCE
     ref_sheet = next(s for s in SHEETS if s["file"] == ref_file)
-    ref_cell = list(cells(images[ref_file], ref_sheet["cols"], ref_sheet["rows"]))[ref_index]
+    ref_cell = list(cells(images[ref_file], ref_sheet["cols"], ref_sheet["rows"], ref_sheet.get("margin", CELL_MARGIN)))[ref_index]
     _, top, _, bottom = bounding_box(~background_mask(ref_cell))
     factor = (bottom - top) / TARGET_HEIGHT
     print(f"ölçek: 1 oyun pikseli = {factor:.2f} kaynak piksel")
 
     frames = []  # (anim, index, anchor, sprite)
     for sheet in SHEETS:
-        sheet_cells = list(cells(images[sheet["file"]], sheet["cols"], sheet["rows"]))
+        sheet_cells = list(cells(images[sheet["file"]], sheet["cols"], sheet["rows"], sheet.get("margin", CELL_MARGIN)))
+        sheet_factor = factor
+        if sheet.get("own_scale"):
+            _, t, _, b = bounding_box(~background_mask(sheet_cells[sheet["frames"][0][1]]))
+            sheet_factor = (b - t) / TARGET_HEIGHT
+            print(f"  {sheet['file']}: kendi ölçeği, 1 oyun pikseli = {sheet_factor:.2f} kaynak piksel")
         for anim, cell_index, anchor in sheet["frames"]:
-            frames.append((anim, cell_index, anchor, downscale(sheet_cells[cell_index], factor)))
+            frames.append((anim, cell_index, anchor, downscale(sheet_cells[cell_index], sheet_factor)))
 
     palette = build_palette([f[3] for f in frames])
     reference_height = TARGET_HEIGHT
+
+    if args.sadece:
+        frames = [f for f in frames if f[0] in args.sadece]
 
     # Önceki çalıştırmadan kalan fazla kareleri sil (Unity .meta dosyalarıyla birlikte).
     for anim in {f[0] for f in frames}:

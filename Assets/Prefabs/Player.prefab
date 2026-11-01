@@ -220,7 +220,15 @@ MonoBehaviour:
   fallFrame: {fileID: 21300000, guid: 856bebe70ad2daf45a0183511219b6cd, type: 3}
   glideFrames: []
   glideFps: 8
-  wallFrames: []
+  wallFrames:
+  - {fileID: 21300000, guid: 6a30d22823059ee4ea5acd7890ab04e8, type: 3}
+  - {fileID: 21300000, guid: 9c4ba7711d7d5bd4bbddd786cb9071fb, type: 3}
+  - {fileID: 21300000, guid: 5e34386e9a6c8a34794b21b2fca25377, type: 3}
+  - {fileID: 21300000, guid: 78719adb1ef08f948bfa46519c771e35, type: 3}
+  - {fileID: 21300000, guid: b95b2e39b04239340be245a44b304a5b, type: 3}
+  - {fileID: 21300000, guid: 1e0b62c19dd775e418d57b2212633a95, type: 3}
+  - {fileID: 21300000, guid: 959e17dee3d1c9645bdb09860e2d5c74, type: 3}
+  - {fileID: 21300000, guid: fea77547baf52b546a50ab2ff9f42da1, type: 3}
   wallFps: 8
   apexVelocityRange: 2.5
   jumpStretch: {x: 0.75, y: 1.3}
