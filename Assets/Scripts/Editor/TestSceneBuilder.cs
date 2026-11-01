@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using DesertGecko.DevTools;
 using DesertGecko.Environment;
 using DesertGecko.Player;
@@ -78,6 +78,7 @@ namespace DesertGecko.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color32(0x05, 0x7C, 0x9C, 0xFF); // Gokyuzu tepe mavisi
             camGo.AddComponent<UniversalAdditionalCameraData>();
+            camGo.AddComponent<AudioListener>();
             var follow = camGo.AddComponent<CameraFollow>();
             SetField(follow, "target", player.transform);
 
