@@ -26,6 +26,9 @@ namespace DesertGecko.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void AutoBootstrap()
         {
+            if (SceneFlow.IsTestRunnerScene)
+                return; // kalıcı müzik objesi testlerin sahnelerine taşınmasın
+
             if (FindAnyObjectByType<BackgroundMusic>() == null)
             {
                 var go = new GameObject("BackgroundMusic");

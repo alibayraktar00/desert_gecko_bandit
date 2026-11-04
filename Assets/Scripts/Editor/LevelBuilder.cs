@@ -32,8 +32,7 @@ namespace DesertGecko.EditorTools
         // Süzülüş: yatay 4.5, düşüş ~2.14 birim/sn (1.8 sınırı + o fizik adımındaki yerçekimi). Bot ölçümü.
         const float GlideRatio = 4.5f / 2.14f;
         const float GlideRunPerDrop = GlideRatio * 0.85f;    // menzil kontrolünde payla
-        const float JumpApexRun = 2.2f, JumpApexRise = 2.8f; // tek zıplamada tepe noktasına kadar
-        const float MaxApexRun = 4f, MaxApexRise = 5f;       // çift zıplamada tepe noktası (en uzun süzülüş)
+        const float MaxApexRun = 4f, MaxApexRise = 5f;       // çift zıplamada tepe noktası (süzülüş buradan başlar)
         const float ClingGap = 5f;                          // atlayıp karşı duvara yapışabileceği boşluk
 
         // Zeminlerin alt sınırı. Oyuncu killY'ye (-14) düşerken kamera ~-20'ye kadar görür;
@@ -226,7 +225,8 @@ namespace DesertGecko.EditorTools
 
             p.Ground(34f, 56f, 1f);
             p.Checkpoint(36f, 1f);
-            p.Scorpion(45f, 1f);
+            p.Sign(39f, 1f, "Çıngırak duyarsan kaç!\nMermi alçaktan gelir: zıpla");
+            p.Snake(47f, 1f);
             p.Bug(41f, 2.4f);
             p.Plant("kaktus_25", 51f, 1f);
 
@@ -253,7 +253,7 @@ namespace DesertGecko.EditorTools
             p.Ground(109f, 143f, 13f);
             p.Checkpoint(112f, 13f);
             p.Scorpion(119f, 13f);
-            p.Scorpion(127f, 13f);
+            p.Snake(127f, 13f);
             p.Bug(123f, 14.3f);
             p.Platform(131f, 16f, "platform_05");
             p.CrystalLine(129.5f, 16.8f, 4, 1f);
@@ -294,7 +294,7 @@ namespace DesertGecko.EditorTools
             p.Ground(63f, 82f, 4f);
             p.Checkpoint(65f, 4f);
             p.Scorpion(69f, 4f);
-            p.Scorpion(75f, 4f);
+            p.Snake(75f, 4f);
 
             // Çift zıplamalık boşluk
             p.Crystal(85f, 7.5f);
@@ -315,7 +315,7 @@ namespace DesertGecko.EditorTools
             p.Scorpion(138f, 6f);
             p.Bug(141f, 7.3f);
             p.Scorpion(144f, 6f);
-            p.Scorpion(150f, 6f);
+            p.Snake(150f, 6f);
             p.Table(147f, 6f, "platform_13");
             p.Plant("kaktus_17", 135f, 6f);
             p.Goal(155f, 6f);
@@ -477,6 +477,7 @@ namespace DesertGecko.EditorTools
                 TestSceneBuilder.PropDecor(decor, sprite, x, groundTop, ctx.Tile);
 
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x, groundTop);
+            public void Snake(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Rattlesnake, actors, Name("Yilan"), x, groundTop);
             public void Bug(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Bug, actors, Name("Bocek"), x, y);
             public void Crystal(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Crystal, actors, Name("Kristal"), x, y);
             public void Checkpoint(float x, float groundTop)
@@ -598,7 +599,7 @@ namespace DesertGecko.EditorTools
                     bool reachable = (rise <= SingleJumpRise && gap <= SingleJumpGap)
                         || (rise <= DoubleJumpRise && gap <= DoubleJumpGap)
                         || (rise > 0f && gap <= ClingGap && grounds.Contains(next)) // platformun yüzüne yapışılmaz
-                        || (rise <= 0f && gap <= JumpApexRun + (JumpApexRise - rise) * GlideRunPerDrop); // zıpla + süzül
+                        || (rise <= 0f && gap <= MaxApexRun + (MaxApexRise - rise) * GlideRunPerDrop); // çift zıpla + süzül
                     if (!reachable)
                         Warn($"x={a.xMax:0.#}→{next.xMin:0.#} arası {gap:0.#} birimlik boşluk ({rise:+0.#;-0.#;0} yükseklik) Gila'nın menzili dışında.");
                 }

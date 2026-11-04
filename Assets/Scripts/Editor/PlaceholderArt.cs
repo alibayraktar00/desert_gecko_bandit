@@ -163,6 +163,14 @@ namespace DesertGecko.EditorTools
             c.Rect(5, 8, 6, 9, new Color32(0x9A, 0xE0, 0x6A, 255)); // parlama
         });
 
+        public static Sprite Bullet() => Create("mermi_placeholder", 8, 8, Center, c =>
+        {
+            c.Rect(0, 3, 6, 4, new Color32(0xE8, 0xC0, 0x4A, 255));
+            c.Set(7, 3, new Color32(0xFF, 0xF0, 0xA0, 255));
+            c.Set(7, 4, new Color32(0xFF, 0xF0, 0xA0, 255));
+            c.Rect(0, 3, 1, 4, new Color32(0xA8, 0x70, 0x2A, 255)); // kovan
+        });
+
         public static Sprite Crystal() => Create("kristal_placeholder", 16, 16, Center, c =>
         {
             var blue = new Color32(0x5A, 0xB8, 0xE8, 255);

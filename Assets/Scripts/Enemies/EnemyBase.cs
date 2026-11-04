@@ -51,6 +51,12 @@ namespace DesertGecko.Enemies
         public bool IsChasing { get; private set; }
         public int FacingDirection { get; private set; } = -1;
 
+        /// <summary>false ise oyuncuyu görünce ya da vurulunca kovalamaz, devriyesine devam eder.</summary>
+        protected virtual bool CanChase => true;
+        /// <summary>true iken yerinde durur (örneğin nişan alırken).</summary>
+        protected virtual bool HoldPosition => false;
+        protected PlayerHealth Player => player;
+
         public event Action<EnemyBase> Died;
 
         protected Rigidbody2D body;
@@ -115,11 +121,17 @@ namespace DesertGecko.Enemies
             if (Time.time < stunnedUntil || !IsGrounded())
                 return; // havadayken yön değiştirip titremesin
 
+            if (HoldPosition)
+            {
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                return;
+            }
+
             UpdateAggro();
             Move();
         }
 
-        bool IsGrounded()
+        protected bool IsGrounded()
         {
             Bounds b = box.bounds;
             return Physics2D.Raycast(new Vector2(b.center.x, b.min.y + 0.05f), Vector2.down, 0.15f, groundMask);
@@ -127,7 +139,7 @@ namespace DesertGecko.Enemies
 
         void UpdateAggro()
         {
-            if (player == null || !player.IsAlive)
+            if (!CanChase || player == null || !player.IsAlive)
             {
                 IsChasing = false;
                 return;
@@ -199,7 +211,7 @@ namespace DesertGecko.Enemies
 
             health = Mathf.Max(0, health - amount);
             flashUntil = Time.time + flashDuration;
-            if (player != null && player.IsAlive)
+            if (CanChase && player != null && player.IsAlive)
                 IsChasing = true; // vurulan düşman saldırganı takip eder
 
             if (health == 0)
@@ -217,6 +229,14 @@ namespace DesertGecko.Enemies
         }
 
         protected virtual void OnDamaged() { }
+        protected virtual void OnDied() { }
+
+        /// <summary>Bu yöne döner ve devriyesine o yönde devam eder.</summary>
+        protected void TurnTowards(int direction)
+        {
+            patrolDirection = direction;
+            FacingDirection = direction;
+        }
 
         void Die()
         {
@@ -228,6 +248,7 @@ namespace DesertGecko.Enemies
                 drop.Drop();
                 lootDropped = true;
             }
+            OnDied();
             Died?.Invoke(this);
             gameObject.SetActive(false);
         }

@@ -24,6 +24,8 @@ namespace DesertGecko.EditorTools
             public Crystal Crystal;
             public Bug Bug;
             public Scorpion Scorpion;
+            public EnemyBullet EnemyBullet;
+            public Rattlesnake Rattlesnake;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -44,6 +46,8 @@ namespace DesertGecko.EditorTools
             a.Crystal = BuildCrystal(a.CrystalIcon);
             a.Bug = BuildBug(PlaceholderArt.Bug());
             a.Scorpion = BuildScorpion(PlaceholderArt.Scorpion(), a.Crystal);
+            a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
+            a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
             a.Checkpoint = BuildCheckpoint(PlaceholderArt.Totem());
             return a;
         }
@@ -110,6 +114,78 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<Scorpion>(root, "Scorpion");
+        }
+
+        static EnemyBullet BuildEnemyBullet(Sprite sprite)
+        {
+            var root = new GameObject("EnemyBullet");
+            SpriteRenderer sr = AddSprite(root.transform, null, sprite, 12);
+            var bullet = root.AddComponent<EnemyBullet>();
+            SetField(bullet, "spriteRenderer", sr);
+            return Save<EnemyBullet>(root, "EnemyBullet");
+        }
+
+        // Kare sırası (tools/gemini_dusman_isle.py): 0 bekleme, 1 tıslama, 2 çıngırak havada,
+        // 3 çıngırak titrer, 4 nişan, 5 ateş, 6 vuruldu, 7 öldü.
+        static Rattlesnake BuildRattlesnake(EnemyBullet bulletPrefab, Crystal crystalPrefab)
+        {
+            Sprite[] frames = LoadEnemyFrames("yilan", 8);
+
+            var root = new GameObject("Rattlesnake") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.75f, 1.05f);
+            box.offset = new Vector2(0f, 0.525f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", frames[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var snake = root.AddComponent<Rattlesnake>();
+            SetField(snake, "spriteRenderer", sr);
+            SetMask(snake, "groundMask", GameLayers.GroundMask);
+            SetField(snake, "bulletPrefab", Fresh(bulletPrefab));
+            SetField(snake, "audioSource", audio);
+            SetField(snake, "rattleClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/cingirak.wav"));
+            SetField(snake, "shotClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/silah.wav"));
+            SetArray(snake, "walkFrames", new Object[] { frames[0], frames[2] });
+            SetArray(snake, "rattleFrames", new Object[] { frames[2], frames[3] });
+            SetField(snake, "aimFrame", frames[4]);
+            SetField(snake, "shootFrame", frames[5]);
+            SetField(snake, "hissFrame", frames[1]);
+            SetField(snake, "hurtFrame", frames[6]);
+            SetField(snake, "deathFrame", frames[7]);
+
+            // Kareler sağa bakar; sola giderken aynalanır.
+            var so = new SerializedObject(snake);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 1.5f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Rattlesnake>(root, "Rattlesnake");
+        }
+
+        static Sprite[] LoadEnemyFrames(string enemy, int count)
+        {
+            var frames = new Sprite[count];
+            for (int i = 0; i < count; i++)
+            {
+                string path = $"{SpriteImportRules.EnemiesFolder}{enemy}/{enemy}_{i}.png";
+                frames[i] = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                if (frames[i] == null)
+                {
+                    // İçe aktarma kuralları derlenmeden önce gelmiş olabilir.
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                    frames[i] = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                }
+            }
+            return frames;
         }
 
         static Checkpoint BuildCheckpoint(Sprite sprite)

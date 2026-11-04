@@ -39,6 +39,7 @@ namespace DesertGecko.Tests
             // Testler sırasında oyunun kendisinin oluşturduğu objeler
             foreach (var c in Object.FindObjectsByType<Crystal>()) Object.Destroy(c.gameObject);
             foreach (var p in Object.FindObjectsByType<TailProjectile>()) Object.Destroy(p.gameObject);
+            foreach (var m in Object.FindObjectsByType<EnemyBullet>()) Object.Destroy(m.gameObject);
             foreach (var b in Object.FindObjectsByType<PixelBurst>()) Object.Destroy(b.gameObject);
         }
 
@@ -357,7 +358,176 @@ namespace DesertGecko.Tests
             Assert.That(health.CheckpointPosition.x, Is.EqualTo(4f).Within(0.01f));
         }
 
+        // --- Yılan silahşor ---
+
+        [UnityTest]
+        public IEnumerator Yilan_GorunceHemenAtesEtmez_UyaridanSonraVurur()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.1f);
+            Assert.AreEqual(Rattlesnake.AttackState.Rattle, snake.State, "önündeki oyuncuyu görünce çıngırak çalmalı");
+            Assert.IsTrue(snake.GetComponentInChildren<SpriteRenderer>().flipX, "sola bakarken aynalanmalı");
+
+            yield return new WaitForSeconds(0.5f);
+            Assert.IsNull(Object.FindAnyObjectByType<EnemyBullet>(), "uyarı bitmeden ateş etmemeli");
+            Assert.AreEqual(6, health.CurrentHealth);
+
+            yield return new WaitForSeconds(1.1f);
+            Assert.AreEqual(5, health.CurrentHealth, "uyarıdan sonra mermi oyuncuya çarpmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_ArkasindakiOyuncuyuGormez()
+        {
+            Ground(-10f, 10f);
+            Player(new Vector2(4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f)); // devriyeye sola bakarak başlar
+
+            yield return new WaitForSeconds(0.5f);
+            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_IcindenGecipArkasindaKalanOyuncuyuGormez()
+        {
+            Ground(-10f, 10f);
+            Player(new Vector2(0.2f, 0.05f)); // görüş ışını oyuncunun collider'ı içinde başlar
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f)); // sola bakar
+
+            yield return new WaitForSeconds(0.1f);
+            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_DuvarArkasindakiOyuncuyuGormez()
+        {
+            Ground(-10f, 10f);
+            Wall(-2f);
+            Player(new Vector2(-4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.5f);
+            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_UyariSirasindaVurulursaAtesEtmez()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.1f);
+            Assert.AreEqual(Rattlesnake.AttackState.Rattle, snake.State);
+
+            health.GetComponent<PlayerController>().Teleport(new Vector2(4f, 0.05f));
+            snake.TakeDamage(1, Vector2.left);
+            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State, "nişanı bozulmalı");
+            Assert.AreEqual(1, snake.FacingDirection, "saldırana dönmeli");
+
+            // İptal olmasaydı atış ~0.85 sn sonra çıkardı; yeni saldırının mermisi ise en erken 1.75 sn sonra.
+            yield return new WaitForSeconds(1f);
+            Assert.IsNull(Object.FindAnyObjectByType<EnemyBullet>());
+            Assert.AreEqual(6, health.CurrentHealth);
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_VurulunceSaldirganaDoner_SonraOnaNisanAlir()
+        {
+            Ground(-10f, 10f);
+            Player(new Vector2(4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.1f);
+
+            snake.TakeDamage(1, Vector2.left);
+            Assert.AreEqual(1, snake.FacingDirection, "saldırana dönmeli");
+
+            yield return new WaitForSeconds(1.2f);
+            Assert.AreEqual(1, snake.FacingDirection);
+            Assert.IsFalse(snake.GetComponentInChildren<SpriteRenderer>().flipX, "sağa bakarken aynalanmamalı");
+            Assert.AreEqual(Rattlesnake.AttackState.Rattle, snake.State, "bekleme bitince sağdaki oyuncuya nişan almalı");
+            Assert.IsFalse(snake.IsChasing, "silahşor kovalamaz");
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_SifirlaninciaSaldirisiBiter_MermiAtmaz()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-4f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.1f);
+            Assert.AreEqual(Rattlesnake.AttackState.Rattle, snake.State);
+
+            snake.ResetEnemy(); // sola bakar; oyuncu sağa geçince yeniden nişan almaz
+            health.GetComponent<PlayerController>().Teleport(new Vector2(6f, 0.05f));
+            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State);
+
+            yield return new WaitForSeconds(1.2f);
+            Assert.IsNull(Object.FindAnyObjectByType<EnemyBullet>(), "iptal edilen saldırı mermi atmamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Mermi_OyuncuYenidenDogunucaSilinir()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(0f, 0.05f));
+            EnemyBullet bullet = Object.Instantiate(LoadPrefab<EnemyBullet>("EnemyBullet"), new Vector3(-8f, 5f, 0f), Quaternion.identity);
+            bullet.Launch(-1, new Vector2(-8f, 5f));
+
+            health.TakeDamage(health.MaxHealth, Vector2.left);
+            yield return new WaitForSeconds(1.2f); // yeniden doğuş 1 sn, mermi ömrü 2.5 sn
+            Assert.IsTrue(health.IsAlive);
+            Assert.IsTrue(bullet == null, "havada mermi kalmamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Mermi_UstundekiOyuncuyaDegmez_DuvardaYokOlur()
+        {
+            Ground(-10f, 10f);
+            Wall(6f);
+            var ledge = Track(new GameObject("Raf") { layer = LayerMask.NameToLayer("Ground") });
+            ledge.transform.position = new Vector3(3f, 0.95f, 0f);
+            ledge.AddComponent<BoxCollider2D>().size = new Vector2(3f, 0.1f);
+            PlayerHealth health = Player(new Vector2(3f, 1.05f)); // mermi hizasının üstünde: zıplamış gibi
+
+            EnemyBullet bullet = Object.Instantiate(LoadPrefab<EnemyBullet>("EnemyBullet"), new Vector3(0f, 0.54f, 0f), Quaternion.identity);
+            bullet.Launch(1, new Vector2(0f, 0.54f));
+
+            yield return new WaitForSeconds(1f);
+            Assert.AreEqual(6, health.CurrentHealth, "mermi altından geçmeli");
+            Assert.IsTrue(bullet == null, "duvara çarpınca yok olmalı");
+        }
+
         // --- Test dünyası ---
+
+        // Gerçek prefab: sprite, ses ve mermi bağlantıları da denenmiş olur.
+        static T LoadPrefab<T>(string name) where T : Component
+        {
+#if UNITY_EDITOR
+            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<T>($"Assets/Prefabs/{name}.prefab");
+            Assert.IsNotNull(prefab, $"{name} prefab'ı yok; önce Desert Gecko → Levelleri Kur çalıştırılmalı.");
+            return prefab;
+#else
+            Assert.Ignore("Prefab yüklemek için editör gerekir.");
+            return null;
+#endif
+        }
+
+        Rattlesnake Snake(Vector2 position)
+        {
+            Rattlesnake snake = Object.Instantiate(LoadPrefab<Rattlesnake>("Rattlesnake"), position, Quaternion.identity);
+            Track(snake.gameObject);
+            return snake;
+        }
+
+        void Wall(float x)
+        {
+            var go = Track(new GameObject("Wall") { layer = LayerMask.NameToLayer("Ground") });
+            go.transform.position = new Vector3(x, 2f, 0f);
+            go.AddComponent<BoxCollider2D>().size = new Vector2(0.5f, 4f);
+        }
 
         GameObject Track(GameObject go)
         {

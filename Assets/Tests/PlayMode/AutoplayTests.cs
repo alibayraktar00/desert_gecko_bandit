@@ -130,7 +130,7 @@ namespace DesertGecko.Tests
                 crystalStart.AddRange(crystals.Select(c => (Vector2)c.transform.position));
                 enemies = Object.FindObjectsByType<EnemyBase>(FindObjectsInactive.Exclude).ToList();
                 foreach (var e in enemies)
-                    e.Died += _ => { killed++; Log($"akrep öldü x={e.transform.position.x:0.0}"); };
+                    e.Died += _ => { killed++; Log($"{e.GetType().Name} öldü x={e.transform.position.x:0.0}"); };
 
                 health.Damaged += hp =>
                 {
@@ -174,6 +174,9 @@ namespace DesertGecko.Tests
                         lastProgressTime = elapsed;
                         stuckLogged = false;
                     }
+                    // Duvara tırmanırken x değişmez ama bu da ilerlemedir; yüksek duvarın tepesinde vazgeçmesin.
+                    if (player.State == PlayerController.MoveState.WallCling && player.Velocity.y > 0.1f)
+                        lastProgressTime = elapsed;
                     float idle = elapsed - lastProgressTime;
                     if (idle > GiveUpSeconds)
                     {
@@ -219,6 +222,8 @@ namespace DesertGecko.Tests
                 Vector2 v = player.Velocity;
                 var state = player.State;
                 bool grounded = state == PlayerController.MoveState.Grounded;
+                if (player.HasTail)
+                    waitingForTail = false; // beklerken ilerleme sayacı işlemiyor, kuyruk çıkınca hemen işlesin
                 if (grounded || state == PlayerController.MoveState.WallCling)
                 {
                     doubleUsed = false;
@@ -241,7 +246,7 @@ namespace DesertGecko.Tests
                 EnemyBase threat = enemies
                     .Where(e => e != null && e.IsAlive)
                     .Where(e => e.transform.position.x > b.center.x - 0.6f && e.transform.position.x < b.center.x + 8f)
-                    .Where(e => Mathf.Abs(e.transform.position.y - b.min.y) < 1.6f)
+                    .Where(e => Mathf.Abs(e.transform.position.y - b.min.y) < 1.2f) // masanın altındaki düşmana dil yetişmez
                     .OrderBy(e => e.transform.position.x)
                     .FirstOrDefault();
                 bool tongue = false, throwTail = false;
@@ -336,7 +341,7 @@ namespace DesertGecko.Tests
                 var sb = new StringBuilder();
                 sb.AppendLine($"=== {sceneName} ===");
                 sb.AppendLine($"sonuç: {(Completed ? "BİTİRDİ" : "BİTİREMEDİ")}  süre: {elapsed:0.0} sn");
-                sb.AppendLine($"kristal: {collected} / {crystalStart.Count} (yerleştirilen)  akrep: {killed} / {enemies.Count} öldürüldü");
+                sb.AppendLine($"kristal: {collected} / {crystalStart.Count} (yerleştirilen)  düşman: {killed} / {enemies.Count} öldürüldü");
                 sb.AppendLine($"düşman hasarı: {enemyDamageHits}  uçuruma düşme: {pitFalls}  ölüm: {deaths}  takılma: {stuckPoints.Count}");
                 foreach (string e in events)
                     sb.AppendLine(e);

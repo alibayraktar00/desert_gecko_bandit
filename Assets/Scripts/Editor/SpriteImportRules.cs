@@ -6,7 +6,7 @@ namespace DesertGecko.EditorTools
     /// <summary>
     /// Assets/Sprites altındaki görseller için piksel sanat içe aktarma ayarları:
     /// Sprite, 32 PPU, Point filtre, sıkıştırmasız. Gila kareleri ayak hizasından,
-    /// arka plan katmanları alt kenarından pivotlanır (gökyüzü ortadan).
+    /// arka plan katmanları ve düşman kareleri alt kenarından pivotlanır (gökyüzü ortadan).
     /// _Gelen klasörü (Gemini'nin ham çıktıları) dokunulmadan bırakılır.
     /// </summary>
     public class SpriteImportRules : AssetPostprocessor
@@ -15,6 +15,7 @@ namespace DesertGecko.EditorTools
         public const string BackgroundFolder = "Assets/Sprites/Environment/Background/";
         public const string PropsFolder = "Assets/Sprites/Environment/Props/";
         public const string GroundFolder = "Assets/Sprites/Environment/Ground/";
+        public const string EnemiesFolder = "Assets/Sprites/Enemies/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
 
@@ -30,9 +31,10 @@ namespace DesertGecko.EditorTools
             bool isBackground = assetPath.StartsWith(BackgroundFolder);
             bool isProp = assetPath.StartsWith(PropsFolder);
             bool isGround = assetPath.StartsWith(GroundFolder);
+            bool isEnemy = assetPath.StartsWith(EnemiesFolder);
             // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
             // Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !isBackground && !isProp && !isGround && !assetImporter.importSettingsMissing)
+            if (!isGila && !isBackground && !isProp && !isGround && !isEnemy && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -61,9 +63,9 @@ namespace DesertGecko.EditorTools
                 settings.spriteMeshType = SpriteMeshType.FullRect; // yan yana tekrar (Tiled) için gerekli
                 importer.SetTextureSettings(settings);
             }
-            else if (isProp)
+            else if (isProp || isEnemy)
             {
-                // Kaktüsler yere, platformlar üst kenarlarından yerleştirilir; ikisi için de alt orta pivot.
+                // Kaktüsler ve düşmanlar yere, platformlar üst kenarlarından yerleştirilir; hepsi için alt orta pivot.
                 var settings = new TextureImporterSettings();
                 importer.ReadTextureSettings(settings);
                 settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;

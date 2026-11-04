@@ -6,6 +6,9 @@ namespace DesertGecko.Core
     /// <summary>Sahneler arası geçiş. Her geçişte duraklatma (timeScale) sıfırlanır.</summary>
     public static class SceneFlow
     {
+        /// <summary>Unity'nin PlayMode test koşucusunun geçici sahnesi açıksa true.</summary>
+        public static bool IsTestRunnerScene => SceneManager.GetActiveScene().name.StartsWith("InitTestScene");
+
         /// <summary>
         /// Oyun başladığında aktif sahne MainMenu değilse otomatik olarak MainMenu'ye yönlendirir.
         /// Böylece oyun her zaman ana menüden başlar — editörde hangi sahne açık olursa olsun.
@@ -14,6 +17,9 @@ namespace DesertGecko.Core
         static void BootstrapToMenu()
         {
             string current = SceneManager.GetActiveScene().name;
+            if (IsTestRunnerScene)
+                return; // test koşucusunu menüye yönlendirirsek testler hiç başlamaz
+
             if (current != LevelCatalog.MainMenuScene)
             {
                 Debug.Log($"[SceneFlow] Oyun '{current}' sahnesinde başladı, MainMenu'ye yönlendiriliyor.");
