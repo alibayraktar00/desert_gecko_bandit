@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DesertGecko.Core;
@@ -155,8 +155,8 @@ namespace DesertGecko.EditorTools
 
             // Zıplama
             p.Sign(13f, 0f, "Space: zıpla\nBoşluğun üstünden atla");
-            p.Ground(19f, 34f, 0f);
-            p.Crystal(17.5f, 2.6f);
+            p.Ground(18.5f, 34f, 0f);
+            p.Crystal(17.2f, 2.4f);
             p.Plant("kaktus_12", 24f, 0f);
 
             // Basamak
@@ -187,20 +187,20 @@ namespace DesertGecko.EditorTools
             // Süzülme
             // Karşı taraf sadece 2 birim alçakta: süzülüşle levelin geri kalanı atlanamaz.
             p.Sign(88f, 12f, "Uçurumdan atla, düşerken\nSpace basılı tut: süzül");
-            p.CrystalArc(96f, 16.2f, 106f, 12.8f, 5); // zıplayıp süzülenin yolu
-            p.Ground(104f, 136f, 10f);
-            p.Checkpoint(108f, 10f);
+            p.CrystalArc(94f, 15.5f, 100f, 12.5f, 5); // zıplayıp süzülenin yolu
+            p.Ground(101f, 133f, 10f);
+            p.Checkpoint(105f, 10f);
 
             // Kuyruk
-            p.Sign(114f, 10f, "K: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
-            p.Bug(118f, 11.3f);
-            p.Scorpion(124f, 10f);
-            p.Scorpion(129f, 10f);
-            p.Plant("kaktus_01", 121f, 10f);
-            p.Goal(133f, 10f);
-            p.Boundary(136f);
+            p.Sign(111f, 10f, "K: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
+            p.Bug(115f, 11.3f);
+            p.Scorpion(121f, 10f);
+            p.Scorpion(126f, 10f);
+            p.Plant("kaktus_01", 118f, 10f);
+            p.Goal(130f, 10f);
+            p.Boundary(133f);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(6f, 1.5f), new Vector2(50f, 7.5f), new Vector2(99f, 13f), new Vector2(126f, 11.5f) });
+            p.ShotPoints.AddRange(new[] { new Vector2(6f, 1.5f), new Vector2(50f, 7.5f), new Vector2(96f, 13f), new Vector2(123f, 11.5f) });
         }
 
         // 1-2 Kanyon Duvarları: platformlar, tırmanma, yüksek kanyon ve uzun süzülüş.
@@ -216,52 +216,53 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_19", 8f, 0f);
 
             // Halatlı platformlarla uçurum geçişi
-            p.Platform(22f, 2f, "platform_03");
-            p.Platform(27.5f, 3.5f, "platform_00");
-            p.Platform(33f, 2.5f, "platform_02");
-            p.Crystal(22f, 2.8f);
-            p.Crystal(27.5f, 4.3f);
-            p.Crystal(33f, 3.3f);
+            // Platformlar arası boşluklar yeni hıza göre daraltıldı
+            p.Platform(21f, 2f, "platform_03");
+            p.Platform(25.5f, 3.5f, "platform_00");
+            p.Platform(30f, 2.5f, "platform_02");
+            p.Crystal(21f, 2.8f);
+            p.Crystal(25.5f, 4.3f);
+            p.Crystal(30f, 3.3f);
 
-            p.Ground(37f, 59f, 1f);
-            p.Checkpoint(39f, 1f);
-            p.Scorpion(48f, 1f);
-            p.Bug(44f, 2.4f);
-            p.Plant("kaktus_25", 54f, 1f);
+            p.Ground(34f, 56f, 1f);
+            p.Checkpoint(36f, 1f);
+            p.Scorpion(45f, 1f);
+            p.Bug(41f, 2.4f);
+            p.Plant("kaktus_25", 51f, 1f);
 
             // Kanyon duvarı: 11 birim tırmanış
-            p.Sign(56f, 1f, "Kanyonun tepesine tırman");
-            p.Ground(59f, 82f, 12f);
-            p.CrystalLine(58.4f, 4f, 4, 2f, vertical: true);
-            p.Checkpoint(62f, 12f);
-            p.Scorpion(68f, 12f);
-            p.Scorpion(76f, 12f);
-            p.Plant("kaktus_05", 72f, 12f);
-            p.Platform(71f, 15.5f, "platform_04");
-            p.CrystalLine(69.5f, 16.3f, 4, 1f);
+            p.Sign(53f, 1f, "Kanyonun tepesine tırman");
+            p.Ground(56f, 79f, 12f);
+            p.CrystalLine(55.4f, 4f, 4, 2f, vertical: true);
+            p.Checkpoint(59f, 12f);
+            p.Scorpion(65f, 12f);
+            p.Scorpion(73f, 12f);
+            p.Plant("kaktus_05", 69f, 12f);
+            p.Platform(68f, 15.5f, "platform_04");
+            p.CrystalLine(66.5f, 16.3f, 4, 1f);
 
             // Kanyonun üstünde biraz daha yüksek bir tepe (aşağı inilseydi süzülüşle bölüm atlanırdı)
-            p.Ground(86f, 102f, 14f);
-            p.Scorpion(90f, 14f);
-            p.Table(96f, 14f, "platform_10");
-            p.Crystal(96f, 16f);
+            p.Ground(82.5f, 98f, 14f);
+            p.Scorpion(86.5f, 14f);
+            p.Table(92.5f, 14f, "platform_10");
+            p.Crystal(92.5f, 16f);
 
             // Uzun süzülüş: karşı taraf neredeyse aynı yükseklikte, süzülmeden geçilmez
-            p.Sign(99.5f, 14f, "Uzun bir süzülüş!\nSpace basılı tut");
-            p.CrystalArc(106f, 18.2f, 114f, 15.4f, 4);
-            p.Ground(116f, 152f, 13f);
-            p.Checkpoint(119f, 13f);
-            p.Scorpion(126f, 13f);
-            p.Scorpion(134f, 13f);
-            p.Bug(130f, 14.3f);
-            p.Platform(138f, 16f, "platform_05");
-            p.CrystalLine(136.5f, 16.8f, 4, 1f);
-            p.Scorpion(142f, 13f);
-            p.Plant("kaktus_28", 145f, 13f);
-            p.Goal(148f, 13f);
-            p.Boundary(152f);
+            p.Sign(95.5f, 14f, "Uzun bir süzülüş!\nSpace basılı tut");
+            p.CrystalArc(101f, 17.5f, 108f, 14.8f, 4);
+            p.Ground(109f, 143f, 13f);
+            p.Checkpoint(112f, 13f);
+            p.Scorpion(119f, 13f);
+            p.Scorpion(127f, 13f);
+            p.Bug(123f, 14.3f);
+            p.Platform(131f, 16f, "platform_05");
+            p.CrystalLine(129.5f, 16.8f, 4, 1f);
+            p.Scorpion(135f, 13f);
+            p.Plant("kaktus_28", 138f, 13f);
+            p.Goal(141f, 13f);
+            p.Boundary(143f);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(26f, 2.5f), new Vector2(62f, 10f), new Vector2(104f, 15f), new Vector2(140f, 15f) });
+            p.ShotPoints.AddRange(new[] { new Vector2(24f, 2.5f), new Vector2(59f, 10f), new Vector2(100f, 15f), new Vector2(133f, 15f) });
         }
 
         // 1-3 Akbaba Gölgesi: dar platformlar, iki uzun süzülüş, yoğun akrep sürüsü.
@@ -274,52 +275,53 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_00", -4f, 0f);
 
             // Dar platformlar
-            p.Platform(14f, 2.5f, "platform_01");
-            p.Platform(18.5f, 4f, "platform_01");
-            p.Crystal(14f, 3.3f);
-            p.Crystal(18.5f, 4.8f);
+            // Platformlar daraltıldı (yeni hız için)
+            p.Platform(13f, 2.5f, "platform_01");
+            p.Platform(17f, 4f, "platform_01");
+            p.Crystal(13f, 3.3f);
+            p.Crystal(17f, 4.8f);
 
-            p.Ground(22f, 34f, 3f);
-            p.Checkpoint(24f, 3f);
-            p.Scorpion(30f, 3f);
+            p.Ground(20.5f, 33f, 3f);
+            p.Checkpoint(22.5f, 3f);
+            p.Scorpion(29f, 3f);
 
             // Tırmanış ve ilk büyük süzülüş (akrep uçurum kenarından uzakta)
-            p.Ground(34f, 52f, 7f);
-            p.Scorpion(40f, 7f);
-            p.Bug(45f, 8.3f);
-            p.Plant("kaktus_06", 48f, 7f);
-            p.CrystalArc(56f, 11.2f, 68f, 7.1f, 5);
-            p.Ground(70f, 90f, 4f);
-            p.Checkpoint(72f, 4f);
-            p.Scorpion(76f, 4f);
-            p.Scorpion(82f, 4f);
+            p.Ground(33f, 50f, 7f);
+            p.Scorpion(39f, 7f);
+            p.Bug(44f, 8.3f);
+            p.Plant("kaktus_06", 47f, 7f);
+            p.CrystalArc(53f, 10.6f, 62f, 6.8f, 5);
+            p.Ground(63f, 82f, 4f);
+            p.Checkpoint(65f, 4f);
+            p.Scorpion(69f, 4f);
+            p.Scorpion(75f, 4f);
 
             // Çift zıplamalık boşluk
-            p.Crystal(93f, 8f);
-            p.Ground(96f, 112f, 2f);
-            p.Table(103f, 2f, "platform_09");
-            p.Scorpion(108f, 2f);
+            p.Crystal(85f, 7.5f);
+            p.Ground(87f, 103f, 2f);
+            p.Table(94f, 2f, "platform_09");
+            p.Scorpion(99f, 2f);
 
             // İkinci tırmanış, tepede asılı platform
-            p.Ground(112f, 128f, 8f);
-            p.Platform(120f, 11.5f, "platform_04");
-            p.CrystalLine(118.5f, 12.3f, 4, 1f);
-            p.Scorpion(117f, 8f);
+            p.Ground(103f, 119f, 8f);
+            p.Platform(111f, 11.5f, "platform_04");
+            p.CrystalLine(109.5f, 12.3f, 4, 1f);
+            p.Scorpion(108f, 8f);
 
             // Son süzülüş ve akrep sürüsü
-            p.CrystalArc(132f, 12.2f, 140f, 9.4f, 4);
-            p.Ground(142f, 172f, 6f);
-            p.Checkpoint(144f, 6f);
+            p.CrystalArc(122f, 11.8f, 129f, 9.0f, 4);
+            p.Ground(130f, 158f, 6f);
+            p.Checkpoint(132f, 6f);
+            p.Scorpion(138f, 6f);
+            p.Bug(141f, 7.3f);
+            p.Scorpion(144f, 6f);
             p.Scorpion(150f, 6f);
-            p.Bug(153f, 7.3f);
-            p.Scorpion(156f, 6f);
-            p.Scorpion(162f, 6f);
-            p.Table(159f, 6f, "platform_13");
-            p.Plant("kaktus_17", 147f, 6f);
-            p.Goal(168f, 6f);
-            p.Boundary(172f);
+            p.Table(147f, 6f, "platform_13");
+            p.Plant("kaktus_17", 135f, 6f);
+            p.Goal(155f, 6f);
+            p.Boundary(158f);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(16f, 3f), new Vector2(60f, 8f), new Vector2(118f, 10f), new Vector2(156f, 7.5f) });
+            p.ShotPoints.AddRange(new[] { new Vector2(15f, 3f), new Vector2(55f, 8f), new Vector2(109f, 10f), new Vector2(142f, 7.5f) });
         }
 
         // =====================================================================
