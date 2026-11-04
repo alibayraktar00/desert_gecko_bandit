@@ -30,6 +30,14 @@ namespace DesertGecko.Enemies
         [SerializeField] protected float loseRange = 8f;
         [Tooltip("Oyuncu bundan daha yukarıda/aşağıdaysa fark edilmez")]
         [SerializeField] protected float verticalTolerance = 2.5f;
+        [Tooltip("Oyuncu bundan daha aşağıdaysa kovalamaz: kenarın tepesinde onu beklemesin")]
+        [SerializeField] protected float belowTolerance = 1.1f;
+        [Tooltip("Uçurum kenarına en fazla bu kadar yaklaşır: tırmanan oyuncuya çıkacak yer kalsın")]
+        [SerializeField] protected float edgeMargin = 1.2f;
+
+        [Header("Temas")]
+        [Tooltip("Can yaktıktan sonra bu kadar durur: oyuncu geri tepmeyle uzaklaşabilsin")]
+        [SerializeField] float contactPause = 0.5f;
 
         [Header("Hasar tepkisi")]
         [SerializeField] Vector2 knockbackVelocity = new Vector2(4f, 3f);
@@ -69,6 +77,7 @@ namespace DesertGecko.Enemies
         bool lootDropped;
         Color baseColor = Color.white;
         PlayerHealth player;
+        PlayerController playerMovement;
         readonly Collider2D[] contactHits = new Collider2D[2];
 
         protected virtual void Awake()
@@ -146,6 +155,15 @@ namespace DesertGecko.Enemies
             }
 
             Vector2 toPlayer = player.transform.position - transform.position;
+            if (playerMovement == null)
+                playerMovement = player.GetComponent<PlayerController>();
+            // Aşağıda kalan ya da duvara tırmanan oyuncuyu kenarda beklemez, devriyesine döner.
+            if (toPlayer.y < -belowTolerance || (playerMovement != null && playerMovement.State == PlayerController.MoveState.WallCling))
+            {
+                IsChasing = false;
+                return;
+            }
+
             if (!IsChasing)
                 IsChasing = Mathf.Abs(toPlayer.x) <= detectRange && Mathf.Abs(toPlayer.y) <= verticalTolerance;
             else if (toPlayer.magnitude > loseRange)
@@ -185,14 +203,16 @@ namespace DesertGecko.Enemies
         {
             Bounds b = box.bounds;
             Vector2 footProbe = new Vector2(b.center.x + direction * (b.extents.x + 0.05f), b.min.y + 0.1f);
-            bool groundAhead = Physics2D.Raycast(footProbe, Vector2.down, 0.6f, groundMask);
+            Vector2 marginProbe = footProbe + Vector2.right * (direction * edgeMargin);
+            bool groundAhead = Physics2D.Raycast(footProbe, Vector2.down, 0.6f, groundMask)
+                && Physics2D.Raycast(marginProbe, Vector2.down, 0.6f, groundMask);
             bool wallAhead = Physics2D.Raycast(b.center, Vector2.right * direction, b.extents.x + 0.1f, groundMask);
             return wallAhead || !groundAhead;
         }
 
         void DealContactDamage()
         {
-            if (contactDamage <= 0 || player == null || !player.IsAlive)
+            if (contactDamage <= 0 || player == null || !player.IsAlive || player.IsInvincible)
                 return;
 
             Bounds b = box.bounds;
@@ -200,8 +220,13 @@ namespace DesertGecko.Enemies
             if (Physics2D.OverlapBox(b.center, b.size * 0.9f, 0f, filter, contactHits) == 0)
                 return;
 
-            float side = Mathf.Sign(player.transform.position.x - transform.position.x);
+            float dx = player.transform.position.x - transform.position.x;
+            float side = Mathf.Abs(dx) > 0.1f ? Mathf.Sign(dx) : FacingDirection; // tam üst üsteyken baktığı yöne it
             player.TakeDamage(contactDamage, new Vector2(side, 0f));
+
+            // Oyuncu geri tepme ile uzaklaşırken peşinden gidip yeniden içine girmesin.
+            stunnedUntil = Time.time + contactPause;
+            body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
         }
 
         public void TakeDamage(int amount, Vector2 knockbackDirection)

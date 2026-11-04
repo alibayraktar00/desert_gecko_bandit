@@ -16,10 +16,17 @@ namespace DesertGecko.Player
         [SerializeField] int maxHealth = 6;
 
         [Header("Hasar tepkisi")]
-        [SerializeField] float invincibleDuration = 1.5f;
-        [SerializeField] Vector2 knockbackVelocity = new Vector2(6f, 7f);
+        [SerializeField] float invincibleDuration = 2f;
+        [SerializeField] Vector2 knockbackVelocity = new Vector2(7.5f, 7f);
         [SerializeField] float knockbackControlLock = 0.25f;
         [SerializeField] float blinkInterval = 0.08f;
+        [Tooltip("Dokunulmazlık biterken hâlâ düşmanın içindeyse hasarsız itilir")]
+        [SerializeField] Vector2 separationVelocity = new Vector2(6f, 4f);
+        [SerializeField] float separationControlLock = 0.15f;
+        [SerializeField] float separationGrace = 0.5f;
+        [Tooltip("Tam geri tepmenin yaklaşık gideceği mesafe; orada zemin yoksa kısa itilir")]
+        [SerializeField] float knockbackReach = 3f;
+        [SerializeField] float ledgeKnockbackSpeed = 3.5f;
         [Tooltip("Yanıp sönecek görsel; boşsa alt objelerdeki ilk SpriteRenderer")]
         [SerializeField] SpriteRenderer blinkRenderer;
 
@@ -45,10 +52,39 @@ namespace DesertGecko.Player
         PlayerController controller;
         float invincibleUntil;
         Coroutine blinkRoutine;
+        Collider2D bodyCollider;
+        bool separationPending; // hasar başına bir itme: düşmanın içinde durarak hasardan kaçılmasın
+        readonly Collider2D[] overlapHits = new Collider2D[1];
+
+        // İtmenin varacağı yerde zemin yoksa kısa it: hasar oyuncuyu uçuruma atmasın.
+        float SafeSpeed(float side, float speed)
+        {
+            Vector2 landing = (Vector2)transform.position + new Vector2(side * knockbackReach, 0.5f);
+            return Physics2D.Raycast(landing, Vector2.down, 4f, GameLayers.GroundMask) ? speed : Mathf.Min(speed, ledgeKnockbackSpeed);
+        }
+
+        void FixedUpdate()
+        {
+            // Düşmanın temas kontrolünden önce davranmak için dokunulmazlık bitmeden az önce bakılır.
+            if (!separationPending || !IsAlive || Time.time < invincibleUntil - 0.05f)
+                return;
+            separationPending = false;
+
+            Bounds b = bodyCollider.bounds;
+            var filter = new ContactFilter2D { useLayerMask = true, layerMask = GameLayers.EnemyMask, useTriggers = false };
+            if (Physics2D.OverlapBox(b.center, b.size * 0.9f, 0f, filter, overlapHits) == 0)
+                return;
+
+            float dx = b.center.x - overlapHits[0].bounds.center.x;
+            float side = Mathf.Abs(dx) > 0.01f ? Mathf.Sign(dx) : -controller.FacingDirection;
+            controller.Knockback(new Vector2(side * SafeSpeed(side, separationVelocity.x), separationVelocity.y), separationControlLock);
+            StartInvincibility(separationGrace);
+        }
 
         void Awake()
         {
             controller = GetComponent<PlayerController>();
+            bodyCollider = GetComponent<Collider2D>();
             if (blinkRenderer == null)
                 blinkRenderer = GetComponentInChildren<SpriteRenderer>();
             CurrentHealth = maxHealth;
@@ -66,8 +102,9 @@ namespace DesertGecko.Player
                 return;
 
             float side = Mathf.Abs(knockbackDirection.x) > 0.01f ? Mathf.Sign(knockbackDirection.x) : -controller.FacingDirection;
-            controller.Knockback(new Vector2(side * knockbackVelocity.x, knockbackVelocity.y), knockbackControlLock);
+            controller.Knockback(new Vector2(side * SafeSpeed(side, knockbackVelocity.x), knockbackVelocity.y), knockbackControlLock);
             StartInvincibility(invincibleDuration);
+            separationPending = bodyCollider != null;
         }
 
         /// <summary>Uçuruma düşünce: hasar al, ölmediysen son checkpoint'e dön.</summary>
@@ -106,6 +143,7 @@ namespace DesertGecko.Player
         IEnumerator DieRoutine()
         {
             Died?.Invoke();
+            separationPending = false;
             StopBlink();
             controller.MovementLocked = true;
             controller.Frozen = true;

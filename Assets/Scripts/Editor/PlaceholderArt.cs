@@ -246,8 +246,8 @@ namespace DesertGecko.EditorTools
             {
                 // Piksel sanat görünümü için 8 basamaklı geçiş (yumuşak değil)
                 byte alpha = (byte)(Mathf.Floor((31 - y) / 4f) / 7f * 255f);
-                c.Set(0, y, new Color32(0x0E, 0x07, 0x05, alpha));
-                c.Set(1, y, new Color32(0x0E, 0x07, 0x05, alpha));
+                c.Set(0, y, new Color32(0x1A, 0x0C, 0x09, alpha));
+                c.Set(1, y, new Color32(0x1A, 0x0C, 0x09, alpha));
             }
         });
 

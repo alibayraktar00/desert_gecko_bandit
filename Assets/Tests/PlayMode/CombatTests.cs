@@ -8,6 +8,8 @@ using DesertGecko.Environment;
 using DesertGecko.Player;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 
 namespace DesertGecko.Tests
@@ -304,6 +306,128 @@ namespace DesertGecko.Tests
 
             Assert.That(scorpion.transform.position.x, Is.InRange(-2f, 2f), "akrep zeminden düşmemeli");
             Assert.Greater(scorpion.transform.position.y, -0.5f);
+        }
+
+        [UnityTest]
+        public IEnumerator Akrep_KenardanUzakDurur()
+        {
+            Ground(-3f, 3f);
+            Scorpion scorpion = Scorpion(new Vector2(0f, 0f));
+            SetPrivate(scorpion, "patrolDistance", 10f);
+
+            float widest = 0f;
+            for (int i = 0; i < 300; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                widest = Mathf.Max(widest, Mathf.Abs(scorpion.transform.position.x));
+            }
+            Assert.Greater(widest, 0.5f, "devriye gezmeli");
+            Assert.Less(widest, 2f, "uçurum kenarına kadar gelmemeli");
+        }
+
+        [UnityTest]
+        public IEnumerator Akrep_AsagidakiOyuncuyuKenardaBeklemez()
+        {
+            Ground(-10f, 10f);
+            var cliff = Track(new GameObject("Yamac") { layer = LayerMask.NameToLayer("Ground") });
+            cliff.transform.position = new Vector3(5f, 1f, 0f);
+            cliff.AddComponent<BoxCollider2D>().size = new Vector2(10f, 2f);
+            Player(new Vector2(-0.5f, 0.05f)); // 2 birim aşağıda, algılama kutusunun içinde
+            Scorpion scorpion = Scorpion(new Vector2(3.5f, 2f));
+
+            for (int i = 0; i < 10; i++)
+                yield return new WaitForFixedUpdate();
+            Assert.IsFalse(scorpion.IsChasing);
+        }
+
+        [UnityTest]
+        public IEnumerator Temas_AkrepDurur_OyuncuUzaklasir()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(0f, 0.05f));
+            Scorpion scorpion = Scorpion(new Vector2(0.3f, 0f));
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(5, health.CurrentHealth);
+            float scorpionX = scorpion.transform.position.x;
+
+            yield return new WaitForSeconds(0.3f);
+            Assert.That(scorpion.transform.position.x, Is.EqualTo(scorpionX).Within(0.15f), "temastan sonra peşinden gitmemeli");
+            Assert.Greater(Mathf.Abs(health.transform.position.x - scorpion.transform.position.x), 1f, "oyuncu uzaklaşmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Temas_DokunulmazlikBitinceIcindeyseHasarsizItilir()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(0f, 0.05f));
+            SetPrivate(health, "invincibleDuration", 0.4f);
+            Scorpion scorpion = Scorpion(new Vector2(0.3f, 0f));
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+            Assert.AreEqual(5, health.CurrentHealth);
+
+            yield return new WaitForSeconds(0.1f);
+            health.GetComponent<PlayerController>().Teleport(scorpion.transform.position + Vector3.up * 0.05f);
+            yield return new WaitForSeconds(0.4f);
+
+            Assert.AreEqual(5, health.CurrentHealth, "içinde kaldı diye yeniden can yakmamalı");
+            Assert.Greater(Mathf.Abs(health.transform.position.x - scorpion.transform.position.x), 0.4f, "düşmandan itilmeli");
+        }
+
+        [UnityTest]
+        public IEnumerator GeriTepme_OyuncuyuUcurumaAtmaz()
+        {
+            Ground(-1f, 10f);
+            PlayerHealth health = Player(new Vector2(0.5f, 0.05f));
+            yield return new WaitForFixedUpdate();
+
+            health.TakeDamage(1, Vector2.left);
+            yield return new WaitForSeconds(1f);
+            Assert.Greater(health.transform.position.y, -0.5f, "kenar yakınında kısa itilmeli");
+        }
+
+        // --- Duvara yapışma ---
+
+        [UnityTest]
+        public IEnumerator Basamaga_Yapismaz_YuksekDuvaraYapisir()
+        {
+            // Atama eski ayar nesnesini yok eder; geri yüklemek için kopyası saklanır.
+            var savedSettings = Object.Instantiate(InputSystem.settings);
+            var settings = Object.Instantiate(InputSystem.settings);
+            settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSystem.settings = settings;
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>("TestKeyboard");
+            try
+            {
+                Ground(-10f, 10f);
+                var step = Track(new GameObject("Basamak") { layer = LayerMask.NameToLayer("Ground") });
+                step.transform.position = new Vector3(2f, 0.5f, 0f);
+                step.AddComponent<BoxCollider2D>().size = new Vector2(2f, 1f);
+                Wall(7f); // 0-4 arası yüksek duvar
+                PlayerController player = Player(new Vector2(0.6f, 0.05f)).GetComponent<PlayerController>();
+                yield return new WaitForFixedUpdate();
+
+                // W: yerdeyken de yapışmayı dener; basamakta bunu yapmamalı.
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.D, Key.W, Key.Space));
+                bool clungToStep = false, clungToWall = false;
+                for (float t = 0f; t < 3f && !clungToWall; t += Time.fixedDeltaTime)
+                {
+                    yield return new WaitForFixedUpdate();
+                    if (player.State != PlayerController.MoveState.WallCling)
+                        continue;
+                    if (player.transform.position.x < 5f) clungToStep = true;
+                    else clungToWall = true;
+                }
+                Assert.IsFalse(clungToStep, "1 birimlik basamağa yapışmamalı");
+                Assert.IsTrue(clungToWall, "yüksek duvara yapışmalı");
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(keyboard);
+                InputSystem.settings = savedSettings;
+            }
         }
 
         // --- Toplanabilirler ve checkpoint ---

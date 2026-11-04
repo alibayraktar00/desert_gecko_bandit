@@ -41,6 +41,8 @@ namespace DesertGecko.Player
 
         [Header("Duvar")]
         [SerializeField] float wallClimbSpeed = 2.5f;
+        [Tooltip("Yapışmak için duvarın ayakların bu kadar üstüne uzanması gerekir")]
+        [SerializeField] float minClingHeight = 1.1f;
         [Tooltip("Yön tuşuna basılmıyorken duvardan kayma hızı (0 = tam yapışır)")]
         [SerializeField] float wallSlideSpeed = 0f;
         [SerializeField] Vector2 wallJumpVelocity = new Vector2(7f, 13f);
@@ -180,7 +182,7 @@ namespace DesertGecko.Player
             }
 
             bool pushingIntoWall = wallContact != 0 && Mathf.Abs(move.x) > 0.5f && Mathf.Sign(move.x) == wallContact;
-            bool canGrab = !MovementLocked && Time.time >= wallRegrabAllowedAt && Time.time >= controlLockUntil;
+            bool canGrab = !MovementLocked && Time.time >= wallRegrabAllowedAt && Time.time >= controlLockUntil && WallIsTall();
             if (canGrab && pushingIntoWall && (!grounded || move.y > 0.5f))
             {
                 EnterWallCling();
@@ -197,6 +199,16 @@ namespace DesertGecko.Player
 
             bool canGlide = HasTail && input.JumpHeld && body.linearVelocity.y < 0f;
             State = canGlide ? MoveState.Gliding : MoveState.Airborne;
+        }
+
+        // Basamak gibi alçak yüzeylere yapışmasın: duvar başının üstüne kadar uzanmalı.
+        bool WallIsTall()
+        {
+            if (wallContact == 0)
+                return false;
+            Bounds b = box.bounds;
+            Vector2 origin = new Vector2(wallContact > 0 ? b.max.x : b.min.x, b.min.y + minClingHeight);
+            return Physics2D.Raycast(origin, Vector2.right * wallContact, probeDepth + 0.02f, groundMask);
         }
 
         void EnterWallCling()

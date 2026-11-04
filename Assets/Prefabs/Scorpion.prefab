@@ -221,6 +221,9 @@ MonoBehaviour:
   detectRange: 5
   loseRange: 8
   verticalTolerance: 2.5
+  belowTolerance: 1.1
+  edgeMargin: 1.2
+  contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
   flashDuration: 0.12

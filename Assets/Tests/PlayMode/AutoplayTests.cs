@@ -109,6 +109,7 @@ namespace DesertGecko.Tests
             int enemyDamageHits, pitFalls, deaths, killed;
 
             // Karar durumu
+            bool spaceWasDown;
             bool doubleUsed;
             bool releaseForDouble;
             bool tongueWasDown, tailWasDown, waitingForTail;
@@ -328,6 +329,10 @@ namespace DesertGecko.Tests
                         }
                         break;
                 }
+                // Basılı tutulan tuş yeni zıplama sayılmaz: yere inince bir kare bırak.
+                if (jump && grounded && spaceWasDown)
+                    jump = false;
+                spaceWasDown = jump;
                 if (jump)
                     keys.Add(Key.Space);
                 return keys;

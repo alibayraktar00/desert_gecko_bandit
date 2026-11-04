@@ -154,7 +154,8 @@ namespace DesertGecko.EditorTools
 
             // Zıplama
             p.Sign(13f, 0f, "Space: zıpla\nBoşluğun üstünden atla");
-            p.Ground(18.5f, 34f, 0f);
+            p.Ground(18.5f, 32.5f, 0f);
+            p.Steps(32.5f, 34f, 0f, 2f);
             p.Crystal(17.2f, 2.4f);
             p.Plant("kaktus_12", 24f, 0f);
 
@@ -165,14 +166,13 @@ namespace DesertGecko.EditorTools
 
             // Çift zıplama
             p.Sign(42.5f, 2f, "Havadayken tekrar Space:\nçift zıplama (kuyruk itişi)");
-            p.Ground(46f, 62f, 6f);
+            p.Ground(46f, 76f, 6f); // aynı yükseklikte tek parça: iki parçanın birleşim yerinde karakter takılır
             p.Crystal(45f, 5.4f);
             p.Checkpoint(49f, 6f);
 
             // Dil: böcek ve ilk akrep
             p.Sign(53f, 6f, "J: dil saldırısı\nBöcek yakala, can yenile");
             p.Bug(57f, 7.3f);
-            p.Ground(62f, 76f, 6f);
             p.Sign(64f, 6f, "Akrebe J ile 3 kez vur\nDokunursa can yakar!");
             p.Scorpion(71f, 6f);
             p.Plant("kaktus_16", 68f, 6f);
@@ -281,11 +281,12 @@ namespace DesertGecko.EditorTools
             p.Crystal(13f, 3.3f);
             p.Crystal(17f, 4.8f);
 
-            p.Ground(20.5f, 33f, 3f);
+            p.Ground(20.5f, 28.5f, 3f);
             p.Checkpoint(22.5f, 3f);
-            p.Scorpion(29f, 3f);
+            p.Scorpion(27.5f, 3f);
 
-            // Tırmanış ve ilk büyük süzülüş (akrep uçurum kenarından uzakta)
+            // Basamaklı çıkış ve ilk büyük süzülüş (akrep uçurum kenarından uzakta)
+            p.Steps(28.5f, 33f, 3f, 7f);
             p.Ground(33f, 50f, 7f);
             p.Scorpion(39f, 7f);
             p.Bug(44f, 8.3f);
@@ -298,11 +299,12 @@ namespace DesertGecko.EditorTools
 
             // Çift zıplamalık boşluk
             p.Crystal(85f, 7.5f);
-            p.Ground(87f, 103f, 2f);
+            p.Ground(87f, 97f, 2f);
             p.Table(94f, 2f, "platform_09");
-            p.Scorpion(99f, 2f);
+            p.Scorpion(95.5f, 2f); // masanın arkasında: iniş noktasından uzak
 
-            // İkinci tırmanış, tepede asılı platform
+            // İkinci basamaklı çıkış, tepede asılı platform
+            p.Steps(97f, 103f, 2f, 8f);
             p.Ground(103f, 119f, 8f);
             p.Platform(111f, 11.5f, "platform_04");
             p.CrystalLine(109.5f, 12.3f, 4, 1f);
@@ -406,7 +408,8 @@ namespace DesertGecko.EditorTools
             /// </summary>
             public void FillPits()
             {
-                const float fadeHeight = 1f, bottom = GroundBottom - 4f;
+                // Üst sınır alçak kenarda kalır: yüksek kenara çıksa boşluğun üstünde sahte bir zemin görünürdü.
+                const float fadeHeight = 2.5f, bottom = GroundBottom - 4f;
                 var sorted = grounds.OrderBy(g => g.xMin).ToList();
                 for (int i = 0; i + 1 < sorted.Count; i++)
                 {
@@ -432,7 +435,7 @@ namespace DesertGecko.EditorTools
                     float depth = top - fadeHeight - bottom;
                     solid.size = new Vector2(width, depth);
                     solid.transform.localPosition = new Vector3(0f, -fadeHeight - depth / 2f, 0f);
-                    solid.color = new Color32(0x0E, 0x07, 0x05, 0xFF); // arka planın koyu kahvesinden belirgin şekilde koyu
+                    solid.color = new Color32(0x1A, 0x0C, 0x09, 0xFF); // zeminlerin derin toprağıyla aynı: dipte düz siyah blok durmasın
                     solid.sortingOrder = -50;
                 }
             }
@@ -450,6 +453,19 @@ namespace DesertGecko.EditorTools
             {
                 TestSceneBuilder.Ground(geometry, Name("Zemin"), xMin, xMax, GroundBottom, top, ctx.Tile, ctx.GroundLayer);
                 grounds.Add((xMin, xMax, top));
+            }
+
+            /// <summary>
+            /// İki zemin yüksekliği arasına yaklaşık 1 birimlik eşit basamaklar koyar. Gila alçak yüzeylere
+            /// yapışmadığı için zıplayarak çıkar (eğimli yüzeyde duvar sensörü rampaya yapışırdı).
+            /// </summary>
+            public void Steps(float xMin, float xMax, float fromTop, float toTop)
+            {
+                int count = Mathf.Max(1, Mathf.RoundToInt(Mathf.Abs(toTop - fromTop)) - 1);
+                float width = (xMax - xMin) / count;
+                float rise = (toTop - fromTop) / (count + 1);
+                for (int i = 0; i < count; i++)
+                    Ground(xMin + i * width, xMin + (i + 1) * width, fromTop + (i + 1) * rise);
             }
 
             public void Wall(float xMin, float xMax, float yMin, float yMax) =>
@@ -593,6 +609,8 @@ namespace DesertGecko.EditorTools
                         continue;
                     float gap = next.xMin - a.xMax;
                     float rise = next.top - a.top;
+                    if (Mathf.Abs(gap) < 0.01f && Mathf.Abs(rise) < 0.01f && grounds.Contains(a) && grounds.Contains(next))
+                        Warn($"x={a.xMax:0.#}: aynı yükseklikte bitişik iki zemin, birleşim yerinde karakter takılır; tek parça yapın.");
                     if (gap <= 0f)
                         continue; // bitişik/üst üste: yükseliyorsa duvar, Gila tırmanır
 

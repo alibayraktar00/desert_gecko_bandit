@@ -14,14 +14,15 @@ namespace DesertGecko.Core
         public const string PlayerAttack = "PlayerAttack";
 
         // LayerMask.GetMask her çağrıda dizi oluşturur; düşmanlar bunu her fizik adımında kullanıyor.
-        static int groundMask = -1, playerMask = -1;
+        static int groundMask = -1, playerMask = -1, enemyMask = -1;
+        public static int EnemyMask => enemyMask >= 0 ? enemyMask : enemyMask = LayerMask.GetMask(Enemy);
         public static int GroundMask => groundMask >= 0 ? groundMask : groundMask = LayerMask.GetMask(Ground);
         public static int PlayerMask => playerMask >= 0 ? playerMask : playerMask = LayerMask.GetMask(Player);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void ConfigureCollisions()
         {
-            groundMask = playerMask = -1; // domain reload kapalıyken eski değer kalmasın
+            groundMask = playerMask = enemyMask = -1; // domain reload kapalıyken eski değer kalmasın
 
             Ignore(Player, Enemy);
             Ignore(Enemy, Enemy);

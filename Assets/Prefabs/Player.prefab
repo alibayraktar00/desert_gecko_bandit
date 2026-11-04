@@ -394,6 +394,7 @@ MonoBehaviour:
   glideFallSpeed: 1.8
   glideHorizontalSpeed: 4.5
   wallClimbSpeed: 2.5
+  minClingHeight: 1.1
   wallSlideSpeed: 0
   wallJumpVelocity: {x: 7, y: 13}
   wallJumpControlLock: 0.18
@@ -416,10 +417,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Player.PlayerHealth
   maxHealth: 6
-  invincibleDuration: 1.5
-  knockbackVelocity: {x: 6, y: 7}
+  invincibleDuration: 2
+  knockbackVelocity: {x: 7.5, y: 7}
   knockbackControlLock: 0.25
   blinkInterval: 0.08
+  separationVelocity: {x: 6, y: 4}
+  separationControlLock: 0.15
+  separationGrace: 0.5
+  knockbackReach: 3
+  ledgeKnockbackSpeed: 3.5
   blinkRenderer: {fileID: 460781726318621167}
   respawnDelay: 1
   respawnInvincibility: 1
