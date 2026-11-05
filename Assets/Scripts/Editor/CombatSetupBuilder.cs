@@ -26,6 +26,7 @@ namespace DesertGecko.EditorTools
             public Scorpion Scorpion;
             public EnemyBullet EnemyBullet;
             public Rattlesnake Rattlesnake;
+            public Jackal Jackal;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -48,6 +49,7 @@ namespace DesertGecko.EditorTools
             a.Scorpion = BuildScorpion(PlaceholderArt.Scorpion(), a.Crystal);
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
+            a.Jackal = BuildJackal(a.Crystal);
             a.Checkpoint = BuildCheckpoint(PlaceholderArt.Totem());
             return a;
         }
@@ -169,6 +171,58 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<Rattlesnake>(root, "Rattlesnake");
+        }
+
+        // Kare sırası (tools/gemini_cakal_isle.py): 0-4 devriye, 5 fark etme, 6-12 koşu, 13 nişan, 14 ateş,
+        // 15-19 doldurma, 20 hasar, 21-24 sevinç, 25 yenik.
+        static Jackal BuildJackal(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("cakal", 26);
+            string hatPath = SpriteImportRules.EnemiesFolder + "cakal/cakal_sapka.png";
+            AssetDatabase.ImportAsset(hatPath, ImportAssetOptions.ForceSynchronousImport);
+
+            var root = new GameObject("Jackal") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.7f, 1.1f);
+            box.offset = new Vector2(0f, 0.55f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var jackal = root.AddComponent<Jackal>();
+            SetField(jackal, "spriteRenderer", sr);
+            SetMask(jackal, "groundMask", GameLayers.GroundMask);
+            SetField(jackal, "audioSource", audio);
+            SetField(jackal, "shotClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/silah.wav"));
+            SetArray(jackal, "patrolFrames", new Object[] { f[0], f[1], f[2], f[3], f[4] });
+            SetField(jackal, "alertFrame", f[5]);
+            SetArray(jackal, "runFrames", new Object[] { f[6], f[7], f[8], f[9], f[10], f[11], f[12] });
+            SetField(jackal, "aimFrame", f[13]);
+            SetField(jackal, "fireFrame", f[14]);
+            SetArray(jackal, "reloadFrames", new Object[] { f[15], f[16], f[17], f[18], f[19] });
+            SetField(jackal, "hurtFrame", f[20]);
+            SetArray(jackal, "victoryFrames", new Object[] { f[21], f[22], f[23], f[24] });
+            SetField(jackal, "defeatFrame", f[25]);
+            SetField(jackal, "hatFrame", AssetDatabase.LoadAssetAtPath<Sprite>(hatPath));
+
+            // Kareler sağa bakar. Yavaş, sinsi devriye; oyuncudan (5.5) hızlı depar.
+            var so = new SerializedObject(jackal);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 1.2f;
+            so.FindProperty("chaseSpeed").floatValue = 6.5f;
+            so.FindProperty("detectRange").floatValue = 7f;
+            so.FindProperty("loseRange").floatValue = 10f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Jackal>(root, "Jackal");
         }
 
         static Sprite[] LoadEnemyFrames(string enemy, int count)

@@ -53,12 +53,17 @@ namespace DesertGecko.EditorTools
             BuildAll(null);
         }
 
+        [MenuItem("Desert Gecko/Level 1-2'yi Kur")]
+        public static string BuildLevel12() => BuildSingleLevel(1, Level_1_2);
+
+        [MenuItem("Desert Gecko/Level 1-3'u Kur")]
+        public static string BuildLevel13() => BuildSingleLevel(2, Level_1_3);
+
         /// <summary>
-        /// Sadece 1-3'ü yeniden kurar, diğer sahnelere dokunmaz. Açık sahnede kaydedilmemiş değişiklik
+        /// Tek bir leveli yeniden kurar, diğer sahnelere dokunmaz. Açık sahnede kaydedilmemiş değişiklik
         /// varsa durur. Kurduktan sonra görüntü alır ve önceki sahneye döner.
         /// </summary>
-        [MenuItem("Desert Gecko/Level 1-3'u Kur")]
-        public static string BuildLevel13()
+        static string BuildSingleLevel(int index, System.Action<LevelPainter> define)
         {
             if (EditorApplication.isPlaying)
                 return "play modunda kurulamaz";
@@ -68,8 +73,8 @@ namespace DesertGecko.EditorTools
             string previous = active.path;
 
             TestSceneBuilder.SceneContext ctx = TestSceneBuilder.Prepare();
-            LevelCatalog.LevelInfo info = LevelCatalog.Levels[2];
-            var painter = BuildLevel(ctx, info, Level_1_3);
+            LevelCatalog.LevelInfo info = LevelCatalog.Levels[index];
+            var painter = BuildLevel(ctx, info, define);
             int warnings = painter.Validate(info.Title);
             foreach (Vector2 cam in painter.ShotPoints)
                 SceneCapture.Capture(Path.Combine("Temp/Screenshots", $"{info.Scene}_{cam.x:0}_{cam.y:0}.png"), new Vector3(cam.x, cam.y, -10f));
@@ -262,7 +267,7 @@ namespace DesertGecko.EditorTools
             p.CrystalLine(55.4f, 4f, 4, 2f, vertical: true);
             p.Checkpoint(59f, 12f);
             p.Scorpion(65f, 12f);
-            p.Scorpion(73f, 12f);
+            p.Jackal(73f, 12f);
             p.Plant("kaktus_05", 69f, 12f);
             p.Platform(68f, 15.5f, "platform_04");
             p.CrystalLine(66.5f, 16.3f, 4, 1f);
@@ -283,7 +288,7 @@ namespace DesertGecko.EditorTools
             p.Bug(123f, 14.3f);
             p.Platform(131f, 16f, "platform_05");
             p.CrystalLine(129.5f, 16.8f, 4, 1f);
-            p.Scorpion(135f, 13f);
+            p.Jackal(135f, 13f);
             p.Plant("kaktus_28", 138f, 13f);
             p.Goal(141f, 13f);
             p.Boundary(143f);
@@ -343,7 +348,7 @@ namespace DesertGecko.EditorTools
             p.Scorpion(52f, floor3);
             p.Ledge(49f, 53f, floor3 + 2f);
             p.CrystalLine(50f, floor3 + 2.8f, 2, 2f);
-            p.Scorpion(59f, floor3);
+            p.Jackal(59f, floor3);
 
             // Süzülüş: karşı taraf yüksekte, sonraki bölümler atlanamaz
             p.Sign(62f, floor3, "Kapıdan atla, Space ile süzül");
@@ -384,7 +389,7 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(144f, 16f);
             p.Scorpion(150f, 16f);
             p.Bug(153f, 17.3f);
-            p.Scorpion(156f, 16f);
+            p.Jackal(156f, 16f);
             p.Snake(162f, 16f);
             p.Table(159f, 16f, "platform_13");
             p.Plant("kaktus_17", 147f, 16f);
@@ -672,6 +677,7 @@ namespace DesertGecko.EditorTools
                 TestSceneBuilder.PropDecor(decor, sprite, x, groundTop, ctx.Tile);
 
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x, groundTop);
+            public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x, groundTop);
             public void Snake(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Rattlesnake, actors, Name("Yilan"), x, groundTop);
             public void Bug(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Bug, actors, Name("Bocek"), x, y);
             public void Crystal(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Crystal, actors, Name("Kristal"), x, y);

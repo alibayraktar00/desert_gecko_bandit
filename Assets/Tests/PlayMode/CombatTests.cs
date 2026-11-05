@@ -485,6 +485,93 @@ namespace DesertGecko.Tests
         // --- Yılan silahşor ---
 
         [UnityTest]
+        public IEnumerator Cakal_OnceIrkilir_SonraOyuncudanHizliKovalar()
+        {
+            Ground(-20f, 10f);
+            Player(new Vector2(-6f, 0.05f));
+            Jackal jackal = Cakal(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(Jackal.JackalState.Alert, jackal.State, "menzile girince önce irkilmeli");
+            Assert.AreEqual(0f, jackal.transform.position.x, 0.4f, "irkilirken yerinde durmalı");
+
+            yield return new WaitForSeconds(0.45f);
+            Assert.AreEqual(Jackal.JackalState.None, jackal.State);
+            Assert.IsTrue(jackal.IsChasing);
+            Assert.Less(jackal.GetComponent<Rigidbody2D>().linearVelocity.x, -5.5f, "oyuncudan hızlı koşmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Cakal_YakindaDurur_DogrultmaSonrasiSacmaAtar()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-2f, 0.05f));
+            Jackal jackal = Cakal(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.6f); // irkilme bitti, nişan alıyor
+            Assert.AreEqual(Jackal.JackalState.Aim, jackal.State, "yakındaki oyuncuya nişan almalı");
+            Assert.AreEqual(6, health.CurrentHealth, "doğrultma bitmeden vurmamalı");
+            float before = jackal.transform.position.x;
+
+            yield return new WaitForSeconds(0.4f);
+            Assert.AreEqual(4, health.CurrentHealth, "saçma tam kalp götürmeli");
+            Assert.Greater(jackal.transform.position.x, before + 0.2f, "geri tepmeyle geriye kaymalı");
+
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(Jackal.JackalState.Reload, jackal.State, "atıştan sonra doldurmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Cakal_DuvarArkasindakiniVuramaz()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-2f, 0.05f));
+            Wall(-1f);
+            Cakal(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(1.2f);
+            Assert.AreEqual(6, health.CurrentHealth, "saçma duvardan geçmemeli");
+        }
+
+        [UnityTest]
+        public IEnumerator Cakal_MenzilDisindakiniVuramaz_SacmaKisaMenzilli()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(-2.2f, 0.05f));
+            Jackal jackal = Cakal(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.6f);
+            Assert.AreEqual(Jackal.JackalState.Aim, jackal.State);
+            health.transform.position = new Vector3(-6f, 0.05f, 0f); // nişan alırken kaçtı
+
+            yield return new WaitForSeconds(0.4f);
+            Assert.AreEqual(6, health.CurrentHealth, "menzilden kaçan oyuncu vurulmamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Cakal_Olunce_GovdeUcar_SapkaYavasDuser()
+        {
+            Ground(-10f, 10f);
+            Player(new Vector2(-6f, 0.05f));
+            Jackal jackal = Cakal(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.1f);
+
+            jackal.TakeDamage(jackal.Health, Vector2.right);
+            yield return null;
+
+            Assert.IsFalse(jackal.gameObject.activeSelf, "ölünce gizlenmeli");
+            JackalDefeat effect = Object.FindAnyObjectByType<JackalDefeat>();
+            Assert.IsNotNull(effect, "yenilgi sahnesi oynamalı");
+            Track(effect.gameObject);
+            Transform body = effect.transform.Find("Govde"), hat = effect.transform.Find("Sapka");
+
+            yield return new WaitForSeconds(0.8f);
+            Assert.Greater(body.position.x, 1f, "gövde oyuncudan uzağa uçmalı");
+            Assert.AreEqual(0f, body.position.y, 0.15f, "gövde yere kapaklanmalı");
+            Assert.Greater(hat.position.y, 0.5f, "gövde yere düştüğünde şapka hâlâ havada olmalı");
+        }
+
+        [UnityTest]
         public IEnumerator Yilan_GorunceHemenAtesEtmez_UyaridanSonraVurur()
         {
             Ground(-10f, 10f);
@@ -637,6 +724,13 @@ namespace DesertGecko.Tests
             Assert.Ignore("Prefab yüklemek için editör gerekir.");
             return null;
 #endif
+        }
+
+        Jackal Cakal(Vector2 position)
+        {
+            Jackal jackal = Object.Instantiate(LoadPrefab<Jackal>("Jackal"), position, Quaternion.identity);
+            Track(jackal.gameObject);
+            return jackal;
         }
 
         Rattlesnake Snake(Vector2 position)
