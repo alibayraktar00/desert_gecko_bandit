@@ -55,6 +55,12 @@ namespace DesertGecko.Player
         [SerializeField] LayerMask groundMask;
         [SerializeField] float probeDepth = 0.06f;
 
+        [Header("Merdiven ve tek yönlü platform")]
+        [Tooltip("Yürürken zıplamadan çıkılan/inilen en büyük basamak yüksekliği")]
+        [SerializeField] float stepHeight = 0.3f;
+        [Tooltip("Aşağı + zıplama ile tek yönlü platformdan inerken çarpışmanın kapalı kaldığı süre")]
+        [SerializeField] float dropThroughTime = 0.3f;
+
         /// <summary>Sıcaklık sistemi bunu ayarlar (sıcakta &gt; 1, soğukta &lt; 1).</summary>
         public float SpeedMultiplier { get; set; } = 1f;
 
@@ -88,7 +94,14 @@ namespace DesertGecko.Player
         bool jumpCut;
         bool rising;
 
-        readonly Collider2D[] probeHits = new Collider2D[4];
+        const float SurfaceSkin = 0.015f; // fizik motorunun yüzey payı: bitişik katı kata sürtünüp takılmasın
+        bool solidUnderfoot;
+        Collider2D standingOneWay; // üstünde durulan tek yönlü platform
+        Collider2D droppedThrough; // aşağı inerken çarpışması kapatılan platform
+        float dropThroughUntil;
+
+        readonly Collider2D[] probeHits = new Collider2D[8];
+        readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
 
         void Reset()
         {
@@ -123,28 +136,136 @@ namespace DesertGecko.Player
 
         void FixedUpdate()
         {
+            EndDropThrough();
             ProbeSurroundings();
+            SnapDownStep();
             UpdateState();
             HandleJump();
             ApplyHorizontal();
             ApplyVertical();
+            StepUp();
         }
+
+        ContactFilter2D GroundFilter => new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
+
+        // Tek yönlü platformun (PlatformEffector2D) yan yüzü duvar sayılmaz, altından içine girilebilir.
+        static bool IsOneWay(Collider2D c) => c.usedByEffector;
 
         void ProbeSurroundings()
         {
             Bounds b = box.bounds;
-            var filter = new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
+            ContactFilter2D filter = GroundFilter;
 
             Vector2 groundCenter = new Vector2(b.center.x, b.min.y - probeDepth * 0.5f);
             Vector2 groundSize = new Vector2(b.size.x * 0.9f, probeDepth);
-            groundContact = Physics2D.OverlapBox(groundCenter, groundSize, 0f, filter, probeHits) > 0;
+            int count = Physics2D.OverlapBox(groundCenter, groundSize, 0f, filter, probeHits);
+            groundContact = false;
+            solidUnderfoot = false;
+            standingOneWay = null;
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D hit = probeHits[i];
+                if (!IsOneWay(hit))
+                {
+                    groundContact = true;
+                    solidUnderfoot = true;
+                    continue;
+                }
+                // Tek yönlü platform ancak ayaklar üst yüzeyindeyse zemindir; içinden geçerken değil.
+                if (hit != droppedThrough && b.min.y >= hit.bounds.max.y - probeDepth
+                    && (standingOneWay == null || hit.bounds.max.y > standingOneWay.bounds.max.y))
+                {
+                    groundContact = true;
+                    standingOneWay = hit;
+                }
+            }
 
             Vector2 sideSize = new Vector2(probeDepth, b.size.y * 0.7f);
             Vector2 rightCenter = new Vector2(b.max.x + probeDepth * 0.5f, b.center.y);
             Vector2 leftCenter = new Vector2(b.min.x - probeDepth * 0.5f, b.center.y);
-            if (Physics2D.OverlapBox(rightCenter, sideSize, 0f, filter, probeHits) > 0) wallContact = 1;
-            else if (Physics2D.OverlapBox(leftCenter, sideSize, 0f, filter, probeHits) > 0) wallContact = -1;
+            if (HasSolid(rightCenter, sideSize)) wallContact = 1;
+            else if (HasSolid(leftCenter, sideSize)) wallContact = -1;
             else wallContact = 0;
+        }
+
+        bool HasSolid(Vector2 center, Vector2 size)
+        {
+            int count = Physics2D.OverlapBox(center, size, 0f, GroundFilter, probeHits);
+            for (int i = 0; i < count; i++)
+                if (!IsOneWay(probeHits[i]))
+                    return true;
+            return false;
+        }
+
+        /// <summary>Merdivende bir alt basamağa inerken havalanmasın: alttaki yüzeye oturur.</summary>
+        void SnapDownStep()
+        {
+            if (State != MoveState.Grounded || groundContact || body.linearVelocity.y > 0.01f)
+                return;
+            Bounds b = box.bounds;
+            var origin = new Vector2(b.center.x, b.min.y + probeDepth);
+            var size = new Vector2(b.size.x * 0.9f, probeDepth);
+            int count = Physics2D.BoxCast(origin, size, 0f, Vector2.down, GroundFilter, castHits, stepHeight + probeDepth);
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D hit = castHits[i].collider;
+                float top = hit.bounds.max.y;
+                if (hit != droppedThrough && top <= b.min.y && top > best)
+                    best = top;
+            }
+            if (float.IsNegativeInfinity(best))
+                return;
+            body.position += Vector2.down * (b.min.y - best);
+            groundContact = true;
+        }
+
+        /// <summary>Yürürken önündeki alçak basamağın üstüne çıkar; merdiven zıplamadan yürünür.</summary>
+        void StepUp()
+        {
+            float inputX = MovementLocked ? 0f : input.Move.x;
+            if (State != MoveState.Grounded || Mathf.Abs(inputX) < 0.1f)
+                return;
+            Bounds b = box.bounds;
+            float dir = Mathf.Sign(inputX);
+            float reach = Mathf.Abs(body.linearVelocity.x) * Time.fixedDeltaTime + 0.02f;
+            var origin = new Vector2(b.center.x + dir * (b.extents.x + reach), b.min.y + stepHeight + probeDepth);
+            int count = Physics2D.Raycast(origin, Vector2.down, GroundFilter, castHits, stepHeight + probeDepth);
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                // Mesafe 0: ışın yüzeyin içinden başladı, yani basamaktan yüksek bir engel.
+                if (castHits[i].distance <= 0f)
+                    return;
+                if (castHits[i].collider != droppedThrough)
+                    best = Mathf.Max(best, castHits[i].point.y);
+            }
+            float rise = best - b.min.y;
+            if (float.IsNegativeInfinity(best) || rise <= 0.01f)
+                return;
+            // Üstte tavan varsa çıkma.
+            var head = new Vector2(b.center.x + dir * reach, b.center.y + rise + 0.01f);
+            if (HasSolid(head, new Vector2(b.size.x * 0.95f, b.size.y * 0.95f)))
+                return;
+            body.position += new Vector2(0f, rise + SurfaceSkin);
+        }
+
+        void BeginDropThrough()
+        {
+            droppedThrough = standingOneWay;
+            dropThroughUntil = Time.time + dropThroughTime;
+            Physics2D.IgnoreCollision(box, droppedThrough, true);
+            State = MoveState.Airborne;
+            lastGroundedTime = float.NegativeInfinity; // coyote ile geri zıplamasın
+            lastJumpPressTime = float.NegativeInfinity;
+        }
+
+        void EndDropThrough()
+        {
+            if (droppedThrough == null || Time.time < dropThroughUntil)
+                return;
+            Physics2D.IgnoreCollision(box, droppedThrough, false);
+            droppedThrough = null;
         }
 
         void UpdateState()
@@ -208,7 +329,11 @@ namespace DesertGecko.Player
                 return false;
             Bounds b = box.bounds;
             Vector2 origin = new Vector2(wallContact > 0 ? b.max.x : b.min.x, b.min.y + minClingHeight);
-            return Physics2D.Raycast(origin, Vector2.right * wallContact, probeDepth + 0.02f, groundMask);
+            int count = Physics2D.Raycast(origin, Vector2.right * wallContact, GroundFilter, castHits, probeDepth + 0.02f);
+            for (int i = 0; i < count; i++)
+                if (!IsOneWay(castHits[i].collider))
+                    return true;
+            return false;
         }
 
         void EnterWallCling()
@@ -225,6 +350,12 @@ namespace DesertGecko.Player
         {
             if (MovementLocked || Time.time - lastJumpPressTime > jumpBufferTime)
                 return;
+
+            if (State == MoveState.Grounded && standingOneWay != null && input.Move.y < -0.5f)
+            {
+                BeginDropThrough();
+                return;
+            }
 
             if (State == MoveState.WallCling)
             {
@@ -315,6 +446,15 @@ namespace DesertGecko.Player
                     return;
 
                 case MoveState.Grounded:
+                    if (standingOneWay != null && !solidUnderfoot)
+                    {
+                        // Yandan gelindiğinde fizik motoru tek yönlü temasını kapatır (ayrılana kadar).
+                        // Merdivende batmasın diye üstünde duruşu burada tutuyoruz.
+                        body.gravityScale = 0f;
+                        body.position += Vector2.up * (standingOneWay.bounds.max.y + SurfaceSkin - box.bounds.min.y);
+                        body.linearVelocity = new Vector2(v.x, 0f);
+                        return;
+                    }
                     body.gravityScale = baseGravityScale;
                     return;
             }

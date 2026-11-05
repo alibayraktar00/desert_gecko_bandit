@@ -44,6 +44,7 @@ namespace DesertGecko.Tests
             GameProgress.KeyPrefix = "DGB_BOT_";
             GameProgress.ResetProgress();
 
+            Application.runInBackground = true; // editör odakta değilken de sürsün
             // Batch modda pencere odakta değil; sanal klavyenin girdisi yine de oyuna gitsin.
             savedSettings = InputSystem.settings;
             var settings = Object.Instantiate(savedSettings);
@@ -117,6 +118,62 @@ namespace DesertGecko.Tests
             float recoverUntil = -1f;
             int recoverDir = -1;
 
+            // Rota: level "BotRota" noktaları tanımlıyorsa bot sırayla onları gezer (katlı levellerde sola da gider).
+            readonly List<Vector2> route = new List<Vector2>();
+            int routeIndex;
+            int moveDir = 1;
+            float bestProgress;
+
+            bool RouteDone => routeIndex >= route.Count;
+
+            void LoadRoute()
+            {
+                GameObject root = GameObject.Find("BotRota");
+                if (root == null)
+                    return;
+                foreach (Transform point in root.transform)
+                    route.Add(point.position);
+            }
+
+            /// <summary>Hedefe vardıysa sonrakine geçer, yönü ayarlar, yeni hedefte ilerleme ölçümünü sıfırlar.</summary>
+            void UpdateRoute(Bounds b)
+            {
+                if (route.Count == 0 || RouteDone)
+                {
+                    moveDir = 1;
+                    return;
+                }
+                Vector2 target = route[routeIndex];
+                bool onGround = player.State == PlayerController.MoveState.Grounded;
+                if (onGround && Mathf.Abs(b.center.x - target.x) < 0.7f && b.min.y > target.y - 0.4f)
+                {
+                    routeIndex++;
+                    Log($"rota noktası {routeIndex}/{route.Count} x={b.center.x:0.0} y={b.min.y:0.0}");
+                    teleported = true;
+                    if (RouteDone)
+                        return;
+                    target = route[routeIndex];
+                }
+                // Tırmanırken aşağı düştüyse geri dönüp o noktadan yeniden denesin.
+                while (onGround && routeIndex > 0 && route[routeIndex].y >= route[routeIndex - 1].y
+                       && b.min.y < route[routeIndex - 1].y - 1f)
+                {
+                    routeIndex--;
+                    teleported = true;
+                    target = route[routeIndex];
+                }
+                moveDir = target.x >= b.center.x ? 1 : -1;
+            }
+
+            /// <summary>Hedef yukarıdaysa altına gelince zıplasın (tek yönlü çıkıntılar).</summary>
+            bool WantsToRiseToTarget(Bounds b)
+            {
+                if (route.Count == 0 || RouteDone)
+                    return false;
+                Vector2 target = route[routeIndex];
+                return target.y > b.min.y + 1f && target.y < b.min.y + 3f && Mathf.Abs(target.x - b.center.x) < 2.5f;
+            }
+
             public BotRun(LevelManager manager, Keyboard keyboard)
             {
                 this.manager = manager;
@@ -126,6 +183,7 @@ namespace DesertGecko.Tests
                 wallet = player.GetComponent<PlayerWallet>();
                 tail = player.GetComponent<TailAttack>();
                 box = player.GetComponent<BoxCollider2D>();
+                LoadRoute();
 
                 crystals = Object.FindObjectsByType<Crystal>(FindObjectsInactive.Exclude).ToList();
                 crystalStart.AddRange(crystals.Select(c => (Vector2)c.transform.position));
@@ -156,22 +214,24 @@ namespace DesertGecko.Tests
 
             public IEnumerator Play()
             {
-                float bestX = player.transform.position.x;
                 float lastProgressTime = 0f, sampleAt = 0f;
                 bool stuckLogged = false;
+                bestProgress = float.NegativeInfinity;
 
                 while (!Completed && elapsed < TimeLimit)
                 {
                     float x = player.transform.position.x;
+                    UpdateRoute(box.bounds);
+                    float progress = x * moveDir;
                     if (teleported || waitingForTail)
                     {
                         teleported = false;
-                        bestX = x;
+                        bestProgress = progress;
                         lastProgressTime = elapsed;
                     }
-                    if (x > bestX + 0.5f)
+                    if (progress > bestProgress + 0.5f)
                     {
-                        bestX = x;
+                        bestProgress = progress;
                         lastProgressTime = elapsed;
                         stuckLogged = false;
                     }
@@ -239,29 +299,32 @@ namespace DesertGecko.Tests
                     return keys;
                 }
 
-                bool goRight = true, jump = false;
-                bool groundAhead = Physics2D.Raycast(new Vector2(b.max.x + 0.45f, b.min.y + 0.3f), Vector2.down, 0.9f, groundMask);
-                bool wallNear = Physics2D.Raycast(b.center, Vector2.right, b.extents.x + 0.8f, groundMask);
+                int dir = moveDir;
+                Key forward = dir > 0 ? Key.D : Key.A, backward = dir > 0 ? Key.A : Key.D;
+                float frontX = dir > 0 ? b.max.x : b.min.x;
+                bool goRight = true, jump = false; // goRight: gidiş yönünde ilerliyor
+                bool groundAhead = Physics2D.Raycast(new Vector2(frontX + dir * 0.45f, b.min.y + 0.3f), Vector2.down, 0.9f, groundMask);
+                bool wallNear = Physics2D.Raycast(b.center, Vector2.right * dir, b.extents.x + 0.8f, groundMask);
 
                 // --- Düşmanlar ---
                 EnemyBase threat = enemies
                     .Where(e => e != null && e.IsAlive)
-                    .Where(e => e.transform.position.x > b.center.x - 0.6f && e.transform.position.x < b.center.x + 8f)
+                    .Where(e => (e.transform.position.x - b.center.x) * dir > -0.6f && (e.transform.position.x - b.center.x) * dir < 8f)
                     .Where(e => Mathf.Abs(e.transform.position.y - b.min.y) < 1.2f) // masanın altındaki düşmana dil yetişmez
-                    .OrderBy(e => e.transform.position.x)
+                    .OrderBy(e => (e.transform.position.x - b.center.x) * dir)
                     .FirstOrDefault();
                 bool tongue = false, throwTail = false;
                 if (threat != null && (grounded || state == PlayerController.MoveState.Airborne))
                 {
-                    float dx = threat.transform.position.x - b.center.x;
+                    float dx = (threat.transform.position.x - b.center.x) * dir;
                     if (dx < 2.2f)
                     {
                         goRight = false;
                         tongue = true;
-                        if (player.FacingDirection < 0)
-                            keys.Add(Key.D); // önce ona dön
+                        if (player.FacingDirection != dir)
+                            keys.Add(forward); // önce ona dön
                         if (dx < 0.9f)
-                            keys.Add(Key.A); // çok yakın: geri adım
+                            keys.Add(backward); // çok yakın: geri adım
                     }
                     else if (dx < 6.5f && tail.IsReady && grounded && groundAhead) // uçurum kenarında kuyruğu harcama
                     {
@@ -276,7 +339,7 @@ namespace DesertGecko.Tests
 
                 if (goRight)
                 {
-                    keys.Add(Key.D);
+                    keys.Add(forward);
                     // Sadece duvar önündeyken yukarı bas; çapraz basış koşuyu/süzülmeyi yavaşlatır.
                     if (wallNear || state == PlayerController.MoveState.WallCling)
                         keys.Add(Key.W);
@@ -288,18 +351,20 @@ namespace DesertGecko.Tests
                     case PlayerController.MoveState.Grounded:
                         if (goRight)
                         {
-                            RaycastHit2D wall = Physics2D.Raycast(new Vector2(b.max.x, b.min.y + 0.3f), Vector2.right, 0.6f, groundMask);
-                            bool lowStep = wall && !Physics2D.Raycast(new Vector2(b.max.x, b.min.y + 2.6f), Vector2.right, 1.2f, groundMask);
+                            RaycastHit2D wall = Physics2D.Raycast(new Vector2(frontX, b.min.y + 0.3f), Vector2.right * dir, 0.6f, groundMask);
+                            // Tek yönlü basamaklar yürüyerek çıkılır, zıplamaya gerek yok.
+                            bool solidWall = wall && !wall.collider.usedByEffector;
+                            bool lowStep = solidWall && !Physics2D.Raycast(new Vector2(frontX, b.min.y + 2.6f), Vector2.right * dir, 1.2f, groundMask);
                             if (!groundAhead && !player.HasTail)
                             {
                                 // Kuyruk yokken süzülemez: uçurumun kenarında kuyruğun çıkmasını bekle.
                                 if (!waitingForTail) Log($"uçurum kenarında kuyruğu bekliyor x={b.center.x:0.0}");
                                 waitingForTail = true;
-                                keys.Remove(Key.D);
+                                keys.Remove(forward);
                                 break;
                             }
                             waitingForTail = false;
-                            if (!groundAhead || lowStep)
+                            if (!groundAhead || lowStep || WantsToRiseToTarget(b))
                                 jump = true;
                         }
                         break;
@@ -316,7 +381,10 @@ namespace DesertGecko.Tests
                         else
                         {
                             bool groundBelow = Physics2D.Raycast(new Vector2(b.center.x, b.min.y), Vector2.down, 2f, groundMask);
-                            if (!doubleUsed && !groundBelow && player.HasTail)
+                            // Çıkıntıya tırmanırken altında zemin olsa da çift zıplasın.
+                            bool climbing = route.Count > 0 && !RouteDone && route[routeIndex].y > b.min.y + 0.2f
+                                && Mathf.Abs(route[routeIndex].x - b.center.x) < 4f;
+                            if (!doubleUsed && (!groundBelow || climbing) && player.HasTail)
                             {
                                 // Çift zıplama için tuşu bir kare bırak, sonra bas.
                                 if (!releaseForDouble) { releaseForDouble = true; jump = false; }

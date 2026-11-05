@@ -54,6 +54,32 @@ namespace DesertGecko.EditorTools
         }
 
         /// <summary>
+        /// Sadece 1-3'ü yeniden kurar, diğer sahnelere dokunmaz. Açık sahnede kaydedilmemiş değişiklik
+        /// varsa durur. Kurduktan sonra görüntü alır ve önceki sahneye döner.
+        /// </summary>
+        [MenuItem("Desert Gecko/Level 1-3'u Kur")]
+        public static string BuildLevel13()
+        {
+            if (EditorApplication.isPlaying)
+                return "play modunda kurulamaz";
+            var active = EditorSceneManager.GetActiveScene();
+            if (active.isDirty)
+                return "açık sahnede kaydedilmemiş değişiklik var: " + active.path;
+            string previous = active.path;
+
+            TestSceneBuilder.SceneContext ctx = TestSceneBuilder.Prepare();
+            LevelCatalog.LevelInfo info = LevelCatalog.Levels[2];
+            var painter = BuildLevel(ctx, info, Level_1_3);
+            int warnings = painter.Validate(info.Title);
+            foreach (Vector2 cam in painter.ShotPoints)
+                SceneCapture.Capture(Path.Combine("Temp/Screenshots", $"{info.Scene}_{cam.x:0}_{cam.y:0}.png"), new Vector3(cam.x, cam.y, -10f));
+            AssetDatabase.SaveAssets();
+            if (!string.IsNullOrEmpty(previous) && File.Exists(previous))
+                EditorSceneManager.OpenScene(previous);
+            return warnings + " tasarım uyarısı";
+        }
+
+        /// <summary>
         /// Komut satırı: ana menüyü ve 3 leveli kurar, her birinden ekran görüntüsü alır.
         /// -executeMethod DesertGecko.EditorTools.LevelBuilder.BuildAllAndCaptureBatch -shotDir klasör
         /// </summary>
@@ -265,7 +291,8 @@ namespace DesertGecko.EditorTools
             p.ShotPoints.AddRange(new[] { new Vector2(24f, 2.5f), new Vector2(59f, 10f), new Vector2(100f, 15f), new Vector2(133f, 15f) });
         }
 
-        // 1-3 Akbaba Gölgesi: dar platformlar, iki uzun süzülüş, yoğun akrep sürüsü.
+        // 1-3 Akbaba Gölgesi: üstü kapalı, katman katman iki mesa. İlkinde merdivenlerle zikzak çıkılır,
+        // ikincisinde tek yönlü kaya çıkıntılarıyla baca tırmanılır. Aralarda uzun süzülüşler.
         static void Level_1_3(LevelPainter p)
         {
             p.Spawn = new Vector2(0f, 0f);
@@ -275,55 +302,102 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_00", -4f, 0f);
 
             // Dar platformlar
-            // Platformlar daraltıldı (yeni hız için)
             p.Platform(13f, 2.5f, "platform_01");
             p.Platform(17f, 4f, "platform_01");
             p.Crystal(13f, 3.3f);
             p.Crystal(17f, 4.8f);
 
-            p.Ground(20.5f, 28.5f, 3f);
+            p.Ground(20.5f, 64f, 3f); // mesanın alt katı dışarıdaki zeminle tek parça
             p.Checkpoint(22.5f, 3f);
-            p.Scorpion(27.5f, 3f);
+            p.Plant("kaktus_19", 25f, 3f);
+            p.Sign(27.5f, 3f, "Kapalı mesa: merdivenlerle çık\nS + Space: platformdan in");
 
-            // Basamaklı çıkış ve ilk büyük süzülüş (akrep uçurum kenarından uzakta)
-            p.Steps(28.5f, 33f, 3f, 7f);
-            p.Ground(33f, 50f, 7f);
-            p.Scorpion(39f, 7f);
-            p.Bug(44f, 8.3f);
-            p.Plant("kaktus_06", 47f, 7f);
-            p.CrystalArc(53f, 10.6f, 62f, 6.8f, 5);
-            p.Ground(63f, 82f, 4f);
-            p.Checkpoint(65f, 4f);
-            p.Scorpion(69f, 4f);
-            p.Snake(75f, 4f);
+            // --- Birinci mesa: 3 kat. Duvar tırmanılamaz, tek yol merdivenler. ---
+            const float floor1 = 3f, floor2 = 8f, floor3 = 13f, roof = 17f;
+            p.BackWall(31f, 63f, floor1, roof);
+            p.RockMass(30f, 31f, floor1 + 3f, roof);  // giriş kapısının üstü
+            p.RockMass(30f, 64f, roof, 60f);          // tavan
+            p.RockMass(63f, 64f, floor1, floor3 - 1f); // sağ duvar, kapı en üst katta
+            p.RockMass(63f, 64f, floor3 + 3f, roof);
+
+            // 1. kat: sağa koş, merdiven dibine var
+            p.Scorpion(38f, floor1);
+            p.Ledge(43f, 48f, floor1 + 2.3f);
+            p.CrystalLine(44f, floor1 + 3.1f, 3, 1.5f);
+            p.Bug(50f, floor1 + 1.3f);
+            p.Stairs(62f, floor1, 52f, floor2);
+
+            // 2. kat: sola koş
+            p.Slab(31f, 52f, floor2);
+            p.Checkpoint(50f, floor2);
+            p.Snake(40f, floor2);
+            p.Ledge(45f, 48.5f, floor2 + 2.2f);
+            p.Crystal(46.75f, floor2 + 3f);
+            p.Bug(32.5f, floor2 + 1.3f); // merdivenin arkasındaki küçük ödül
+            p.Stairs(34f, floor2, 44f, floor3);
+
+            // 3. kat: sağa koş, kapıdan çık
+            p.Slab(44f, 66f, floor3, register: true);
+            p.Scorpion(52f, floor3);
+            p.Ledge(49f, 53f, floor3 + 2f);
+            p.CrystalLine(50f, floor3 + 2.8f, 2, 2f);
+            p.Scorpion(59f, floor3);
+
+            // Süzülüş: karşı taraf yüksekte, sonraki bölümler atlanamaz
+            p.Sign(62f, floor3, "Kapıdan atla, Space ile süzül");
+            p.CrystalArc(68f, floor3 + 3f, 76f, floor3 - 0.6f, 5);
+            p.Ground(78f, 97f, 9f);
+            p.Checkpoint(80f, 9f);
+            p.Scorpion(85f, 9f);
+            p.Table(90f, 9f, "platform_09");
+            p.Plant("kaktus_06", 94f, 9f);
 
             // Çift zıplamalık boşluk
-            p.Crystal(85f, 7.5f);
-            p.Ground(87f, 97f, 2f);
-            p.Table(94f, 2f, "platform_09");
-            p.Scorpion(95.5f, 2f); // masanın arkasında: iniş noktasından uzak
+            p.Crystal(99f, 12.5f);
 
-            // İkinci basamaklı çıkış, tepede asılı platform
-            p.Steps(97f, 103f, 2f, 8f);
-            p.Ground(103f, 119f, 8f);
-            p.Platform(111f, 11.5f, "platform_04");
-            p.CrystalLine(109.5f, 12.3f, 4, 1f);
-            p.Scorpion(108f, 8f);
+            // --- İkinci mesa: tek yönlü kaya çıkıntılarıyla baca. ---
+            const float baseY = 7f, shaftRoof = 23f;
+            p.Ground(101.5f, 128f, baseY);
+            p.Snake(108f, baseY);
+            p.BackWall(113f, 127f, baseY, shaftRoof);
+            p.RockMass(112f, 113f, baseY + 3f, shaftRoof);
+            p.RockMass(112f, 128f, shaftRoof, 60f);
+            p.RockMass(127f, 128f, baseY, 19.5f);
+            p.RockMass(127f, 128f, 22.5f, shaftRoof);
+            p.Sign(110.5f, baseY, "Çıkıntılardan aşağıdan\nzıplayarak geçebilirsin");
+
+            p.Ledge(114f, 120f, 9.5f);
+            p.Crystal(116.5f, 10.3f);
+            p.Ledge(121f, 126f, 12f);
+            p.Bug(123.5f, 13.3f);
+            p.Ledge(114f, 120f, 14.5f);
+            p.Crystal(116.5f, 15.3f);
+            p.Ledge(121f, 126f, 17f);
+            p.Crystal(123.5f, 17.8f);
+            p.Ledge(121f, 130f, 19.5f, register: true); // en üst çıkıntı kapıdan dışarı uzanır
 
             // Son süzülüş ve akrep sürüsü
-            p.CrystalArc(122f, 11.8f, 129f, 9.0f, 4);
-            p.Ground(130f, 158f, 6f);
-            p.Checkpoint(132f, 6f);
-            p.Scorpion(138f, 6f);
-            p.Bug(141f, 7.3f);
-            p.Scorpion(144f, 6f);
-            p.Snake(150f, 6f);
-            p.Table(147f, 6f, "platform_13");
-            p.Plant("kaktus_17", 135f, 6f);
-            p.Goal(155f, 6f);
-            p.Boundary(158f);
+            p.CrystalArc(132f, 22.5f, 139f, 19.8f, 4);
+            p.Ground(142f, 170f, 16f);
+            p.Checkpoint(144f, 16f);
+            p.Scorpion(150f, 16f);
+            p.Bug(153f, 17.3f);
+            p.Scorpion(156f, 16f);
+            p.Snake(162f, 16f);
+            p.Table(159f, 16f, "platform_13");
+            p.Plant("kaktus_17", 147f, 16f);
+            p.Goal(167f, 16f);
+            p.Boundary(170f);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(15f, 3f), new Vector2(55f, 8f), new Vector2(109f, 10f), new Vector2(142f, 7.5f) });
+            // Botun izlediği yol; test bu noktaları sırayla gezer.
+            p.Route(62f, floor1, 52.5f, floor2, 34f, floor2, 44.5f, floor3, 66f, floor3, 79f, 9f,
+                110f, baseY, 114.5f, 9.5f, 121.5f, 12f, 119.3f, 14.5f, 121.5f, 17f, 124f, 19.5f, 130f, 19.5f, 167f, 16f);
+
+            p.ShotPoints.AddRange(new[]
+            {
+                new Vector2(24f, 5f), new Vector2(40f, 6f), new Vector2(45f, 10f), new Vector2(56f, 13f),
+                new Vector2(120f, 13f), new Vector2(122f, 19f), new Vector2(155f, 18f),
+            });
         }
 
         // =====================================================================
@@ -431,9 +505,9 @@ namespace DesertGecko.EditorTools
                     var solid = new GameObject("Karanlik").AddComponent<SpriteRenderer>();
                     solid.transform.SetParent(pit, false);
                     solid.sprite = ctx.Solid;
-                    solid.drawMode = SpriteDrawMode.Tiled;
                     float depth = top - fadeHeight - bottom;
-                    solid.size = new Vector2(width, depth);
+                    Vector2 unit = solid.sprite.bounds.size;
+                    solid.transform.localScale = new Vector3(width / unit.x, depth / unit.y, 1f); // düz renk: tekrar değil ölçek
                     solid.transform.localPosition = new Vector3(0f, -fadeHeight - depth / 2f, 0f);
                     solid.color = new Color32(0x1A, 0x0C, 0x09, 0xFF); // zeminlerin derin toprağıyla aynı: dipte düz siyah blok durmasın
                     solid.sortingOrder = -50;
@@ -466,6 +540,135 @@ namespace DesertGecko.EditorTools
                 float rise = (toTop - fromTop) / (count + 1);
                 for (int i = 0; i < count; i++)
                     Ground(xMin + i * width, xMin + (i + 1) * width, fromTop + (i + 1) * rise);
+            }
+
+            // --- Katmanlı level parçaları ---
+
+            static Sprite LayerArt(string name) =>
+                AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.LayerArtFolder + name + ".png");
+
+            static SpriteRenderer TiledArt(Transform parent, string name, Sprite sprite, Vector2 topCenter, Vector2 size, int order)
+            {
+                var sr = new GameObject(name).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(parent);
+                sr.transform.position = topCenter;
+                sr.sprite = sprite;
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.size = size;
+                sr.sortingOrder = order;
+                return sr;
+            }
+
+            /// <summary>Çarpışmasız mağara arka duvarı. Gökyüzünü kapatır, üstü kapalı hissi verir.</summary>
+            public void BackWall(float xMin, float xMax, float yMin, float yMax) =>
+                TiledArt(geometry, Name("ArkaDuvar"), LayerArt("kaya_arka"), new Vector2((xMin + xMax) / 2f, yMax),
+                    new Vector2(xMax - xMin, yMax - yMin), -40);
+
+            /// <summary>
+            /// Tavan ve dış cephe: katı kaya, Default katmanında. Gila çarpar ama yapışıp tırmanamaz;
+            /// böylece mesanın üstüne çıkılıp katlar atlanamaz. Alt kenarından saçak sarkar.
+            /// </summary>
+            public void RockMass(float xMin, float xMax, float yMin, float yMax)
+            {
+                var size = new Vector2(xMax - xMin, yMax - yMin);
+                SpriteRenderer sr = TiledArt(geometry, Name("Kaya"), LayerArt("kaya_kutle"),
+                    new Vector2((xMin + xMax) / 2f, yMax), size, 2);
+                var col = sr.gameObject.AddComponent<BoxCollider2D>();
+                col.size = size;
+                col.offset = new Vector2(0f, -size.y / 2f);
+                Fringe(sr.transform, xMin, xMax, yMin);
+            }
+
+            static void Fringe(Transform parent, float xMin, float xMax, float y)
+            {
+                Sprite s = LayerArt("kaya_sacak");
+                TiledArt(parent, "Sacak", s, new Vector2((xMin + xMax) / 2f, y), new Vector2(xMax - xMin, s.bounds.size.y), 2);
+            }
+
+            /// <summary>
+            /// Kat döşemesi: üstünde yürünür, aynı zamanda alt katın tavanıdır (altından geçilemez).
+            /// register: level akışının parçası, menzil kontrolünde yüzey sayılır.
+            /// </summary>
+            public void Slab(float xMin, float xMax, float top, float thickness = 1f, bool register = false)
+            {
+                var size = new Vector2(xMax - xMin, thickness);
+                var center = new Vector2((xMin + xMax) / 2f, top);
+                SpriteRenderer sr = TiledArt(geometry, Name("Doseme"), LayerArt("kaya_kutle"), center, size, 1);
+                sr.gameObject.layer = ctx.GroundLayer;
+                var col = sr.gameObject.AddComponent<BoxCollider2D>();
+                col.size = size;
+                col.offset = new Vector2(0f, -thickness / 2f);
+                Sprite rim = LayerArt("kaya_ust");
+                TiledArt(sr.transform, "Kenar", rim, center, new Vector2(size.x, rim.bounds.size.y), 2);
+                Fringe(sr.transform, xMin, xMax, top - thickness);
+                if (register)
+                    platforms.Add((xMin, xMax, top));
+            }
+
+            /// <summary>
+            /// Tek yönlü collider: alttan ve yandan geçilir, üstüne inilir, S + Space ile aşağı inilir.
+            /// </summary>
+            static void AddOneWayCollider(GameObject go, float width, float thickness, Vector2 offset)
+            {
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(width, thickness);
+                col.offset = offset;
+                col.usedByEffector = true;
+                var effector = go.AddComponent<PlatformEffector2D>();
+                effector.useOneWay = true;
+                effector.surfaceArc = 170f;
+                effector.useSideFriction = false;
+                effector.useSideBounce = false;
+            }
+
+            /// <summary>İnce kaya çıkıntısı: alttan zıplayarak geçilen tek yönlü platform.</summary>
+            public void Ledge(float xMin, float xMax, float top, bool register = false)
+            {
+                if (register)
+                    platforms.Add((xMin, xMax, top));
+                Sprite s = LayerArt("kaya_kenar");
+                SpriteRenderer sr = TiledArt(geometry, Name("Cikinti"), s, new Vector2((xMin + xMax) / 2f, top),
+                    new Vector2(xMax - xMin, s.bounds.size.y), 1);
+                sr.gameObject.layer = ctx.GroundLayer;
+                AddOneWayCollider(sr.gameObject, xMax - xMin, 0.3f, new Vector2(0f, -0.15f));
+            }
+
+            /// <summary>
+            /// Gerçek merdiven: 0.5 birim genişliğinde, 0.25 birim yüksekliğinde tahta basamaklar. Altı boştur,
+            /// basamaklar tek yönlüdür: Gila zıplamadan yürüyerek çıkar, altından geçebilir.
+            /// fromX/fromY alt uç, toX/toY üst uç; merdiven sağa da sola da yükselebilir.
+            /// </summary>
+            public void Stairs(float fromX, float fromY, float toX, float toY)
+            {
+                const float tread = 0.5f, rise = 0.25f;
+                Sprite s = LayerArt("merdiven_basamak");
+                int steps = Mathf.RoundToInt((toY - fromY) / rise);
+                float dir = Mathf.Sign(toX - fromX);
+                var root = Child(geometry, Name("Merdiven"));
+                for (int i = 0; i < steps; i++)
+                {
+                    float xNear = fromX + dir * tread * i;
+                    float top = fromY + rise * (i + 1);
+                    var sr = new GameObject("Basamak").AddComponent<SpriteRenderer>();
+                    sr.transform.SetParent(root);
+                    sr.transform.position = new Vector2(xNear + dir * tread / 2f, top);
+                    sr.sprite = s;
+                    sr.sortingOrder = -2;
+                    sr.gameObject.layer = ctx.GroundLayer;
+                    AddOneWayCollider(sr.gameObject, tread, 0.2f, new Vector2(0f, -0.1f));
+                }
+            }
+
+            /// <summary>Otomatik testteki botun sırayla gideceği noktalar: x, y, x, y...</summary>
+            public void Route(params float[] xy)
+            {
+                var root = new GameObject("BotRota").transform;
+                for (int i = 0; i + 1 < xy.Length; i += 2)
+                {
+                    var point = new GameObject((i / 2).ToString()).transform;
+                    point.SetParent(root);
+                    point.position = new Vector2(xy[i], xy[i + 1]);
+                }
             }
 
             public void Wall(float xMin, float xMax, float yMin, float yMax) =>

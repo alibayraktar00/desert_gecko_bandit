@@ -404,6 +404,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   probeDepth: 0.06
+  stepHeight: 0.3
+  dropThroughTime: 0.3
 --- !u!114 &85021552135620570
 MonoBehaviour:
   m_ObjectHideFlags: 0

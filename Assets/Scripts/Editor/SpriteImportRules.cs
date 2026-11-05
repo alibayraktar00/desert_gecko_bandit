@@ -16,6 +16,7 @@ namespace DesertGecko.EditorTools
         public const string PropsFolder = "Assets/Sprites/Environment/Props/";
         public const string GroundFolder = "Assets/Sprites/Environment/Ground/";
         public const string EnemiesFolder = "Assets/Sprites/Enemies/";
+        public const string LayerArtFolder = "Assets/Sprites/Environment/Katman/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
 
@@ -32,9 +33,10 @@ namespace DesertGecko.EditorTools
             bool isProp = assetPath.StartsWith(PropsFolder);
             bool isGround = assetPath.StartsWith(GroundFolder);
             bool isEnemy = assetPath.StartsWith(EnemiesFolder);
+            bool isLayerArt = assetPath.StartsWith(LayerArtFolder);
             // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
             // Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !isBackground && !isProp && !isGround && !isEnemy && !assetImporter.importSettingsMissing)
+            if (!isGila && !isBackground && !isProp && !isGround && !isEnemy && !isLayerArt && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -69,6 +71,17 @@ namespace DesertGecko.EditorTools
                 var settings = new TextureImporterSettings();
                 importer.ReadTextureSettings(settings);
                 settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+                importer.SetTextureSettings(settings);
+            }
+            else if (isLayerArt)
+            {
+                // Hepsi üst kenarından pivotlu ve yan yana tekrar eder; kaya çıkıntısının uçları tekrar etmez.
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)SpriteAlignment.TopCenter;
+                settings.spriteMeshType = SpriteMeshType.FullRect;
+                if (assetPath.EndsWith("kaya_kenar.png"))
+                    settings.spriteBorder = new Vector4(16f, 0f, 16f, 0f);
                 importer.SetTextureSettings(settings);
             }
             else if (isGround)

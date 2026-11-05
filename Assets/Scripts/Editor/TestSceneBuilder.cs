@@ -226,8 +226,9 @@ namespace DesertGecko.EditorTools
                 var deepSr = deep.AddComponent<SpriteRenderer>();
                 Sprite solid = SolidSprite;
                 deepSr.sprite = solid != null ? solid : fallbackTile;
-                deepSr.drawMode = SpriteDrawMode.Tiled;
-                deepSr.size = new Vector2(size.x, depth);
+                // Düz renk: tekrar değil ölçek. Tekrar, derin zeminde Unity'nin köşe sınırını aşıyor.
+                Vector2 unit = deepSr.sprite.bounds.size;
+                deep.transform.localScale = new Vector3(size.x / unit.x, depth / unit.y, 1f);
                 deepSr.color = DeepSoil;
             }
 
