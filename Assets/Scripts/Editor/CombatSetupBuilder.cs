@@ -50,7 +50,7 @@ namespace DesertGecko.EditorTools
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
             a.Jackal = BuildJackal(a.Crystal);
-            a.Checkpoint = BuildCheckpoint(PlaceholderArt.Totem());
+            a.Checkpoint = BuildCheckpoint();
             return a;
         }
 
@@ -242,7 +242,23 @@ namespace DesertGecko.EditorTools
             return frames;
         }
 
-        static Checkpoint BuildCheckpoint(Sprite sprite)
+        // Kareler: tools/checkpoint_dag_isle.py
+        static Sprite CheckpointFrame(string name)
+        {
+            string path = SpriteImportRules.PropsFolder + "Checkpoint/" + name + ".png";
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        static Object[] CheckpointFrames(string prefix, int count)
+        {
+            var frames = new Object[count];
+            for (int i = 0; i < count; i++)
+                frames[i] = CheckpointFrame(prefix + "_" + i);
+            return frames;
+        }
+
+        static Checkpoint BuildCheckpoint()
         {
             var root = new GameObject("Checkpoint");
             var col = root.AddComponent<BoxCollider2D>();
@@ -250,9 +266,20 @@ namespace DesertGecko.EditorTools
             // Uzun sütun: üstünden zıplayarak ya da süzülerek geçen oyuncu da checkpoint'i alır.
             col.size = new Vector2(1f, 12f);
             col.offset = new Vector2(0f, 6f);
-            SpriteRenderer totem = AddSprite(root.transform, "Totem", sprite, 2);
+            Sprite off = CheckpointFrame("kapali");
+            SpriteRenderer totem = AddSprite(root.transform, "Totem", off, 2);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
             var checkpoint = root.AddComponent<Checkpoint>();
             SetField(checkpoint, "totem", totem);
+            SetField(checkpoint, "offFrame", off);
+            SetArray(checkpoint, "igniteFrames", CheckpointFrames("yanis", 4));
+            SetArray(checkpoint, "litFrames", CheckpointFrames("aktif", 12));
+            SetField(checkpoint, "audioSource", audio);
+            AssetDatabase.ImportAsset("Assets/Audio/fener.wav", ImportAssetOptions.ForceSynchronousImport);
+            SetField(checkpoint, "igniteClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/fener.wav"));
             return Save<Checkpoint>(root, "Checkpoint");
         }
 

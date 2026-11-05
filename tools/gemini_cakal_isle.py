@@ -74,6 +74,38 @@ def remove_fringe(sprite):
     return out
 
 
+# Yenik karesinde şapka ayrı süzülür, gövdede kalmamalı. Şapkanın kapattığı baş elle çizilir (x: 66, y: 50'den).
+BARE_HEAD = [
+    "...###............",
+    "..#ddt#...........",
+    "..#dtt#..##.......",
+    "..#ttd###dt#......",
+    ".#dtttttttt###....",
+    "#dtktktttttttt##..",
+    "#dttkttttttwwwww#.",
+    "#dtktkttttwwwwwnn#",
+    "#ddttttttwwwwwwnn#",
+    ".#dddtttwwwwwwww#.",
+    "..##ddttwwwwrrw##.",
+    "....####www#rr#...",
+    "........###.##....",
+]
+BARE_HEAD_COLORS = {"#": (31, 15, 11), "d": (112, 84, 54), "t": (172, 136, 88), "w": (210, 186, 136),
+                    "k": (31, 15, 11), "n": (31, 15, 11), "r": (176, 64, 56)}
+
+
+def remove_hat(canvas):
+    """Gövdenin sağındaki şapkayı (ve altında kalan parçaları) siler, yerine şapkasız baş çizer."""
+    out = canvas.copy()
+    out[:, 67:] = 0
+    out[:49, 62:] = 0  # kenarın gövde üstüne taşan ucu
+    for dy, row in enumerate(BARE_HEAD):
+        for dx, ch in enumerate(row):
+            if ch != ".":
+                out[50 + dy, 66 + dx] = (*BARE_HEAD_COLORS[ch], 255)
+    return out
+
+
 def hat_from(sprite):
     """Şapkayı kareden ayırır: kanadın altına inmeden yalnızca üst kısım."""
     hat = sprite[:int(sprite.shape[0] * 0.31)].copy()
@@ -117,6 +149,8 @@ def main():
     canvases = []
     for i, ((name, _), sprite) in enumerate(zip(order, sprites)):
         canvas = place_on_canvas(apply_palette(sprite, palette))
+        if i == 25:  # yenik karesi
+            canvas = remove_hat(canvas)
         Image.fromarray(canvas, "RGBA").save(OUT_DIR / f"cakal_{i}.png")
         canvases.append(canvas)
         print(f"  cakal_{i}: {name} ({sprite.shape[1]}x{sprite.shape[0]})")

@@ -135,6 +135,8 @@ namespace DesertGecko.EditorTools
             var painter = new LevelPainter(ctx);
             define(painter);
             painter.FillPits();
+            painter.DressCliffs();
+            painter.DressBoundaries();
 
             GameObject player = TestSceneBuilder.SpawnPlayer(ctx, painter.Spawn);
             Camera cam = TestSceneBuilder.CreateCamera(painter.Spawn + new Vector2(0f, 1.5f), player.transform, out CameraFollow follow);
@@ -217,6 +219,7 @@ namespace DesertGecko.EditorTools
             // Duvar tırmanma
             p.Sign(73.5f, 6f, "Duvara doğru bas: yapış\nW / S: tırman");
             p.Ground(76f, 92f, 12f);
+            p.Ladder(75.5f, 6f, 12.6f);
             p.CrystalLine(75.4f, 8f, 3, 1.3f, vertical: true);
             p.Plant("kaktus_03", 84f, 12f);
 
@@ -236,7 +239,7 @@ namespace DesertGecko.EditorTools
             p.Goal(130f, 10f);
             p.Boundary(133f);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(6f, 1.5f), new Vector2(50f, 7.5f), new Vector2(96f, 13f), new Vector2(123f, 11.5f) });
+            p.ShotPoints.AddRange(new[] { new Vector2(6f, 1.5f), new Vector2(50f, 7.5f), new Vector2(74f, 9f), new Vector2(96f, 13f), new Vector2(123f, 11.5f) });
         }
 
         // 1-2 Kanyon Duvarları: platformlar, tırmanma, yüksek kanyon ve uzun süzülüş.
@@ -464,7 +467,10 @@ namespace DesertGecko.EditorTools
         {
             readonly TestSceneBuilder.SceneContext ctx;
             readonly Transform geometry, decor, actors;
+            const float BoundaryTop = 60f;
             readonly List<(float xMin, float xMax, float top)> grounds = new List<(float, float, float)>();
+            readonly List<float> boundaries = new List<float>();
+            readonly Dictionary<(float, float, float), Transform> groundObjects = new Dictionary<(float, float, float), Transform>();
             // Sadece havadaki platformlar; yerdeki masalar boşluk geçişine yardım etmez.
             readonly List<(float xMin, float xMax, float top)> platforms = new List<(float, float, float)>();
             readonly List<float> checkpoints = new List<float>();
@@ -527,6 +533,66 @@ namespace DesertGecko.EditorTools
                 }
             }
 
+            /// <summary>
+            /// Her açık zemin kenarına pürüzlü kaya sütunu, omuz ve dibine taş yığını koyar; cetvelle
+            /// kesilmiş köşeleri ve alt zeminle birleşimi örter. Yalnızca görsel, çarpışma değişmez.
+            /// </summary>
+            public void DressCliffs()
+            {
+                const float eps = 0.01f, minHeight = 1.5f, minRubbleRoom = 4f;
+                foreach (var g in grounds)
+                {
+                    foreach (int side in new[] { -1, 1 }) // zeminin sol ve sağ kenarı
+                    {
+                        float x = side < 0 ? g.xMin : g.xMax;
+                        if (boundaries.Any(b => Mathf.Abs(x - b) < eps || Mathf.Abs(x - (b + 1f)) < eps))
+                            continue; // orada dağ var
+                        var next = grounds.Where(o => !o.Equals(g) && o.xMin <= x + eps && o.xMax >= x - eps).ToList();
+                        bool pit = next.Count == 0;
+                        float low = pit ? GroundBottom : next.Max(o => o.top);
+                        if (g.top - low < minHeight)
+                            continue;
+                        CliffEdge(x, g.top, side);
+                        if (!pit && next.Max(o => o.xMax - o.xMin) >= minRubbleRoom)
+                            Rubble(x, low, side);
+                    }
+                }
+            }
+
+            void CliffEdge(float x, float top, int side)
+            {
+                const float faceOffset = 0.375f; // görselde yamaç yüzeyi, ortanın bu kadar dışında
+                Sprite face = LayerArt("zemin_yamac"), cap = LayerArt("zemin_yamac_ust");
+                float capHeight = cap.bounds.size.y;
+                var position = new Vector2(x - side * faceOffset, top);
+
+                var capSr = new GameObject(Name("YamacUst")).AddComponent<SpriteRenderer>();
+                capSr.transform.SetParent(geometry);
+                capSr.transform.position = position;
+                capSr.sprite = cap;
+                capSr.flipX = side > 0;
+                capSr.sortingOrder = 1;
+
+                SpriteRenderer sr = TiledArt(geometry, Name("Yamac"), face, position + Vector2.down * capHeight,
+                    new Vector2(face.bounds.size.x, top - capHeight - GroundBottom), 1);
+                sr.flipX = side > 0;
+            }
+
+            void Rubble(float x, float groundTop, int side)
+            {
+                Sprite s = LayerArt("zemin_yamac_dip");
+                var sr = new GameObject(Name("Tas")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.transform.position = new Vector2(x + side * s.bounds.size.x / 2f, groundTop + s.bounds.size.y - 0.06f);
+                sr.sprite = s;
+                sr.flipX = side > 0;
+                sr.sortingOrder = 3;
+            }
+
+            /// <summary>Duvara dayalı ahşap merdiven. Görseldir; tırmanma duvar tırmanışıyla olur.</summary>
+            public void Ladder(float x, float yMin, float yMax) =>
+                TiledArt(geometry, Name("Merdiven"), LayerArt("merdiven"), new Vector2(x, yMax), new Vector2(1f, yMax - yMin), 3);
+
             static Transform Child(Transform parent, string name)
             {
                 var t = new GameObject(name).transform;
@@ -540,6 +606,7 @@ namespace DesertGecko.EditorTools
             {
                 TestSceneBuilder.Ground(geometry, Name("Zemin"), xMin, xMax, GroundBottom, top, ctx.Tile, ctx.GroundLayer);
                 grounds.Add((xMin, xMax, top));
+                groundObjects[(xMin, xMax, top)] = geometry.GetChild(geometry.childCount - 1);
             }
 
             /// <summary>
@@ -662,11 +729,58 @@ namespace DesertGecko.EditorTools
                 TestSceneBuilder.Block(geometry, Name("Duvar"), xMin, xMax, yMin, yMax, TestSceneBuilder.Rock, ctx.Tile, ctx.GroundLayer);
 
             /// <summary>
-            /// Level kenarı: yüksek, 1 birim kalın duvar. Ground katmanında değil (Default), bu yüzden
-            /// Gila çarpar ama yapışıp tırmanamaz, tepeden level dışına atlayamaz.
+            /// Level kenarı: yüksek, 1 birim kalın görünmez duvar. Ground katmanında değil (Default), bu yüzden
+            /// Gila çarpar ama yapışıp tırmanamaz, tepeden level dışına atlayamaz. Görünüşünü dağ verir.
             /// </summary>
-            public void Boundary(float xMin) =>
-                TestSceneBuilder.Block(geometry, Name("Kenar"), xMin, xMin + 1f, GroundBottom, 60f, TestSceneBuilder.Rock, ctx.Tile, 0);
+            public void Boundary(float xMin)
+            {
+                var wall = new GameObject(Name("Kenar")).AddComponent<BoxCollider2D>();
+                wall.transform.SetParent(geometry);
+                wall.transform.position = new Vector2(xMin + 0.5f, (GroundBottom + BoundaryTop) / 2f);
+                wall.size = new Vector2(1f, BoundaryTop - GroundBottom);
+                boundaries.Add(xMin);
+            }
+
+            /// <summary>
+            /// Her level kenarının ardına dağ koyar; bitişik zeminin görselini dağın altına uzatır, böylece
+            /// toprak katmanları dikişsiz devam eder. Zeminin çarpışması değişmez.
+            /// </summary>
+            public void DressBoundaries()
+            {
+                const float eps = 0.01f, rockAheadOfFace = 0.9f, soilWidth = 30f;
+                Sprite mountain = LayerArt("dag");
+                Vector2 size = mountain.bounds.size;
+                foreach (float xMin in boundaries)
+                {
+                    // Sol kenarda level duvarın sağında, sağ kenarda solunda başlar.
+                    var inner = grounds.Where(g => Mathf.Abs(g.xMin - (xMin + 1f)) < eps || Mathf.Abs(g.xMax - xMin) < eps).ToList();
+                    bool levelOnRight = inner.Any(g => Mathf.Abs(g.xMin - (xMin + 1f)) < eps);
+                    float top = inner[0].top;
+                    float face = levelOnRight ? xMin + 1f : xMin;
+                    int outward = levelOnRight ? -1 : 1;
+
+                    WidenGroundArt(groundObjects[inner[0]], outward, soilWidth);
+
+                    // Görselin dibindeki kaya yüzün önüne taşar: oyuncu önünden geçer, dekordur.
+                    var sr = new GameObject(Name("Dag")).AddComponent<SpriteRenderer>();
+                    sr.transform.SetParent(geometry);
+                    sr.transform.position = new Vector2(face + outward * (size.x / 2f - rockAheadOfFace), top + size.y - 0.06f);
+                    sr.sprite = mountain;
+                    sr.flipX = outward > 0;
+                    sr.sortingOrder = 2;
+
+                    ShotPoints.Add(new Vector2(face - outward * 5f, top + 1.5f));
+                }
+            }
+
+            static void WidenGroundArt(Transform ground, int outward, float width)
+            {
+                var col = ground.GetComponent<BoxCollider2D>();
+                col.offset -= new Vector2(outward * width / 2f, 0f);
+                ground.position += new Vector3(outward * width / 2f, 0f, 0f);
+                foreach (SpriteRenderer sr in ground.GetComponentsInChildren<SpriteRenderer>())
+                    sr.size += new Vector2(width, 0f);
+            }
 
             public void Platform(float centerX, float top, string sprite)
             {

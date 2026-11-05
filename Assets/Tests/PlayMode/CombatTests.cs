@@ -482,6 +482,37 @@ namespace DesertGecko.Tests
             Assert.That(health.CheckpointPosition.x, Is.EqualTo(4f).Within(0.01f));
         }
 
+        [UnityTest]
+        public IEnumerator Checkpoint_Tutusur_DumanDongusuOynar_YenisiYaninca_Soner()
+        {
+            Ground(-10f, 10f);
+            PlayerHealth health = Player(new Vector2(0f, 0.05f));
+            Checkpoint first = Object.Instantiate(LoadPrefab<Checkpoint>("Checkpoint"), new Vector2(-5f, 0f), Quaternion.identity);
+            Checkpoint second = Object.Instantiate(LoadPrefab<Checkpoint>("Checkpoint"), new Vector2(5f, 0f), Quaternion.identity);
+            Track(first.gameObject);
+            Track(second.gameObject);
+            yield return null;
+            Sprite off = first.CurrentFrame;
+            Assert.AreEqual("kapali", off.name);
+
+            first.Activate(health);
+            yield return new WaitForSeconds(0.1f);
+            StringAssert.StartsWith("yanis_", first.CurrentFrame.name, "önce fener tutuşmalı");
+
+            yield return new WaitForSeconds(0.5f);
+            StringAssert.StartsWith("aktif_", first.CurrentFrame.name, "tutuşma bitince tütmeli");
+            Sprite shown = first.CurrentFrame;
+            yield return new WaitForSeconds(0.25f);
+            Assert.AreNotEqual(shown, first.CurrentFrame, "duman döngüsü ilerlemeli");
+            Assert.AreEqual(off, second.CurrentFrame, "ötekisi kapalı kalmalı");
+
+            second.Activate(health);
+            yield return null;
+            Assert.IsFalse(first.IsActive);
+            Assert.AreEqual(off, first.CurrentFrame, "yenisi yanınca eskisi sönmeli");
+            Assert.That(health.CheckpointPosition.x, Is.EqualTo(5f).Within(0.01f));
+        }
+
         // --- Yılan silahşor ---
 
         [UnityTest]

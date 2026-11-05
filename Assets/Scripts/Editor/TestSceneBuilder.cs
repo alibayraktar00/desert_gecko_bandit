@@ -210,8 +210,7 @@ namespace DesertGecko.EditorTools
             go.transform.SetParent(parent);
             go.transform.position = new Vector3(xMin + size.x / 2f, yMax, 0f);
 
-            // Doku yatayda tekrar eder ama dikeyde etmez: blok dokudan derinse altı koyu toprakla dolar
-            // (yoksa uçurumdan bakınca toprak katmanları ikinci kez görünür).
+            // Üst katmanlar bir kez görünür; blok dokudan derinse altı kendini tekrar eden derin toprakla dolar.
             float textureHeight = texture.bounds.size.y;
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = texture;
@@ -221,27 +220,17 @@ namespace DesertGecko.EditorTools
             {
                 var deep = new GameObject("Derinlik");
                 deep.transform.SetParent(go.transform, false);
-                float depth = size.y - textureHeight;
-                deep.transform.localPosition = new Vector3(0f, -textureHeight - depth / 2f, 0f);
+                deep.transform.localPosition = new Vector3(0f, -textureHeight, 0f);
                 var deepSr = deep.AddComponent<SpriteRenderer>();
-                Sprite solid = SolidSprite;
-                deepSr.sprite = solid != null ? solid : fallbackTile;
-                // Düz renk: tekrar değil ölçek. Tekrar, derin zeminde Unity'nin köşe sınırını aşıyor.
-                Vector2 unit = deepSr.sprite.bounds.size;
-                deep.transform.localScale = new Vector3(size.x / unit.x, depth / unit.y, 1f);
-                deepSr.color = DeepSoil;
+                deepSr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.GroundFolder + "zemin_derin.png");
+                deepSr.drawMode = SpriteDrawMode.Tiled;
+                deepSr.size = new Vector2(size.x, size.y - textureHeight);
             }
 
             var col = go.AddComponent<BoxCollider2D>();
             col.size = size;
             col.offset = new Vector2(0f, -size.y / 2f);
         }
-
-        // Kenarlıksız dolgu görseli (Prepare'de yüklenir)
-        static Sprite SolidSprite => AssetDatabase.LoadAssetAtPath<Sprite>(PlaceholderArt.Folder + "/duz_placeholder.png");
-
-        // Zemin dokusunun en alt tonu (tools/gemini_zemin_isle.py dolgusunun son basamağı)
-        static readonly Color DeepSoil = new Color32(0x1A, 0x0C, 0x09, 0xFF);
 
         internal static Sprite Prop(string name) =>
             AssetDatabase.LoadAssetAtPath<Sprite>(SpriteImportRules.PropsFolder + name + ".png");

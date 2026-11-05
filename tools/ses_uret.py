@@ -2,6 +2,7 @@
 Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar):
   Assets/Audio/cingirak.wav  çıngırak uyarısı, uyarı süresi kadar (0.8 sn)
   Assets/Audio/silah.wav     silah patlaması
+  Assets/Audio/fener.wav     checkpoint feneri tutuşması
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -45,10 +46,22 @@ def gunshot(rng, seconds=0.35):
     return crack * 0.8 + thump * 0.7
 
 
+def lantern(rng, seconds=0.55):
+    """Fener tutuşması: kısa kibrit çakması, ardından sönen alev hışırtısı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.uniform(-1.0, 1.0, t.size)
+    # Yumuşak gürültü: basit ortalama filtre alevin boğuk sesini verir.
+    soft = np.convolve(noise, np.ones(14) / 14, mode="same") * 3.0
+    strike = noise * np.exp(-t * 34.0) * 0.8
+    flame = soft * np.minimum(1.0, t * 12.0) * np.exp(-t * 5.0)
+    return strike + flame
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
     save("silah.wav", gunshot(rng))
+    save("fener.wav", lantern(rng))
 
 
 if __name__ == "__main__":
