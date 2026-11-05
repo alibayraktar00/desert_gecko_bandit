@@ -17,11 +17,6 @@ DARK = (0x1A, 0x0C, 0x09)
 CRUST = (0x2E, 0x17, 0x10)
 CRUST_LIGHT = (0x6E, 0x3A, 0x22)
 RIM = (0xB8, 0x6A, 0x38)
-PLANK = (0xBE, 0x40, 0x3C)
-PLANK_LIGHT = (0xC7, 0x50, 0x48)
-PLANK_DARK = (0x72, 0x17, 0x27)
-BEAM = (0x4F, 0x19, 0x2B)
-BEAM_DARK = (0x2E, 0x10, 0x1C)
 
 
 def tint(c, k, shift=(0, 0, 0)):
@@ -105,23 +100,6 @@ def ledge(rng):
     return img
 
 
-def stair_step():
-    """Tek basamak (16x24): 8 px tahta + altında dikme. Üst üste binerek zikzak kiriş oluşturur."""
-    w, h = 16, 24
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    for x in range(w):
-        for y in range(6):
-            c = PLANK_LIGHT if y == 0 else PLANK if y < 4 else PLANK_DARK
-            if x in (5, 11) and y < 4:
-                c = PLANK_DARK
-            img.putpixel((x, y), (*c, 255))
-        for y in range(6, h):
-            if True:
-                c = BEAM_DARK if x in (0, 15) or y == h - 1 else BEAM
-                img.putpixel((x, y), (*c, 255))
-    return img
-
-
 def slab_rim():
     """Kat döşemesinin üst kenarı (32x5): yürünen yüzeyi koyu arka duvardan ayırır."""
     w, h = 32, 5
@@ -144,7 +122,6 @@ def main():
         "kaya_kutle.png": rock_mass(ground),
         "kaya_sacak.png": roof_fringe(rng),
         "kaya_kenar.png": ledge(rng),
-        "merdiven_basamak.png": stair_step(),
         "kaya_ust.png": slab_rim(),
     }
     for name, img in parts.items():

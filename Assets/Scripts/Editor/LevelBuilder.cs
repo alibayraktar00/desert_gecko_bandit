@@ -291,7 +291,7 @@ namespace DesertGecko.EditorTools
             p.ShotPoints.AddRange(new[] { new Vector2(24f, 2.5f), new Vector2(59f, 10f), new Vector2(100f, 15f), new Vector2(133f, 15f) });
         }
 
-        // 1-3 Akbaba Gölgesi: üstü kapalı, katman katman iki mesa. İlkinde merdivenlerle zikzak çıkılır,
+        // 1-3 Akbaba Gölgesi: üstü kapalı, katman katman iki mesa. İlkinde tek yönlü platformlarla zikzak çıkılır,
         // ikincisinde tek yönlü kaya çıkıntılarıyla baca tırmanılır. Aralarda uzun süzülüşler.
         static void Level_1_3(LevelPainter p)
         {
@@ -310,9 +310,9 @@ namespace DesertGecko.EditorTools
             p.Ground(20.5f, 64f, 3f); // mesanın alt katı dışarıdaki zeminle tek parça
             p.Checkpoint(22.5f, 3f);
             p.Plant("kaktus_19", 25f, 3f);
-            p.Sign(27.5f, 3f, "Kapalı mesa: merdivenlerle çık\nS + Space: platformdan in");
+            p.Sign(27.5f, 3f, "Kapalı mesa: platformlarla çık\nS + Space: platformdan in");
 
-            // --- Birinci mesa: 3 kat. Duvar tırmanılamaz, tek yol merdivenler. ---
+            // --- Birinci mesa: 3 kat. Duvar tırmanılamaz, katlar arası tek yol platformlar. ---
             const float floor1 = 3f, floor2 = 8f, floor3 = 13f, roof = 17f;
             p.BackWall(31f, 63f, floor1, roof);
             p.RockMass(30f, 31f, floor1 + 3f, roof);  // giriş kapısının üstü
@@ -320,12 +320,13 @@ namespace DesertGecko.EditorTools
             p.RockMass(63f, 64f, floor1, floor3 - 1f); // sağ duvar, kapı en üst katta
             p.RockMass(63f, 64f, floor3 + 3f, roof);
 
-            // 1. kat: sağa koş, merdiven dibine var
+            // 1. kat: sağa koş, sağ uçtaki platformlardan yukarı çık
             p.Scorpion(38f, floor1);
             p.Ledge(43f, 48f, floor1 + 2.3f);
             p.CrystalLine(44f, floor1 + 3.1f, 3, 1.5f);
             p.Bug(50f, floor1 + 1.3f);
-            p.Stairs(62f, floor1, 52f, floor2);
+            p.Ledge(54f, 62f, floor1 + 2.5f);
+            p.Ledge(52f, 56f, floor2); // 2. kat döşemesinin devamı, alttan geçilir
 
             // 2. kat: sola koş
             p.Slab(31f, 52f, floor2);
@@ -333,8 +334,9 @@ namespace DesertGecko.EditorTools
             p.Snake(40f, floor2);
             p.Ledge(45f, 48.5f, floor2 + 2.2f);
             p.Crystal(46.75f, floor2 + 3f);
-            p.Bug(32.5f, floor2 + 1.3f); // merdivenin arkasındaki küçük ödül
-            p.Stairs(34f, floor2, 44f, floor3);
+            p.Bug(32.5f, floor2 + 1.3f); // koridorun sonundaki küçük ödül
+            p.Ledge(36f, 42f, floor2 + 2.5f);
+            p.Ledge(40f, 44f, floor3); // 3. kat döşemesinin devamı, alttan geçilir
 
             // 3. kat: sağa koş, kapıdan çık
             p.Slab(44f, 66f, floor3, register: true);
@@ -390,7 +392,7 @@ namespace DesertGecko.EditorTools
             p.Boundary(170f);
 
             // Botun izlediği yol; test bu noktaları sırayla gezer.
-            p.Route(62f, floor1, 52.5f, floor2, 34f, floor2, 44.5f, floor3, 66f, floor3, 79f, 9f,
+            p.Route(58f, floor1 + 2.5f, 54.5f, floor2, 38.5f, floor2 + 2.5f, 41.5f, floor3, 66f, floor3, 79f, 9f,
                 110f, baseY, 114.5f, 9.5f, 121.5f, 12f, 119.3f, 14.5f, 121.5f, 17f, 124f, 19.5f, 130f, 19.5f, 167f, 16f);
 
             p.ShotPoints.AddRange(new[]
@@ -631,32 +633,6 @@ namespace DesertGecko.EditorTools
                     new Vector2(xMax - xMin, s.bounds.size.y), 1);
                 sr.gameObject.layer = ctx.GroundLayer;
                 AddOneWayCollider(sr.gameObject, xMax - xMin, 0.3f, new Vector2(0f, -0.15f));
-            }
-
-            /// <summary>
-            /// Gerçek merdiven: 0.5 birim genişliğinde, 0.25 birim yüksekliğinde tahta basamaklar. Altı boştur,
-            /// basamaklar tek yönlüdür: Gila zıplamadan yürüyerek çıkar, altından geçebilir.
-            /// fromX/fromY alt uç, toX/toY üst uç; merdiven sağa da sola da yükselebilir.
-            /// </summary>
-            public void Stairs(float fromX, float fromY, float toX, float toY)
-            {
-                const float tread = 0.5f, rise = 0.25f;
-                Sprite s = LayerArt("merdiven_basamak");
-                int steps = Mathf.RoundToInt((toY - fromY) / rise);
-                float dir = Mathf.Sign(toX - fromX);
-                var root = Child(geometry, Name("Merdiven"));
-                for (int i = 0; i < steps; i++)
-                {
-                    float xNear = fromX + dir * tread * i;
-                    float top = fromY + rise * (i + 1);
-                    var sr = new GameObject("Basamak").AddComponent<SpriteRenderer>();
-                    sr.transform.SetParent(root);
-                    sr.transform.position = new Vector2(xNear + dir * tread / 2f, top);
-                    sr.sprite = s;
-                    sr.sortingOrder = -2;
-                    sr.gameObject.layer = ctx.GroundLayer;
-                    AddOneWayCollider(sr.gameObject, tread, 0.2f, new Vector2(0f, -0.1f));
-                }
             }
 
             /// <summary>Otomatik testteki botun sırayla gideceği noktalar: x, y, x, y...</summary>

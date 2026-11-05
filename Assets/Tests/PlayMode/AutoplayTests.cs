@@ -81,6 +81,7 @@ namespace DesertGecko.Tests
             Debug.Log(report);
 
             Assert.IsTrue(run.Completed, $"Bot leveli bitiremedi.\n{report}");
+            Assert.Greater(run.DoubleJumps, 0, $"Bot hiç çift zıplama kullanmadı.\n{report}");
         }
 
         /// <summary>Bir level oynanışı: karar verme, kayıt, rapor.</summary>
@@ -92,10 +93,12 @@ namespace DesertGecko.Tests
             readonly PlayerWallet wallet;
             readonly TailAttack tail;
             readonly BoxCollider2D box;
+            readonly Rigidbody2D body;
             readonly Keyboard keyboard;
             readonly int groundMask = GameLayers.GroundMask;
 
             public bool Completed;
+            public int DoubleJumps;
             float elapsed;
             readonly List<string> events = new List<string>();
             readonly List<Vector3> path = new List<Vector3>(); // x, y, durum
@@ -111,6 +114,7 @@ namespace DesertGecko.Tests
 
             // Karar durumu
             bool spaceWasDown;
+            float groundJumpPressedAt = -1f;
             bool doubleUsed;
             bool releaseForDouble;
             bool tongueWasDown, tailWasDown, waitingForTail;
@@ -165,13 +169,41 @@ namespace DesertGecko.Tests
                 moveDir = target.x >= b.center.x ? 1 : -1;
             }
 
+            /// <summary>
+            /// Çift zıplama gerekiyor mu: tek zıplama hedef yüksekliğe yetmiyorsa ya da düşerken altında zemin yoksa.
+            /// Tepe noktasını beklemez; kalan yükseliş yetmeyeceği belli olunca basar.
+            /// </summary>
+            bool WantsDoubleJump(Bounds b, Vector2 v)
+            {
+                if (doubleUsed)
+                    return false;
+                bool toTarget = route.Count > 0 && !RouteDone && route[routeIndex].y > b.min.y + 0.2f
+                    && Mathf.Abs(route[routeIndex].x - b.center.x) < 4f;
+                if (toTarget)
+                {
+                    float gravity = Mathf.Abs(Physics2D.gravity.y) * body.gravityScale;
+                    float remainingRise = v.y > 0f && gravity > 0f ? v.y * v.y / (2f * gravity) : 0f;
+                    if (v.y < 4f && b.min.y + remainingRise < route[routeIndex].y + 0.3f)
+                        return true;
+                }
+                return v.y <= 0f && player.HasTail
+                    && !Physics2D.Raycast(new Vector2(b.center.x, b.min.y), Vector2.down, 2f, groundMask);
+            }
+
+            /// <summary>Basılı tuş yeni basış sayılmaz: bir kare bırak, bir kare bas; zıplama gerçekleşene kadar.</summary>
+            bool PressCycleForDouble()
+            {
+                releaseForDouble = !releaseForDouble;
+                return !releaseForDouble;
+            }
+
             /// <summary>Hedef yukarıdaysa altına gelince zıplasın (tek yönlü çıkıntılar).</summary>
             bool WantsToRiseToTarget(Bounds b)
             {
                 if (route.Count == 0 || RouteDone)
                     return false;
                 Vector2 target = route[routeIndex];
-                return target.y > b.min.y + 1f && target.y < b.min.y + 3f && Mathf.Abs(target.x - b.center.x) < 2.5f;
+                return target.y > b.min.y + 1f && target.y < b.min.y + 5f && Mathf.Abs(target.x - b.center.x) < 2.5f;
             }
 
             public BotRun(LevelManager manager, Keyboard keyboard)
@@ -183,7 +215,15 @@ namespace DesertGecko.Tests
                 wallet = player.GetComponent<PlayerWallet>();
                 tail = player.GetComponent<TailAttack>();
                 box = player.GetComponent<BoxCollider2D>();
+                body = player.GetComponent<Rigidbody2D>();
                 LoadRoute();
+                // Çift zıplama basışta değil, gerçekleşince sayılır: basış kaybolursa yeniden dener.
+                player.DoubleJumped += () =>
+                {
+                    doubleUsed = true;
+                    DoubleJumps++;
+                    Log($"çift zıplama x={player.transform.position.x:0.0} y={player.transform.position.y:0.0}");
+                };
 
                 crystals = Object.FindObjectsByType<Crystal>(FindObjectsInactive.Exclude).ToList();
                 crystalStart.AddRange(crystals.Select(c => (Vector2)c.transform.position));
@@ -352,7 +392,7 @@ namespace DesertGecko.Tests
                         if (goRight)
                         {
                             RaycastHit2D wall = Physics2D.Raycast(new Vector2(frontX, b.min.y + 0.3f), Vector2.right * dir, 0.6f, groundMask);
-                            // Tek yönlü basamaklar yürüyerek çıkılır, zıplamaya gerek yok.
+                            // Tek yönlü platformun yanından geçilir, engel değildir.
                             bool solidWall = wall && !wall.collider.usedByEffector;
                             bool lowStep = solidWall && !Physics2D.Raycast(new Vector2(frontX, b.min.y + 2.6f), Vector2.right * dir, 1.2f, groundMask);
                             if (!groundAhead && !player.HasTail)
@@ -374,32 +414,18 @@ namespace DesertGecko.Tests
                         break;
 
                     default:
-                        if (v.y > 0f)
-                        {
-                            jump = true; // tam yükseklik
-                        }
-                        else
-                        {
-                            bool groundBelow = Physics2D.Raycast(new Vector2(b.center.x, b.min.y), Vector2.down, 2f, groundMask);
-                            // Çıkıntıya tırmanırken altında zemin olsa da çift zıplasın.
-                            bool climbing = route.Count > 0 && !RouteDone && route[routeIndex].y > b.min.y + 0.2f
-                                && Mathf.Abs(route[routeIndex].x - b.center.x) < 4f;
-                            if (!doubleUsed && (!groundBelow || climbing) && player.HasTail)
-                            {
-                                // Çift zıplama için tuşu bir kare bırak, sonra bas.
-                                if (!releaseForDouble) { releaseForDouble = true; jump = false; }
-                                else { doubleUsed = true; jump = true; }
-                            }
-                            else
-                            {
-                                jump = true; // süzül
-                            }
-                        }
+                        jump = WantsDoubleJump(b, v) ? PressCycleForDouble() : true; // aksi halde basılı tut: tam yükseklik, sonra süzülme
                         break;
                 }
                 // Basılı tutulan tuş yeni zıplama sayılmaz: yere inince bir kare bırak.
-                if (jump && grounded && spaceWasDown)
+                // Ama yeni basılmışsa bırakma: fizik adımı gelene kadar hâlâ yerde görünür ve erken bırakış
+                // zıplamayı keser (tam yükseklik yerine ~1 birim yükselirdi).
+                if (grounded && elapsed - groundJumpPressedAt < 0.1f)
+                    jump = true;
+                else if (jump && grounded && spaceWasDown)
                     jump = false;
+                else if (jump && grounded)
+                    groundJumpPressedAt = elapsed;
                 spaceWasDown = jump;
                 if (jump)
                     keys.Add(Key.Space);
@@ -415,6 +441,7 @@ namespace DesertGecko.Tests
                 sb.AppendLine($"=== {sceneName} ===");
                 sb.AppendLine($"sonuç: {(Completed ? "BİTİRDİ" : "BİTİREMEDİ")}  süre: {elapsed:0.0} sn");
                 sb.AppendLine($"kristal: {collected} / {crystalStart.Count} (yerleştirilen)  düşman: {killed} / {enemies.Count} öldürüldü");
+                sb.AppendLine($"çift zıplama: {DoubleJumps}");
                 sb.AppendLine($"düşman hasarı: {enemyDamageHits}  uçuruma düşme: {pitFalls}  ölüm: {deaths}  takılma: {stuckPoints.Count}");
                 foreach (string e in events)
                     sb.AppendLine(e);

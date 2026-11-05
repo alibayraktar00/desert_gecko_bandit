@@ -10,8 +10,8 @@ using UnityEngine.TestTools;
 namespace DesertGecko.Tests
 {
     /// <summary>
-    /// Katmanlı level parçaları: tek yönlü platform (alttan geçilir, üstünde durulur, S + Space ile inilir)
-    /// ve zıplamadan yürünen merdiven. Gerçek Gila hareketini sanal klavyeyle sürer.
+    /// Katmanlı level parçaları: tek yönlü platform (alttan geçilir, üstünde durulur, S + Space ile inilir).
+    /// Gerçek Gila hareketini sanal klavyeyle sürer.
     /// </summary>
     public class LayeredPlatformTests
     {
@@ -63,12 +63,6 @@ namespace DesertGecko.Tests
             var effector = go.AddComponent<PlatformEffector2D>();
             effector.useOneWay = true;
             effector.surfaceArc = 170f;
-        }
-
-        void Stairs(float xFrom, float yFrom, int steps)
-        {
-            for (int i = 0; i < steps; i++)
-                OneWay(xFrom + i * 0.5f, xFrom + (i + 1) * 0.5f, yFrom + (i + 1) * 0.25f, 0.2f);
         }
 
         IEnumerator SpawnPlayer(float x, float y)
@@ -141,39 +135,39 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
-        public IEnumerator Merdiven_ZiplamadanYurunerekCikilirVeInilir()
+        public IEnumerator CiftZiplama_TekZiplamaninYetmedigiPlatformaCikar()
         {
-            Stairs(1f, 0f, 12); // 6 birim uzun, 3 birim yüksek
-            Solid(7f, 15f, 2f, 3f); // merdivenin bittiği kat
+            OneWay(-2f, 2f, 4.4f); // tek zıplama 2.8, çift zıplamayla toplam yaklaşık 5
             yield return SpawnPlayer(0f, 0f);
 
-            Press(Key.D);
-            var trace = new System.Text.StringBuilder();
-            float nextSample = 0f;
-            for (float t = 0f; t < 2f && player.transform.position.x < 8f; t += Time.deltaTime)
-            {
-                Assert.AreNotEqual(PlayerController.MoveState.WallCling, player.State);
-                if (t >= nextSample)
-                {
-                    nextSample = t + 0.04f;
-                    trace.Append($"{player.transform.position.x:0.00}/{Feet:0.00}/{player.State.ToString()[0]} ");
-                }
-                yield return null;
-            }
-            Assert.Greater(player.transform.position.x, 8f, "merdiven yürüyüşü yavaşlatmamalı: " + trace);
-            Assert.AreEqual(3f, Feet, 0.1f, "merdivenin tepesindeki kata çıkmalı: " + trace);
+            int doubleJumps = 0;
+            player.DoubleJumped += () => doubleJumps++;
+            yield return Hold(0.3f, Key.Space);
+            yield return Hold(0.05f);
+            yield return Hold(0.5f, Key.Space);
+            yield return Hold(0.4f);
 
-            yield return Hold(0.1f);
-            bool leftGround = false;
-            Press(Key.A);
-            for (float t = 0f; t < 2f && player.transform.position.x > -0.5f; t += Time.deltaTime)
-            {
-                if (player.transform.position.x < 6.5f && player.transform.position.x > 1.5f && !player.IsGrounded)
-                    leftGround = true;
-                yield return null;
-            }
-            Assert.IsFalse(leftGround, "inerken her basamakta havalanmamalı");
-            Assert.AreEqual(0f, Feet, 0.1f);
+            Assert.AreEqual(1, doubleJumps, "havada ikinci basış çift zıplama olmalı");
+            Assert.AreEqual(4.4f, Feet, 0.05f, "çift zıplamayla platforma çıkmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator KatliZemindenAyniHizadakiPlatformaYurunur_OradanInilir()
+        {
+            Solid(-6f, 2f, 2f, 3f);  // kat döşemesi
+            OneWay(2f, 6f, 3f);      // döşemenin devamı, alttan geçilen platform
+            yield return SpawnPlayer(0f, 3.2f);
+
+            yield return Hold(0.6f, Key.D);
+            yield return Hold(0.3f);
+            Assert.Greater(player.transform.position.x, 2.5f, "döşemeden platforma takılmadan geçmeli");
+            Assert.AreEqual(3f, Feet, 0.05f, "platformda batmadan durmalı");
+            Assert.IsTrue(player.IsGrounded);
+
+            yield return Hold(0.1f, Key.S);
+            yield return Hold(0.1f, Key.S, Key.Space);
+            yield return Hold(0.7f);
+            Assert.AreEqual(0f, Feet, 0.05f, "S + Space ile alt kata inmeli");
         }
     }
 }

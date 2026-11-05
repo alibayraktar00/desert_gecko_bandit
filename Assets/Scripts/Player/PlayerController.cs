@@ -55,9 +55,7 @@ namespace DesertGecko.Player
         [SerializeField] LayerMask groundMask;
         [SerializeField] float probeDepth = 0.06f;
 
-        [Header("Merdiven ve tek yönlü platform")]
-        [Tooltip("Yürürken zıplamadan çıkılan/inilen en büyük basamak yüksekliği")]
-        [SerializeField] float stepHeight = 0.3f;
+        [Header("Tek yönlü platform")]
         [Tooltip("Aşağı + zıplama ile tek yönlü platformdan inerken çarpışmanın kapalı kaldığı süre")]
         [SerializeField] float dropThroughTime = 0.3f;
 
@@ -138,12 +136,10 @@ namespace DesertGecko.Player
         {
             EndDropThrough();
             ProbeSurroundings();
-            SnapDownStep();
             UpdateState();
             HandleJump();
             ApplyHorizontal();
             ApplyVertical();
-            StepUp();
         }
 
         ContactFilter2D GroundFilter => new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
@@ -195,59 +191,6 @@ namespace DesertGecko.Player
                 if (!IsOneWay(probeHits[i]))
                     return true;
             return false;
-        }
-
-        /// <summary>Merdivende bir alt basamağa inerken havalanmasın: alttaki yüzeye oturur.</summary>
-        void SnapDownStep()
-        {
-            if (State != MoveState.Grounded || groundContact || body.linearVelocity.y > 0.01f)
-                return;
-            Bounds b = box.bounds;
-            var origin = new Vector2(b.center.x, b.min.y + probeDepth);
-            var size = new Vector2(b.size.x * 0.9f, probeDepth);
-            int count = Physics2D.BoxCast(origin, size, 0f, Vector2.down, GroundFilter, castHits, stepHeight + probeDepth);
-            float best = float.NegativeInfinity;
-            for (int i = 0; i < count; i++)
-            {
-                Collider2D hit = castHits[i].collider;
-                float top = hit.bounds.max.y;
-                if (hit != droppedThrough && top <= b.min.y && top > best)
-                    best = top;
-            }
-            if (float.IsNegativeInfinity(best))
-                return;
-            body.position += Vector2.down * (b.min.y - best);
-            groundContact = true;
-        }
-
-        /// <summary>Yürürken önündeki alçak basamağın üstüne çıkar; merdiven zıplamadan yürünür.</summary>
-        void StepUp()
-        {
-            float inputX = MovementLocked ? 0f : input.Move.x;
-            if (State != MoveState.Grounded || Mathf.Abs(inputX) < 0.1f)
-                return;
-            Bounds b = box.bounds;
-            float dir = Mathf.Sign(inputX);
-            float reach = Mathf.Abs(body.linearVelocity.x) * Time.fixedDeltaTime + 0.02f;
-            var origin = new Vector2(b.center.x + dir * (b.extents.x + reach), b.min.y + stepHeight + probeDepth);
-            int count = Physics2D.Raycast(origin, Vector2.down, GroundFilter, castHits, stepHeight + probeDepth);
-            float best = float.NegativeInfinity;
-            for (int i = 0; i < count; i++)
-            {
-                // Mesafe 0: ışın yüzeyin içinden başladı, yani basamaktan yüksek bir engel.
-                if (castHits[i].distance <= 0f)
-                    return;
-                if (castHits[i].collider != droppedThrough)
-                    best = Mathf.Max(best, castHits[i].point.y);
-            }
-            float rise = best - b.min.y;
-            if (float.IsNegativeInfinity(best) || rise <= 0.01f)
-                return;
-            // Üstte tavan varsa çıkma.
-            var head = new Vector2(b.center.x + dir * reach, b.center.y + rise + 0.01f);
-            if (HasSolid(head, new Vector2(b.size.x * 0.95f, b.size.y * 0.95f)))
-                return;
-            body.position += new Vector2(0f, rise + SurfaceSkin);
         }
 
         void BeginDropThrough()
@@ -449,7 +392,7 @@ namespace DesertGecko.Player
                     if (standingOneWay != null && !solidUnderfoot)
                     {
                         // Yandan gelindiğinde fizik motoru tek yönlü temasını kapatır (ayrılana kadar).
-                        // Merdivende batmasın diye üstünde duruşu burada tutuyoruz.
+                        // Katı zeminden aynı hizadaki platforma yürürken batmasın diye duruşu burada tutuyoruz.
                         body.gravityScale = 0f;
                         body.position += Vector2.up * (standingOneWay.bounds.max.y + SurfaceSkin - box.bounds.min.y);
                         body.linearVelocity = new Vector2(v.x, 0f);
