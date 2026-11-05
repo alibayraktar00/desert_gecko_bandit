@@ -16,7 +16,7 @@ namespace DesertGecko.EditorTools
     /// <summary>
     /// Kızgın Kum Vadisi'nin 3 levelini koddan kurar: zemin, duvarlar, platformlar, düşmanlar,
     /// toplanabilirler, tabelalar, bitiş, HUD, duraklatma ve level sonu menüleri.
-    /// Menü: Desert Gecko → Levelleri Kur.
+    /// Menü: Desert Gecko → Levelleri Kur → Hepsi ya da tek bir level.
     ///
     /// DİKKAT: Kurulum sahneyi baştan yazar. Bir level sahnede elle düzenlendiyse
     /// yeniden kurmadan önce o düzenlemeleri buradaki level tanımına taşıyın.
@@ -39,7 +39,7 @@ namespace DesertGecko.EditorTools
         // zemin daha yukarıda bitseydi uçurum kenarlarının altında gökyüzü görünürdü.
         const float GroundBottom = -24f;
 
-        [MenuItem("Desert Gecko/Levelleri Kur")]
+        [MenuItem("Desert Gecko/Levelleri Kur/Hepsi")]
         public static void BuildAllMenu()
         {
             if (EditorApplication.isPlaying)
@@ -53,10 +53,13 @@ namespace DesertGecko.EditorTools
             BuildAll(null);
         }
 
-        [MenuItem("Desert Gecko/Level 1-2'yi Kur")]
+        [MenuItem("Desert Gecko/Levelleri Kur/Level 1-1")]
+        public static string BuildLevel11() => BuildSingleLevel(0, Level_1_1);
+
+        [MenuItem("Desert Gecko/Levelleri Kur/Level 1-2")]
         public static string BuildLevel12() => BuildSingleLevel(1, Level_1_2);
 
-        [MenuItem("Desert Gecko/Level 1-3'u Kur")]
+        [MenuItem("Desert Gecko/Levelleri Kur/Level 1-3")]
         public static string BuildLevel13() => BuildSingleLevel(2, Level_1_3);
 
         /// <summary>
@@ -65,11 +68,14 @@ namespace DesertGecko.EditorTools
         /// </summary>
         static string BuildSingleLevel(int index, System.Action<LevelPainter> define)
         {
-            if (EditorApplication.isPlaying)
-                return "play modunda kurulamaz";
+            string blocked = EditorApplication.isPlaying ? "Play modunda level kurulamaz."
+                : EditorSceneManager.GetActiveScene().isDirty ? "Açık sahnede kaydedilmemiş değişiklik var, önce kaydedin." : null;
+            if (blocked != null)
+            {
+                Debug.LogWarning("[DesertGecko] " + blocked);
+                return blocked;
+            }
             var active = EditorSceneManager.GetActiveScene();
-            if (active.isDirty)
-                return "açık sahnede kaydedilmemiş değişiklik var: " + active.path;
             string previous = active.path;
 
             TestSceneBuilder.SceneContext ctx = TestSceneBuilder.Prepare();
