@@ -8,15 +8,6 @@ TextureImporter:
   - first:
       213: -6305085419775589588
     second: aktif_8_1
-  - first:
-      213: 4350779093485718547
-    second: aktif_8_2
-  - first:
-      213: -4552004458670160691
-    second: aktif_8_3
-  - first:
-      213: -1273883075738145447
-    second: aktif_8_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -130,10 +121,10 @@ TextureImporter:
       name: aktif_8_0
       rect:
         serializedVersion: 2
-        x: 42
-        y: 125
-        width: 9
-        height: 8
+        x: 39
+        y: 85
+        width: 11
+        height: 16
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -152,10 +143,10 @@ TextureImporter:
       name: aktif_8_1
       rect:
         serializedVersion: 2
-        x: 45
-        y: 133
-        width: 10
-        height: 10
+        x: 7
+        y: 0
+        width: 60
+        height: 81
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -166,72 +157,6 @@ TextureImporter:
       bones: []
       spriteID: c2308cb6736df78a0800000000000000
       internalID: -6305085419775589588
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: aktif_8_2
-      rect:
-        serializedVersion: 2
-        x: 35
-        y: 110
-        width: 13
-        height: 14
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 31c896bb882116c30800000000000000
-      internalID: 4350779093485718547
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: aktif_8_3
-      rect:
-        serializedVersion: 2
-        x: 44
-        y: 108
-        width: 6
-        height: 6
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: dc488f8ff0804d0c0800000000000000
-      internalID: -4552004458670160691
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: aktif_8_4
-      rect:
-        serializedVersion: 2
-        x: 0
-        y: 0
-        width: 77
-        height: 104
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 95dee398712425ee0800000000000000
-      internalID: -1273883075738145447
       vertices: []
       indices: 
       edges: []

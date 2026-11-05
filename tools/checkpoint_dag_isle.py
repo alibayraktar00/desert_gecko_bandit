@@ -1,11 +1,13 @@
 """Hazır görsellerden level sonu dağını ve checkpoint kaktüsünün karelerini üretir (32 PPU).
 
-Girdi:  Assets/Sprites/_Gelen/dag_kaya.jpg, checkpoint_kaktus.jpg
+Girdi:  Assets/Sprites/_Gelen/dag_kaya.jpg, checkpoint_kaktus.jpg (kapalı), checkpoint_aktif.jpg (8 kare)
 Çıktı:  Katman/dag.png
-        Props/Checkpoint/kapali.png, yanis_0-3.png (fener tutuşur), aktif_0-11.png (döngü: alev, bayrak, duman)
+        Props/Checkpoint/kapali.png, yanis_0-3.png (fener tutuşur), aktif_0-29.png (3 saniyelik yanma döngüsü)
 
-Görseldeki duman tek karelik olduğu için kaldırılır; alev, bayrak ve duman burada canlandırılır.
-Tüm checkpoint kareleri aynı tuvalde ve alttan hizalıdır. Rastgelelik sabit tohumludur.
+Sayfanın ilk karesindeki sönük fener kullanılmaz; kalan yedisi döngüdür, tutuşma ilkine doğru geçer. Tüm kareler aynı tuvalde, gövde ortası ve
+alt kenarlarından hizalıdır. Sayfanın kareleri birbirinden hafifçe farklı çizildiği için döngüde tek bir
+kare sabit gövde olur. Alev sayfanın karelerinden gelir. Bayrak ve duman, kareler arasında zıplamasın
+diye yavaş ve kesintisiz hareketle burada canlandırılır. Rastgelelik sabit tohumludur.
 Çalıştırma: python tools/checkpoint_dag_isle.py
 """
 import math
@@ -23,6 +25,7 @@ CHECKPOINT_DIR = ROOT / "Assets/Sprites/Environment/Props/Checkpoint"
 # --- Dağ ---
 MOUNTAIN_SCALE = 2.3    # 6.6 birim yükseklik: tepesi kameraya sığar, en yüksek zıplamanın üstünde kalır
 MOUNTAIN_W, MOUNTAIN_H = 860, 320
+GAP_ROCK = (0x2C, 0x18, 0x16)
 
 
 def is_purple(c):
@@ -83,6 +86,24 @@ def shade(img, k, cool):
     return out
 
 
+def fill_gaps(img):
+    """Kayaların arasından gökyüzü görünmesin: her sütunda kaya başladıktan sonraki boşluklar koyu kaya olur."""
+    px = img.load()
+    min_run = 6  # tepedeki çalılar sayılmaz, araları dolmasın
+    for x in range(img.width):
+        run, start = 0, None
+        for y in range(img.height):
+            run = run + 1 if px[x, y][3] else 0
+            if run >= min_run:
+                start = y
+                break
+        if start is None:
+            continue
+        for y in range(start, img.height):
+            if not px[x, y][3]:
+                px[x, y] = (*GAP_ROCK, 255)
+
+
 def mountain():
     """Önde görseldeki kayalık, arkasında aynı kayanın büyüyen ve solan kopyaları: level dışı sıradağ."""
     front = shrink(cut_background(RAW / "dag_kaya.jpg"), MOUNTAIN_SCALE)
@@ -99,57 +120,71 @@ def mountain():
         canvas.alpha_composite(part, (right - size[0], MOUNTAIN_H - size[1]))
 
     # Sonuncu aynalı: dağın dış ucu da düz kesik değil, yamaç olarak biter.
-    layer(1.34, 0.46, (16, 20, 34), MOUNTAIN_W - 450, flip=True)
-    layer(1.18, 0.66, (8, 10, 18), MOUNTAIN_W - 210)
+    # Katmanlar geniş bindirilir: her kayanın dış kenarı öndekinin arkasında kalır, dağ tek parça görünür.
+    layer(1.34, 0.46, (16, 20, 34), MOUNTAIN_W - 330, flip=True)
+    layer(1.18, 0.66, (8, 10, 18), MOUNTAIN_W - 110)
     layer(1.0, 1.0, (0, 0, 0), MOUNTAIN_W)
+    fill_gaps(canvas)
     canvas.save(LAYER_DIR / "dag.png")
     print("dag.png", canvas.size, "ön kaya", front.size)
 
 
 # --- Checkpoint ---
-CP_SCALE = 4
-CP_W, CP_ROWS = 80, 108     # kaktüs alanı (oyun pikseli)
-SMOKE_ROOM = 44             # dumanın yükselebilmesi için üstte boş alan
-OFF_BOX = (140, 60)
-ON_BOX = (620, 60)
-OFF_SHIFT = 2               # kapalı kaktüs görselde 2 piksel sağda: üst üste gelsin
-LANTERN = (33, 6, 51, 38)   # fener bölgesi; açık görselde parıltı ve duman var, kapalıdan alınır
-GLASS = (36, 24, 46, 34)
-FLAG = (47, 38, CP_W, 57)
-SMOKE_START = (43, 9)
-FRAMES = 12
-
-FLAMES = [
-    ["...o...", "..oo...", "..oyo..", ".oyyo..", ".oywyo.", ".oywyo.", "..oyo.."],
-    ["....o..", "...oo..", "..oyo..", "..oyyo.", ".oywyo.", ".oywyo.", "..oyo.."],
-    [".......", "...o...", "..oyo..", "..oyo..", ".oywyo.", ".oywyo.", "..oyo.."],
-    ["..o....", "..oo...", ".ooyo..", ".oyyo..", ".oywyo.", ".oywyo.", "..oyo.."],
-]
-SMALL_FLAME = [".......", ".......", ".......", "...o...", "..oyo..", "..oyo..", "...o..."]
-FLAME_COLORS = {"o": (236, 118, 40), "y": (255, 200, 72), "w": (255, 244, 200)}
+CP_HEIGHT = 72                          # kaktüs ve taşların yüksekliği (oyun pikseli) = 2,25 birim
+CP_LEFT, CP_RIGHT, CP_TOP = 30, 42, 30  # gövde ortasından sol/sağ, kaktüs tepesinden yukarı (oyun pikseli)
+SHEET_COLS = [40, 290, 540, 790, 1024]
+SHEET_ROWS = [10, 285, 572]
+OFF_CELL = (120, 60, 470, 510)          # kapalı kaktüs, checkpoint_kaktus.jpg içinde
+SMOKE_BOOST = 1.7                       # sayfadaki duman koyu zemine göre: gökyüzünde de görünsün
 
 
-def bg_near(c):
+def is_sheet_bg(c):
     r, g, b = c
-    return b > r + 2 and b > g + 10 and r > g and abs(r - 45) < 34 and abs(g - 30) < 30 and abs(b - 58) < 34
+    return b >= r - 4 and b > g + 6 and abs(r - 42) < 30 and abs(g - 29) < 24 and abs(b - 52) < 28
 
 
-def sample(src, box):
-    """4 pikselde bir oyun pikseli: bloğun ortasından okur, çoğunluğu zeminse saydam bırakır."""
-    px = src.load()
-    x0, y0 = box
-    out = Image.new("RGBA", (CP_W, CP_ROWS), (0, 0, 0, 0))
-    for j in range(CP_ROWS):
-        for i in range(CP_W):
-            cx, cy = x0 + i * CP_SCALE + 2, y0 + j * CP_SCALE + 2
-            count = sum(bg_near(px[cx + a, cy + b]) for a in (-1, 0, 1) for b in (-1, 0, 1))
-            if count <= 4:
-                out.putpixel((i, j), (*px[cx, cy], 255))
-    return out
+def cut_cell(src, box):
+    cell = src.crop(box).convert("RGBA")
+    px = cell.load()
+    for y in range(cell.height):
+        for x in range(cell.width):
+            if is_sheet_bg(px[x, y][:3]):
+                px[x, y] = (0, 0, 0, 0)
+    return cell
+
+
+def anchors(cell):
+    """Hizalama noktaları: gövde tepesinin ortası, tepesi ve taşların altı."""
+    px = cell.load()
+    center = top = None
+    for y in range(cell.height):
+        greens = [x for x in range(cell.width) if px[x, y][3] and px[x, y][1] > px[x, y][0] + 2 and px[x, y][1] > px[x, y][2] + 2]
+        if len(greens) > 6:
+            center, top = sum(greens) / len(greens), y
+            break
+    body = cell.copy()
+    keep_largest(body)
+    return center, top, body.getbbox()[3]
+
+
+def clean_lantern_air(cell, center, bottom):
+    """Fenerin arkasındaki kızıl parıltıyı siler (gökyüzünde leke gibi durur), dumanı açar."""
+    px = cell.load()
+    x0, x1 = int(center + 18), min(cell.width, int(center + 80))
+    for y in range(max(0, bottom - 215), bottom - 140):
+        for x in range(x0, x1):
+            r, g, b, a = px[x, y]
+            if a and 44 <= r <= 92 and 26 <= g <= 62 and 26 <= b <= 66 and abs(g - b) < 16 and r < g + 34:
+                px[x, y] = (0, 0, 0, 0)
+    for y in range(0, max(0, bottom - 195)):
+        for x in range(x0 - 10, x1):
+            r, g, b, a = px[x, y]
+            if a and abs(r - b) < 24 and abs(r - g) < 26:
+                px[x, y] = (min(255, int(r * SMOKE_BOOST)), min(255, int(g * SMOKE_BOOST)), min(255, int(b * SMOKE_BOOST)), 255)
 
 
 def keep_largest(img):
-    """Görseldeki kıvılcım ve duman kırıntıları ana gövdeye bağlı değildir, atılır."""
+    """Ana gövdeye bağlı olmayan parçaları atar."""
     px = img.load()
     seen, best = set(), []
     for y in range(img.height):
@@ -173,145 +208,170 @@ def keep_largest(img):
                 px[x, y] = (0, 0, 0, 0)
 
 
-def warm_glass(img):
-    """Fener camı içindeki ışık."""
-    px = img.load()
-    x0, y0, x1, y1 = GLASS
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            r, g, b, a = px[x, y]
-            if a and r + g + b > 150:
-                px[x, y] = (min(255, int(r * 1.15 + 34)), min(255, int(g * 1.0 + 12)), int(b * 0.62), a)
+def to_game_size(cell, lit=False):
+    """Hizalar ve oyun boyuna indirir; alt satır taşların altıdır, böylece kare yere tam oturur."""
+    center, top, bottom = anchors(cell)
+    scale = (bottom - top) / CP_HEIGHT  # sayfadaki kareler biraz farklı boyda: her biri aynı boya iner
+    print(f"  ölçek {scale:.2f}")
+    if lit:
+        clean_lantern_air(cell, center, bottom)
+    box = (round(center - CP_LEFT * scale), round(bottom - (CP_TOP + CP_HEIGHT) * scale), round(center + CP_RIGHT * scale), bottom)
+    canvas = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]), (0, 0, 0, 0))
+    canvas.paste(cell, (-box[0], -box[1]))
+    return shrink_to(canvas, (CP_LEFT + CP_RIGHT, CP_TOP + CP_HEIGHT))
 
 
-def draw_flame(img, rows):
-    px = img.load()
-    for dy, row in enumerate(rows):
-        for dx, ch in enumerate(row):
-            if ch != ".":
-                px[38 + dx, 25 + dy] = (*FLAME_COLORS[ch], 255)
+def shrink_to(img, size):
+    """Saydam kenarlar renge karışmasın diye önceden çarpılmış alfayla küçültür."""
+    small = img.convert("RGBa").resize(size, Image.BOX).convert("RGBA")
+    alpha = small.getchannel("A").point(lambda v: 255 if v > 110 else 0)
+    small.putalpha(alpha)  # palete indirilmez: az sayıdaki duman pikseli kahverengiye dönerdi
+    return small
 
 
-def wave_flag(base, flag_pixels, t):
-    """Bayrak sapa bağlı yerde durur, uca doğru artan dalgayla sallanır."""
-    out = base.copy()
-    px = out.load()
-    x0, y0, x1, y1 = FLAG
-    for x, y, c in flag_pixels:
-        if x > 57:
-            px[x, y] = (0, 0, 0, 0)
-    for x, y, c in flag_pixels:
-        reach = max(0, x - x0) / (x1 - x0)
-        dy = round(math.sin(x * 0.32 - t) * (0.6 + 3.2 * reach))
-        if 0 <= y + dy < out.height:
-            px[x, y + dy] = c
-    return out
+# Döngüde hareket eden bölgeler (oyun pikseli, kare tuvalinde)
+SMOKE_ZONE = (34, 0, 72, 38)
+FLAME_BOX = (37, 41, 44, 48)
+FLAG_BOX = (44, 49, 70, 66)
 
 
-def flag_pixels_of(img):
-    px = img.load()
-    x0, y0, x1, y1 = FLAG
+def in_box(x, y, box):
+    return box[0] <= x < box[2] and box[1] <= y < box[3]
+
+
+def is_smoke(c):
+    """Duman ve kıvılcım: açık renkli; fener sapı koyu ve kahverengi olduğu için ayrılır."""
+    r, g, b, a = c
+    return a > 0 and r > 85 and abs(r - b) < 34
+
+
+def flag_mask(frame):
+    """Bayrak pikselleri: kırmızı gövdesi ve ona bitişik koyu kenarı."""
+    px = frame.load()
+
+    def red(x, y):
+        r, g, b, a = px[x, y]
+        return a > 0 and r > 60 and r > g * 1.5 and r > b * 1.4
+
+    mask = set()
+    for y in range(FLAG_BOX[1], FLAG_BOX[3]):
+        for x in range(FLAG_BOX[0], FLAG_BOX[2]):
+            if red(x, y):
+                mask.add((x, y))
+    for x, y in list(mask):
+        for nx in range(x - 1, x + 2):
+            for ny in range(y - 1, y + 2):
+                if in_box(nx, ny, FLAG_BOX) and nx < frame.width and px[nx, ny][3] and sum(px[nx, ny][:3]) < 110:
+                    mask.add((nx, ny))
+    return mask
+
+
+def still_body(frames):
+    """Tek kareyi sabit gövde yapar: duman ve bayrak silinir, bayrağın ardı öteki karelerden tamamlanır."""
+    base = frames[0].copy()
+    px = base.load()
+    for y in range(SMOKE_ZONE[1], SMOKE_ZONE[3]):
+        for x in range(SMOKE_ZONE[0], SMOKE_ZONE[2]):
+            if is_smoke(px[x, y]):
+                px[x, y] = (0, 0, 0, 0)
+
+    masks = [flag_mask(f) for f in frames]
+    for y in range(FLAG_BOX[1], FLAG_BOX[3]):
+        for x in range(FLAG_BOX[0], min(FLAG_BOX[2], base.width)):
+            if (x, y) not in masks[0]:
+                continue
+            seen = [f.getpixel((x, y)) for f, m in zip(frames, masks) if (x, y) not in m]
+            solid = [c for c in seen if c[3]]
+            px[x, y] = solid[0] if len(solid) * 2 > len(seen) else (0, 0, 0, 0)
+    return base
+
+
+LOOP_FRAMES = 30                                # 10 kare/sn ile 3 saniye
+FLAME_ORDER = [0, 1, 2, 3, 4, 5, 6, 3, 1, 4]    # her biri 3 kare kalır: titreme yumuşak olur
+FLAG_WAVES = 2                                  # döngüde bayraktan geçen dalga sayısı
+FLAG_LENGTH = 0.2                               # dalganın bayrak boyunca sıklığı
+PUFFS, SMOKE_RISE = 6, 28                       # aynı anda duman sayısı, yükselme (piksel)
+SMOKE_ORIGIN = (41, 31)                         # fener sapının tepesi
+
+
+def soft_flag(px, pixels, index):
+    """Bayrak sapa bağlı yerde durur; uca doğru artan, yavaş ilerleyen tek bir dalgayla sallanır."""
+    t = index / LOOP_FRAMES * 2 * math.pi * FLAG_WAVES
+    for x, y, c in pixels:
+        reach = (x - FLAG_BOX[0]) / (FLAG_BOX[2] - FLAG_BOX[0])
+        px[x, y + round(math.sin(x * FLAG_LENGTH - t) * 2.6 * reach)] = c
+
+
+def soft_smoke(frame, index):
+    """İnce bir duman sütunu: yavaş yükselir, hafifçe salınır, büyüyüp dama deseniyle seyrelerek kaybolur."""
+    px = frame.load()
+    for p in range(PUFFS):
+        life = (index / LOOP_FRAMES + p / PUFFS) % 1.0
+        cx = SMOKE_ORIGIN[0] + life * 4 + math.sin(life * 2 * math.pi + p) * (0.4 + 1.6 * life)
+        cy = SMOKE_ORIGIN[1] - life * SMOKE_RISE
+        radius = 0.9 + 1.6 * life
+        tone = int(205 - 45 * life)
+        for y in range(int(cy - radius), int(cy + radius) + 2):
+            for x in range(int(cx - radius), int(cx + radius) + 2):
+                if not (0 <= x < frame.width and 0 <= y < frame.height):
+                    continue
+                if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > radius * radius:
+                    continue
+                if (life > 0.6 and (x + y) % 2) or (life > 0.85 and x % 2):
+                    continue
+                px[x, y] = (tone, tone - 8, tone - 12, 255)
+
+
+def compose_loop(frames):
+    """Sabit gövdenin üstüne alev, bayrak ve duman biner; gövde hiç oynamaz."""
+    body = still_body(frames)
+    flag = sorted(flag_mask(frames[0]))
+    src0 = frames[0].load()
+    flag_pixels = [(x, y, src0[x, y]) for x, y in flag if x < body.width]
     out = []
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            r, g, b, a = px[x, y]
-            if a and (r > g * 1.5 or (x > 57 and r < 70)):
-                out.append((x, y, px[x, y]))
+    for i in range(LOOP_FRAMES):
+        result = body.copy()
+        px = result.load()
+        flame = frames[FLAME_ORDER[i // 3]].load()
+        for y in range(FLAME_BOX[1], FLAME_BOX[3]):
+            for x in range(FLAME_BOX[0], FLAME_BOX[2]):
+                px[x, y] = flame[x, y]
+        soft_flag(px, flag_pixels, i)
+        soft_smoke(result, i)
+        out.append(result)
     return out
-
-
-def pad_top(img):
-    out = Image.new("RGBA", (CP_W, CP_ROWS + SMOKE_ROOM), (0, 0, 0, 0))
-    out.alpha_composite(img, (0, SMOKE_ROOM))
-    return out
-
-
-def smoke(frame, index, puffs=7, rise=46):
-    """Fenerin tepesinden yükselen duman; döngü başa dikişsiz döner. Yukarıda seyrelerek kaybolur."""
-    px = frame.load()
-    sx, sy = SMOKE_START[0], SMOKE_START[1] + SMOKE_ROOM
-    for p in range(puffs):
-        life = ((index / FRAMES) + p / puffs) % 1.0
-        cx = sx + math.sin(life * 5.2 + p * 2.1) * (0.8 + 3.2 * life) + life * 6
-        cy = sy - life * rise
-        radius = 1.6 + 4.2 * life
-        tone = int(198 - 66 * life)
-        for y in range(int(cy - radius), int(cy + radius) + 1):
-            for x in range(int(cx - radius), int(cx + radius) + 1):
-                if not (0 <= x < CP_W and 0 <= y < frame.height):
-                    continue
-                d = (x - cx) ** 2 + (y - cy) ** 2
-                if d > radius * radius:
-                    continue
-                # Yaşlandıkça dama deseniyle seyrelir; gerçek saydamlık piksel sanata uymuyor.
-                if life > 0.72 and (x + y + p) % 2:
-                    continue
-                if life > 0.88 and (x // 2 + y) % 2:
-                    continue
-                k = 0.86 if y > cy + radius * 0.25 else 1.0
-                px[x, y] = (int(tone * k), int((tone - 12) * k), int((tone - 18) * k), 255)
-
-
-def embers(frame, index, seed):
-    rng = random.Random(seed)
-    px = frame.load()
-    for _ in range(4):
-        x0, phase, drift = rng.randint(36, 50), rng.random(), rng.uniform(-5, 6)
-        life = ((index / FRAMES) + phase) % 1.0
-        x, y = int(x0 + drift * life), int(SMOKE_ROOM + 12 - life * 26)
-        if life < 0.75 and 0 <= y < frame.height:
-            px[x, y] = (255, 170, 60, 255) if life < 0.4 else (214, 96, 40, 255)
 
 
 def checkpoint():
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-    src = Image.open(RAW / "checkpoint_kaktus.jpg").convert("RGB")
-    off_raw, on_raw = sample(src, OFF_BOX), sample(src, ON_BOX)
+    for old in CHECKPOINT_DIR.glob("*.png"):
+        old.unlink()  # eski kare sayısından artan dosya kalmasın (meta'yı Unity temizler)
 
-    off = Image.new("RGBA", (CP_W, CP_ROWS), (0, 0, 0, 0))
-    off.paste(off_raw, (-OFF_SHIFT, 0))
-    keep_largest(off)
+    off = to_game_size(cut_cell(Image.open(RAW / "checkpoint_kaktus.jpg").convert("RGB"), OFF_CELL))
+    off.save(CHECKPOINT_DIR / "kapali.png")
 
-    on = on_raw.copy()
-    lantern = off.crop(LANTERN)
-    # Parıltı ve duman fener çevresinde; temiz kapalı fenerle değiştirilir, kaktüs yeşili korunur.
-    pxo, pxl = on.load(), lantern.load()
-    for y in range(LANTERN[1], LANTERN[3]):
-        for x in range(LANTERN[0], LANTERN[2]):
-            c = pxl[x - LANTERN[0], y - LANTERN[1]]
-            r, g, b, a = c
-            is_green = a and g > r and g > b
-            if not is_green:
-                pxo[x, y] = c
-    keep_largest(on)
-    warm_glass(on)
+    sheet = Image.open(RAW / "checkpoint_aktif.jpg").convert("RGB")
+    frames = []
+    for r in range(2):
+        for c in range(4):
+            box = (SHEET_COLS[c], SHEET_ROWS[r], SHEET_COLS[c + 1], SHEET_ROWS[r + 1])
+            frames.append(to_game_size(cut_cell(sheet, box), lit=True))
 
-    pad_top(off).save(CHECKPOINT_DIR / "kapali.png")
-
-    flags = flag_pixels_of(on)
-    for i in range(FRAMES):
-        frame = wave_flag(on, flags, i / FRAMES * 2 * math.pi)
-        draw_flame(frame, FLAMES[i % len(FLAMES)])
-        frame = pad_top(frame)
-        smoke(frame, i)
-        embers(frame, i, 7)
+    loop = compose_loop(frames[1:])
+    for i, frame in enumerate(loop):
         frame.save(CHECKPOINT_DIR / f"aktif_{i}.png")
 
-    # Tutuşma: kapalıdan açığa dama geçişi, alev büyür, ilk duman çıkar.
-    order = [(x, y) for y in range(CP_ROWS) for x in range(CP_W)]
+    # Tutuşma: kapalıdan döngünün ilk karesine dama geçişi.
+    w, h = off.size
+    order = [(x, y) for y in range(h) for x in range(w)]
     random.Random(1923).shuffle(order)
     for i in range(4):
-        amount = (i + 1) / 5
         frame = off.copy()
-        px, pon = frame.load(), on.load()
-        for x, y in order[:int(len(order) * amount)]:
-            px[x, y] = pon[x, y]
-        draw_flame(frame, SMALL_FLAME if i < 2 else FLAMES[2])
-        frame = pad_top(frame)
-        if i >= 2:
-            smoke(frame, 0, puffs=i, rise=20)
+        px, target = frame.load(), loop[0].load()
+        for x, y in order[:int(len(order) * (i + 1) / 4)]:
+            px[x, y] = target[x, y]
         frame.save(CHECKPOINT_DIR / f"yanis_{i}.png")
-    print("checkpoint kareleri tamam")
+    print("checkpoint kareleri tamam", off.size)
 
 
 def main():

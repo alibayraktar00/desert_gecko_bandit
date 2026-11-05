@@ -268,6 +268,7 @@ namespace DesertGecko.EditorTools
             col.offset = new Vector2(0f, 6f);
             Sprite off = CheckpointFrame("kapali");
             SpriteRenderer totem = AddSprite(root.transform, "Totem", off, 2);
+            totem.transform.localPosition = new Vector3(0f, -0.09f, 0f); // taşlar toprağa gömülsün, havada durmasın
             var audio = root.AddComponent<AudioSource>();
             audio.playOnAwake = false;
             audio.spatialBlend = 0f;
@@ -276,7 +277,7 @@ namespace DesertGecko.EditorTools
             SetField(checkpoint, "totem", totem);
             SetField(checkpoint, "offFrame", off);
             SetArray(checkpoint, "igniteFrames", CheckpointFrames("yanis", 4));
-            SetArray(checkpoint, "litFrames", CheckpointFrames("aktif", 12));
+            SetArray(checkpoint, "litFrames", CheckpointFrames("aktif", 30));
             SetField(checkpoint, "audioSource", audio);
             AssetDatabase.ImportAsset("Assets/Audio/fener.wav", ImportAssetOptions.ForceSynchronousImport);
             SetField(checkpoint, "igniteClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/fener.wav"));

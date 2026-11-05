@@ -21,7 +21,7 @@ namespace DesertGecko.Environment
         [SerializeField] float litFps = 10f;
         [SerializeField] AudioSource audioSource;
         [SerializeField] AudioClip igniteClip;
-        [SerializeField] Vector2 lanternOffset = new Vector2(0.05f, 2.45f);
+        [SerializeField] Vector2 lanternOffset = new Vector2(0.1f, 1.7f);
         [SerializeField] Vector2 respawnOffset = new Vector2(0f, 0.1f);
         [SerializeField] Color burstColor = new Color32(0xFF, 0xB0, 0x48, 0xFF);
         [SerializeField] Color smokeColor = new Color32(0xB4, 0xA8, 0xA2, 0xFF);
