@@ -227,6 +227,8 @@ MonoBehaviour:
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
   flashDuration: 0.12
+  hitGuardDuration: 0.7
+  guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   spriteRenderer: {fileID: 6946418270471926185}
@@ -238,6 +240,19 @@ MonoBehaviour:
   visual: {fileID: 2841557787699341410}
   bobHeight: 0.05
   bobFrequency: 9
+  counterRange: 6
+  hurtTime: 0.3
+  backOffTime: 0.2
+  backOffSpeed: 2.5
+  windupTime: 0.4
+  strikeSpeed: 6
+  maxStrikeTime: 0.3
+  strikeStopDistance: 1
+  stingReach: 1.35
+  stingHeight: 1
+  stingDamage: 1
+  recoverTime: 0.4
+  stingColor: {r: 0.95686275, g: 0.827451, b: 0.36862746, a: 1}
 --- !u!114 &6872854913150851558
 MonoBehaviour:
   m_ObjectHideFlags: 0

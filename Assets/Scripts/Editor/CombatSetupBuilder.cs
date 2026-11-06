@@ -28,6 +28,7 @@ namespace DesertGecko.EditorTools
             public Rattlesnake Rattlesnake;
             public Jackal Jackal;
             public Armadillo Armadillo;
+            public TumbleweedMouse TumbleweedMouse;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -52,6 +53,7 @@ namespace DesertGecko.EditorTools
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
             a.Jackal = BuildJackal(a.Crystal);
             a.Armadillo = BuildArmadillo(a.Crystal);
+            a.TumbleweedMouse = BuildTumbleweedMouse(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -273,6 +275,52 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<Armadillo>(root, "Armadillo");
+        }
+
+        // Kare sırası (tools/gemini_cali_faresi_isle.py): 0-3 nefes, 4-5 göz, 6-12 top, 13-17 çıkış, 18 zıplama,
+        // 19-25 koşu, 26-32 bıçak, 33-36 yorgun, 37-42 saklanma, 43-47 yenik.
+        static TumbleweedMouse BuildTumbleweedMouse(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("cali_faresi", 48);
+            Sprite[] Range(int from, int to)
+            {
+                var frames = new Sprite[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            var root = new GameObject("TumbleweedMouse") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.8f, 1f);
+            box.offset = new Vector2(0f, 0.5f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var mouse = root.AddComponent<TumbleweedMouse>();
+            SetField(mouse, "spriteRenderer", sr);
+            SetMask(mouse, "groundMask", GameLayers.GroundMask);
+            SetField(mouse, "disguiseFrame", f[0]);
+            SetArray(mouse, "revealFrames", Range(13, 17));
+            SetField(mouse, "jumpFrame", f[18]);
+            SetArray(mouse, "runFrames", Range(19, 25));
+            SetArray(mouse, "stabFrames", Range(26, 32));
+            SetArray(mouse, "fatigueFrames", Range(33, 36));
+            SetField(mouse, "parryFrame", f[18]);
+            SetArray(mouse, "defeatFrames", Range(43, 47));
+
+            // Kareler sağa bakar. Sıska: savuşturmaları bitince tek darbede ölür.
+            var so = new SerializedObject(mouse);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("maxHealth").intValue = 1;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<TumbleweedMouse>(root, "TumbleweedMouse");
         }
 
         static Sprite[] LoadEnemyFrames(string enemy, int count)

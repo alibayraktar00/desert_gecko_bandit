@@ -299,13 +299,13 @@ namespace DesertGecko.Enemies
 
         protected override void OnDamaged()
         {
+            // Her darbeden sonra hemen kapanıp vurana doğru yuvarlanır: vur, kaç, yine vur.
             hurtUntil = Time.time + hurtDuration;
-            // Yürürken vurulan armadillo hemen yuvarlanır; sersemken vurulan sersemliğini sürdürür.
-            if ((State == ArmadilloState.Patrol || State == ArmadilloState.Idle) && Player != null)
-            {
-                nextAttackAt = 0f;
-                BeginAttack();
-            }
+            rollDirection = Player != null
+                ? (Player.transform.position.x >= transform.position.x ? 1 : -1)
+                : FacingDirection;
+            TurnTowards(rollDirection);
+            Enter(ArmadilloState.Curl, hurtDuration + curlDuration);
         }
 
         protected override void OnDied()

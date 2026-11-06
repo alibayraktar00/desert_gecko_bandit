@@ -527,6 +527,7 @@ namespace DesertGecko.EditorTools
             p.Ground(46f, 62f, 10f);
             p.Checkpoint(48f, 10f);
             p.Plant("kaktus_05", 52f, 10f);
+            p.SahteCali(50f, 10f);
             p.Jackal(57f, 10f);
 
             // Bükülme: yatay ve dikey platform sırayla; biri kaçarsa diğeri uzaklaşmış olur
@@ -543,6 +544,8 @@ namespace DesertGecko.EditorTools
             p.Crystal(87f, 14.2f);
             p.Snake(91f, 12f);
             p.Plant("kaktus_16", 94.5f, 12f);
+            p.SahteCali(84f, 12f);
+            p.Fare(95.5f, 12f);
             p.Sign(97f, 12f, "Eski maden kuyusu.\nTahtalar çürük, dikkat!");
         }
 
@@ -633,6 +636,7 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_21", 6f, 15f);
             p.Snake(10f, 15f);
             p.Sign(15.5f, 15f, "Sıcak hava seni taşır:\natla, Space basılı tut");
+            p.Fare(6.5f, 15f);
 
             // Tanıtım: tek sütun, kısa boşluk
             p.Thermal(19f, 24f, 8f, 21f, 17f);
@@ -648,6 +652,7 @@ namespace DesertGecko.EditorTools
             p.Platform(46.5f, 15f, "ada_3"); // sütundan düşene son şans
             p.Ground(60f, 72f, 19f);
             p.Checkpoint(62f, 19f);
+            p.SahteCali(64f, 19f);
             p.Jackal(66f, 19f);
             p.Snake(70f, 19f);
 
@@ -655,6 +660,7 @@ namespace DesertGecko.EditorTools
             p.Thermal(73f, 78f, 10f, 25f, 20f);
             p.Crystal(75.5f, 24f);
             p.Ground(80f, 88f, 22f);
+            p.SahteCali(83f, 22f);
             p.Plant("kaktus_17", 82f, 22f);
             p.Scorpion(85f, 22f);
         }
@@ -730,7 +736,9 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(2.5f, 20f);
             p.Plant("kaktus_25", 6f, 20f);
             p.Snake(10f, 20f);
+            p.SahteCali(13f, 20f);
             p.Jackal(16f, 20f);
+            p.Fare(18.5f, 20f);
 
             p.Crumble(21.33f, 20f, "tahta_ray");
             p.Crumble(24f, 20f, "tahta_ray");
@@ -747,7 +755,9 @@ namespace DesertGecko.EditorTools
             p.Crystal(60.5f, 23.8f);
 
             p.Ground(63f, 82f, 24f);
+            p.SahteCali(65f, 24f);
             p.Snake(67f, 24f);
+            p.Fare(75.5f, 24f);
             p.Table(70f, 24f, "tahta_korkuluk");
             p.Crystal(70f, 26.2f);
             p.Jackal(73f, 24f);
@@ -825,7 +835,7 @@ namespace DesertGecko.EditorTools
         static void Dekor_RuzgarGecidi(LevelPainter p)
         {
             p.Deco("yuz_kamp", 9f, 15f);
-            p.Deco("yuz_cali_top", 13.5f, 15f);
+            p.Deco("yuz_top_b", 13.5f, 15f);
             p.Deco("yuz_kurukafa", 30f, 18f);
             p.Deco("yuz_agac_2", 34.5f, 18f);
             p.Deco("yuz_sandik_varil", 65f, 19f);
@@ -909,7 +919,7 @@ namespace DesertGecko.EditorTools
         static void Dekor_IlkAdimlar(LevelPainter p)
         {
             p.Deco("yuz_tabela_yon", -1f, 0f);
-            p.Deco("yuz_cali_top", 12f, 0f);
+            p.Deco("yuz_top_b", 12f, 0f);
             p.Deco("yuz_agac_1", 21.5f, 0f);
             p.Deco("yuz_kaya_2", 27f, 0f);
             p.Fence(34.6f, 46f, 2f); // sağ ucu kayaya dayanır
@@ -1618,6 +1628,8 @@ namespace DesertGecko.EditorTools
             void Cover(string sprite, float x, (float xMin, float xMax, float top) surface, float scale, Color color, int order)
             {
                 Sprite s = TestSceneBuilder.Prop(sprite);
+                if (order == CoverOrder && sprite.StartsWith("yuz_top_"))
+                    scale = 1f; // Çalı Faresi'nin gizli haliyle aynı boy: küçükse ayırt edilirdi
                 float half = s.bounds.size.x * scale / 2f;
                 if (x - half < surface.xMin || x + half > surface.xMax)
                     return;
@@ -1847,6 +1859,11 @@ namespace DesertGecko.EditorTools
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x + OriginX, groundTop);
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);
             public void Armadillo(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Armadillo, actors, Name("Armadillo"), x + OriginX, groundTop);
+            public void Fare(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.TumbleweedMouse, actors, Name("CaliFaresi"), x + OriginX, groundTop);
+
+            /// <summary>Çalı Faresi'nin gizli haliyle aynı, zararsız çalı: oyuncu her çalıdan şüphelensin.</summary>
+            public void SahteCali(float x, float groundTop) => Deco("yuz_top_a", x, groundTop);
+
             public void Snake(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Rattlesnake, actors, Name("Yilan"), x + OriginX, groundTop);
             public void Bug(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Bug, actors, Name("Bocek"), x + OriginX, y);
             public void Crystal(float x, float y) => CombatSetupBuilder.Place(ctx.Combat.Crystal, actors, Name("Kristal"), x + OriginX, y);

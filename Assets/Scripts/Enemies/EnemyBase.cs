@@ -43,6 +43,9 @@ namespace DesertGecko.Enemies
         [SerializeField] Vector2 knockbackVelocity = new Vector2(4f, 3f);
         [SerializeField] float stunDuration = 0.3f;
         [SerializeField] float flashDuration = 0.12f;
+        [Tooltip("Darbe aldıktan sonra bu kadar süre yeni darbe işlemez: peş peşe vurup kilitlenemesin, düşman karşılık verebilsin")]
+        [SerializeField] float hitGuardDuration = 0.7f;
+        [SerializeField] float guardBlinkRate = 14f;
         [SerializeField] Color flashColor = new Color(1f, 0.35f, 0.35f);
         [SerializeField] Color deathBurstColor = new Color32(0xB5, 0x45, 0x2B, 0xFF);
 
@@ -65,6 +68,8 @@ namespace DesertGecko.Enemies
         protected virtual bool HoldPosition => false;
         /// <summary>true iken saldırılar işlemez (zırh, kabuk).</summary>
         protected virtual bool Invulnerable => false;
+        /// <summary>Bu güçteki darbe boşa çıkar mı (zırh, savuşturma).</summary>
+        protected virtual bool Deflects(int amount) => Invulnerable;
         protected PlayerHealth Player => player;
 
         public event Action<EnemyBase> Died;
@@ -76,6 +81,7 @@ namespace DesertGecko.Enemies
         int health;
         float stunnedUntil;
         float flashUntil;
+        float hitGuardUntil;
         bool lootDropped;
         Color baseColor = Color.white;
         PlayerHealth player;
@@ -113,7 +119,11 @@ namespace DesertGecko.Enemies
         {
             if (spriteRenderer == null)
                 return;
-            spriteRenderer.color = Time.time < flashUntil ? flashColor : baseColor;
+            Color color = Time.time < flashUntil ? flashColor : baseColor;
+            // Koruma süresinde yanıp söner: oyuncu şu an vuramayacağını görür.
+            if (Time.time < hitGuardUntil && Mathf.Sin(Time.time * guardBlinkRate * Mathf.PI * 2f) > 0f)
+                color.a *= 0.45f;
+            spriteRenderer.color = color;
             spriteRenderer.flipX = spriteFacesLeft ? FacingDirection > 0 : FacingDirection < 0;
         }
 
@@ -235,13 +245,14 @@ namespace DesertGecko.Enemies
         {
             if (!IsAlive || amount <= 0)
                 return;
-            if (Invulnerable)
+            if (Deflects(amount) || Time.time < hitGuardUntil)
             {
                 OnBlocked();
                 return;
             }
 
             health = Mathf.Max(0, health - amount);
+            hitGuardUntil = Time.time + hitGuardDuration;
             flashUntil = Time.time + flashDuration;
             if (CanChase && player != null && player.IsAlive)
                 IsChasing = true; // vurulan düşman saldırganı takip eder
@@ -299,6 +310,7 @@ namespace DesertGecko.Enemies
             FacingDirection = -1;
             stunnedUntil = 0f;
             flashUntil = 0f;
+            hitGuardUntil = 0f;
         }
 
         protected virtual void OnDrawGizmosSelected()

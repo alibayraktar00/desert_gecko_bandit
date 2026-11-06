@@ -31,6 +31,9 @@ namespace DesertGecko.Enemies
         [SerializeField] float attackCooldown = 1.5f;
         [SerializeField] float hurtDuration = 0.3f;
         [SerializeField] float interruptedCooldown = 0.8f;
+        [Header("Karşı atış")]
+        [Tooltip("Vurulunca çıngıraksız, hemen ateş eder; bu sürede en fazla bir kez")]
+        [SerializeField] float counterCooldown = 2.5f;
 
         [Header("Ses")]
         [SerializeField] AudioSource audioSource;
@@ -56,6 +59,7 @@ namespace DesertGecko.Enemies
         Coroutine attack;
         float nextAttackAt;
         float hurtUntil;
+        float nextCounterAt;
 
         protected override bool CanChase => false;
         protected override bool HoldPosition => State != AttackState.None;
@@ -95,11 +99,18 @@ namespace DesertGecko.Enemies
             return count > 0 && sightHits[0].collider.GetComponentInParent<PlayerHealth>() != null;
         }
 
-        IEnumerator AttackRoutine()
+        IEnumerator AttackRoutine(bool counter = false)
         {
-            State = AttackState.Rattle;
-            PlaySound(rattleClip);
-            yield return new WaitForSeconds(telegraphDuration);
+            if (counter)
+            {
+                yield return new WaitForSeconds(hurtDuration);
+            }
+            else
+            {
+                State = AttackState.Rattle;
+                PlaySound(rattleClip);
+                yield return new WaitForSeconds(telegraphDuration);
+            }
 
             State = AttackState.Aim;
             yield return new WaitForSeconds(aimDuration);
@@ -159,6 +170,13 @@ namespace DesertGecko.Enemies
             nextAttackAt = Mathf.Max(nextAttackAt, Time.time + interruptedCooldown); // vurmak bekleme süresini kısaltmasın
             if (Player != null)
                 TurnTowards(Player.transform.position.x >= transform.position.x ? 1 : -1);
+            // Hâlâ ayaktaysa uyarmadan karşılık verir.
+            if (isActiveAndEnabled && Time.time >= nextCounterAt)
+            {
+                nextCounterAt = Time.time + counterCooldown;
+                State = AttackState.Recover; // sersemlerken yeni saldırı başlamasın
+                attack = StartCoroutine(AttackRoutine(counter: true));
+            }
         }
 
         protected override void OnDied()
@@ -181,6 +199,7 @@ namespace DesertGecko.Enemies
             base.ResetEnemy();
             nextAttackAt = 0f;
             hurtUntil = 0f;
+            nextCounterAt = 0f;
         }
 
         protected override void Update()

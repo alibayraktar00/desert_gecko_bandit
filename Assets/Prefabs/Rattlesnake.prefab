@@ -325,6 +325,8 @@ MonoBehaviour:
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
   flashDuration: 0.12
+  hitGuardDuration: 0.7
+  guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   spriteRenderer: {fileID: 2563158231322058685}
@@ -343,6 +345,7 @@ MonoBehaviour:
   attackCooldown: 1.5
   hurtDuration: 0.3
   interruptedCooldown: 0.8
+  counterCooldown: 2.5
   audioSource: {fileID: 216163692455443263}
   rattleClip: {fileID: 8300000, guid: 843bb6a5a97716f4a9905164600d3842, type: 3}
   shotClip: {fileID: 8300000, guid: 9e82c2d734b160c468ecb384ffb3a470, type: 3}

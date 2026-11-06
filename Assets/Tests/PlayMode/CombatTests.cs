@@ -557,9 +557,15 @@ namespace DesertGecko.Tests
             int before = armadillo.Health;
             armadillo.TakeDamage(1, Vector2.right);
             Assert.AreEqual(before - 1, armadillo.Health, "sersemken hasar almalı");
+            Assert.AreEqual(Armadillo.ArmadilloState.Curl, armadillo.State, "vurulunca hemen kapanmalı");
 
-            yield return new WaitForSeconds(2.8f);
-            Assert.AreEqual(Armadillo.ArmadilloState.Recover, armadillo.State);
+            before = armadillo.Health;
+            armadillo.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(before, armadillo.Health, "kapanırken ikinci darbe işlememeli");
+
+            while (armadillo.State == Armadillo.ArmadilloState.Curl)
+                yield return null;
+            Assert.AreEqual(Armadillo.ArmadilloState.Roll, armadillo.State, "vurana doğru yuvarlanmalı");
         }
 
         [UnityTest]
@@ -593,6 +599,172 @@ namespace DesertGecko.Tests
             Assert.AreEqual(Armadillo.ArmadilloState.Swing, armadillo.State, "yakındakine kazma sallamalı");
             yield return new WaitForSeconds(0.5f);
             Assert.Less(health.CurrentHealth, health.MaxHealth, "kazma can yakmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Dusman_DarbeSonrasiKisaSureVurulamaz()
+        {
+            Ground(-20f, 20f);
+            Player(new Vector2(-15f, 0.05f));
+            Scorpion scorpion = Object.Instantiate(LoadPrefab<Scorpion>("Scorpion"), new Vector2(0f, 0.05f), Quaternion.identity);
+            Track(scorpion.gameObject);
+            yield return null;
+
+            scorpion.TakeDamage(1, Vector2.right);
+            scorpion.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(2, scorpion.Health, "koruma süresinde ikinci darbe işlememeli");
+
+            yield return new WaitForSeconds(0.75f);
+            scorpion.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(1, scorpion.Health, "koruma bitince vurulabilmeli");
+        }
+
+        [UnityTest]
+        public IEnumerator Akrep_GerilipSokar_OyuncununIcindenGecmez()
+        {
+            Ground(-20f, 20f);
+            PlayerHealth health = Player(new Vector2(-3f, 0.05f));
+            Scorpion scorpion = Object.Instantiate(LoadPrefab<Scorpion>("Scorpion"), new Vector2(0f, 0.05f), Quaternion.identity);
+            Track(scorpion.gameObject);
+            yield return null;
+
+            scorpion.TakeDamage(1, Vector2.right);
+            bool sawWindup = false, sawStrike = false;
+            float limit = Time.time + 3f;
+            while ((scorpion.Counter != DesertGecko.Enemies.Scorpion.CounterPhase.None) && Time.time < limit)
+            {
+                sawWindup |= scorpion.Counter == DesertGecko.Enemies.Scorpion.CounterPhase.Windup;
+                sawStrike |= scorpion.Counter == DesertGecko.Enemies.Scorpion.CounterPhase.Strike;
+                Assert.Greater(scorpion.transform.position.x, health.transform.position.x + 0.5f, "oyuncuyla üst üste binmemeli");
+                Assert.Less(Mathf.Abs(scorpion.GetComponent<Rigidbody2D>().linearVelocity.x), 8f, "bir anda fırlamamalı");
+                yield return null;
+            }
+            Assert.IsTrue(sawWindup, "önce gerilerek uyarmalı");
+            Assert.IsTrue(sawStrike, "sonra sokmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Akrep_IgnesiMenzildekiniYakar()
+        {
+            Ground(-20f, 20f);
+            PlayerHealth health = Player(new Vector2(-0.9f, 0.05f));
+            Scorpion scorpion = Object.Instantiate(LoadPrefab<Scorpion>("Scorpion"), new Vector2(0.5f, 0.05f), Quaternion.identity);
+            Track(scorpion.gameObject);
+            yield return null;
+
+            scorpion.TakeDamage(1, Vector2.right);
+            float limit = Time.time + 2f;
+            while (health.CurrentHealth == health.MaxHealth && Time.time < limit)
+                yield return null;
+            Assert.Less(health.CurrentHealth, health.MaxHealth, "yakındaki oyuncuyu sokmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Yilan_VurulunaUyarmadanAtesEder()
+        {
+            Ground(-20f, 20f);
+            Player(new Vector2(-3f, 0.05f));
+            Rattlesnake snake = Snake(new Vector2(0f, 0.05f));
+            yield return null;
+
+            snake.TakeDamage(1, Vector2.right);
+            float limit = Time.time + 1f;
+            while (snake.State != Rattlesnake.AttackState.Shoot && Time.time < limit)
+            {
+                Assert.AreNotEqual(Rattlesnake.AttackState.Rattle, snake.State, "çıngırak çalmamalı");
+                yield return null;
+            }
+            Assert.AreEqual(Rattlesnake.AttackState.Shoot, snake.State, "kısa sürede ateş etmeli");
+        }
+
+        // --- Çalı Faresi ---
+
+        [UnityTest]
+        public IEnumerator Fare_GizliykenHareketsiz_UzaktakineTepkiVermez()
+        {
+            Ground(-20f, 20f);
+            PlayerHealth health = Player(new Vector2(-2f, 0.05f));
+            TumbleweedMouse mouse = Fare(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.1f);
+            float x = mouse.transform.position.x;
+
+            yield return new WaitForSeconds(1.5f);
+            Assert.AreEqual(TumbleweedMouse.MouseState.Disguised, mouse.State, "üstüne gelinmeden çıkmamalı");
+            Assert.AreEqual(x, mouse.transform.position.x, 0.01f, "hiç hareket etmemeli");
+            Assert.AreEqual(health.MaxHealth, health.CurrentHealth);
+        }
+
+        [UnityTest]
+        public IEnumerator Fare_UstuneGeleniFirlatir_CikarKovalar_BirDahaGizlenmez()
+        {
+            Ground(-30f, 30f);
+            PlayerHealth health = Player(new Vector2(-0.4f, 0.05f));
+            TumbleweedMouse mouse = Fare(new Vector2(0f, 0.05f));
+            var body = health.GetComponent<Rigidbody2D>();
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+
+            Assert.AreEqual(TumbleweedMouse.MouseState.Reveal, mouse.State, "üstüne gelince çıkmalı");
+            Assert.Less(body.linearVelocity.x, -3f, "oyuncu geri fırlamalı");
+            Assert.Greater(body.linearVelocity.y, 2f, "oyuncu havalanmalı");
+            Assert.AreEqual(health.MaxHealth, health.CurrentHealth, "fırlatma can yakmamalı");
+
+            health.GetComponent<PlayerController>().Teleport(new Vector2(-10f, 0.05f));
+            yield return new WaitForSeconds(0.6f);
+            Assert.AreEqual(TumbleweedMouse.MouseState.Chase, mouse.State, "peşine düşmeli");
+            Assert.Less(mouse.GetComponent<Rigidbody2D>().linearVelocity.x, -5f);
+
+            float limit = Time.time + 4f;
+            while (mouse.State != TumbleweedMouse.MouseState.Stab && Time.time < limit)
+            {
+                Assert.Greater(mouse.transform.position.x, health.transform.position.x + 0.4f, "içinden geçmemeli");
+                yield return null;
+            }
+            Assert.AreEqual(TumbleweedMouse.MouseState.Stab, mouse.State, "yetişince bıçaklamalı");
+
+            health.GetComponent<PlayerController>().Teleport(new Vector2(20f, 0.05f));
+            yield return new WaitForSeconds(2f);
+            Assert.IsFalse(mouse.IsDisguised, "bir daha çalıya girmemeli");
+        }
+
+        [UnityTest]
+        public IEnumerator Fare_DiliIkiKezSavusturur_UcuncudeOlur()
+        {
+            Ground(-20f, 20f);
+            Player(new Vector2(-3f, 0.05f));
+            TumbleweedMouse mouse = Fare(new Vector2(0f, 0.05f));
+            yield return null;
+
+            mouse.TakeDamage(1, Vector2.right); // çalıya vurmak ortaya çıkarır, savuşturma harcamaz
+            Assert.AreEqual(TumbleweedMouse.MouseState.Reveal, mouse.State);
+            Assert.AreEqual(2, mouse.ParriesLeft);
+
+            yield return new WaitForSeconds(0.6f);
+            mouse.TakeDamage(1, Vector2.right);
+            Assert.IsTrue(mouse.IsAlive, "ilk dili savuşturmalı");
+            Assert.AreEqual(1, mouse.ParriesLeft);
+            mouse.TakeDamage(1, Vector2.right);
+            Assert.IsTrue(mouse.IsAlive, "ikinci dili savuşturmalı");
+            Assert.AreEqual(0, mouse.ParriesLeft);
+            mouse.TakeDamage(1, Vector2.right);
+            Assert.IsFalse(mouse.IsAlive, "üçüncü dilde ölmeli");
+        }
+
+        [UnityTest]
+        public IEnumerator Fare_YakindakiniSavusturunca_KarsiSaldirir_KuyrukDelipGecer()
+        {
+            Ground(-20f, 20f);
+            Player(new Vector2(-1.2f, 0.05f));
+            TumbleweedMouse mouse = Fare(new Vector2(0f, 0.05f));
+            yield return null;
+
+            mouse.TakeDamage(1, Vector2.right);
+            yield return new WaitForSeconds(0.6f);
+            mouse.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(TumbleweedMouse.MouseState.Stab, mouse.State, "savuşturunca hemen bıçaklamalı");
+
+            mouse.TakeDamage(3, Vector2.right);
+            Assert.IsFalse(mouse.IsAlive, "kuyruk savuşturulamamalı");
         }
 
         [UnityTest]
@@ -761,7 +933,7 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
-        public IEnumerator Yilan_UyariSirasindaVurulursaAtesEtmez()
+        public IEnumerator Yilan_UyariSirasindaVurulursaVuranaKarsiAtesEder()
         {
             Ground(-10f, 10f);
             PlayerHealth health = Player(new Vector2(-4f, 0.05f));
@@ -771,13 +943,12 @@ namespace DesertGecko.Tests
 
             health.GetComponent<PlayerController>().Teleport(new Vector2(4f, 0.05f));
             snake.TakeDamage(1, Vector2.left);
-            Assert.AreEqual(Rattlesnake.AttackState.None, snake.State, "nişanı bozulmalı");
+            Assert.AreNotEqual(Rattlesnake.AttackState.Rattle, snake.State, "çıngırağı kesilmeli");
             Assert.AreEqual(1, snake.FacingDirection, "saldırana dönmeli");
 
-            // İptal olmasaydı atış ~0.85 sn sonra çıkardı; yeni saldırının mermisi ise en erken 1.75 sn sonra.
-            yield return new WaitForSeconds(1f);
-            Assert.IsNull(Object.FindAnyObjectByType<EnemyBullet>());
-            Assert.AreEqual(6, health.CurrentHealth);
+            // Karşı atış ~0.45 sn sonra çıkar, mermi 4 birimi ~0.45 sn'de geçer.
+            yield return new WaitForSeconds(1.1f);
+            Assert.Less(health.CurrentHealth, 6, "vurana karşılık vermeli");
         }
 
         [UnityTest]
@@ -791,7 +962,8 @@ namespace DesertGecko.Tests
             snake.TakeDamage(1, Vector2.left);
             Assert.AreEqual(1, snake.FacingDirection, "saldırana dönmeli");
 
-            yield return new WaitForSeconds(1.2f);
+            // Önce karşı atış (~1 sn), sonra normal bekleme (1.5 sn), sonra çıngırak.
+            yield return new WaitForSeconds(2.7f);
             Assert.AreEqual(1, snake.FacingDirection);
             Assert.IsFalse(snake.GetComponentInChildren<SpriteRenderer>().flipX, "sağa bakarken aynalanmamalı");
             Assert.AreEqual(Rattlesnake.AttackState.Rattle, snake.State, "bekleme bitince sağdaki oyuncuya nişan almalı");
@@ -874,6 +1046,13 @@ namespace DesertGecko.Tests
             Armadillo armadillo = Object.Instantiate(LoadPrefab<Armadillo>("Armadillo"), position, Quaternion.identity);
             Track(armadillo.gameObject);
             return armadillo;
+        }
+
+        TumbleweedMouse Fare(Vector2 position)
+        {
+            TumbleweedMouse mouse = Object.Instantiate(LoadPrefab<TumbleweedMouse>("TumbleweedMouse"), position, Quaternion.identity);
+            Track(mouse.gameObject);
+            return mouse;
         }
 
         Rattlesnake Snake(Vector2 position)

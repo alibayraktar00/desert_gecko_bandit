@@ -220,7 +220,8 @@ namespace DesertGecko.Enemies
             CancelRoutine();
             alerted = true;
             hurtUntil = Time.time + hurtDuration;
-            nextAttackAt = Mathf.Max(nextAttackAt, Time.time + attackCooldown);
+            // Beklemesi sıfırlanır: yakındaysa sersemliği biter bitmez saçmayı patlatır.
+            nextAttackAt = Time.time + hurtDuration;
             if (Player != null)
                 TurnTowards(DirectionToPlayer);
         }

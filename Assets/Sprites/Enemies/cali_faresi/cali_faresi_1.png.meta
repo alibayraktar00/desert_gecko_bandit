@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 94cea575910ca5e4cb482ffe7f1a0431
+guid: f4f3fabea940f294ea1991fbe2ecd01e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 6643533034909616575
-    second: yuz_cali_top_0
+      213: -8213438162180517786
+    second: cali_faresi_1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -115,13 +115,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: yuz_cali_top_0
+      name: cali_faresi_1_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 27
         y: 0
-        width: 57
-        height: 26
+        width: 42
+        height: 38
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -130,8 +130,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fb94c57a812923c50800000000000000
-      internalID: 6643533034909616575
+      spriteID: 660d7961281040e80800000000000000
+      internalID: -8213438162180517786
       vertices: []
       indices: 
       edges: []

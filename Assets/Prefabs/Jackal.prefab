@@ -233,6 +233,8 @@ MonoBehaviour:
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
   flashDuration: 0.12
+  hitGuardDuration: 0.7
+  guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   spriteRenderer: {fileID: 3155567913141401598}

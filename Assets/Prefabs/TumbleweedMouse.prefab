@@ -1,0 +1,315 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3979020571006422762
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7955609725374611020}
+  - component: {fileID: 8161725036771601777}
+  - component: {fileID: 1004231084571102198}
+  - component: {fileID: 2269346912436970757}
+  - component: {fileID: 4289119920684377322}
+  m_Layer: 8
+  m_Name: TumbleweedMouse
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7955609725374611020
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3979020571006422762}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 122017645154126926}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!50 &8161725036771601777
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3979020571006422762}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 3
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 1
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 4
+--- !u!61 &1004231084571102198
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3979020571006422762}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.5}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.8, y: 1}
+  m_EdgeRadius: 0
+--- !u!114 &2269346912436970757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3979020571006422762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 909a98919045d3448b1874e238167fba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.TumbleweedMouse
+  maxHealth: 1
+  contactDamage: 1
+  patrolSpeed: 2
+  chaseSpeed: 4
+  patrolDistance: 3
+  detectRange: 5
+  loseRange: 8
+  verticalTolerance: 2.5
+  belowTolerance: 1.1
+  edgeMargin: 1.2
+  contactPause: 0.5
+  knockbackVelocity: {x: 4, y: 3}
+  stunDuration: 0.3
+  flashDuration: 0.12
+  hitGuardDuration: 0.7
+  guardBlinkRate: 14
+  flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
+  deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  spriteRenderer: {fileID: 5761996545158208728}
+  spriteFacesLeft: 0
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 64
+  killY: -12
+  triggerHalfWidth: 0.7
+  triggerHeight: 1.1
+  disguiseSink: 0.1
+  throwVelocity: {x: 6.5, y: 6}
+  throwControlLock: 0.25
+  revealDuration: 0.45
+  revealHop: 6
+  twigColor: {r: 0.72156864, g: 0.5803922, b: 0.3372549, a: 1}
+  chaseRunSpeed: 6
+  stopDistance: 1
+  stabDuration: 0.65
+  stabInterval: 0.2
+  stabReach: 1.5
+  stabHeight: 1.2
+  stabDamage: 1
+  stabFps: 14
+  runFps: 16
+  stabColor: {r: 0.9098039, g: 0.9098039, b: 0.9411765, a: 1}
+  parryCount: 2
+  maxParriedDamage: 1
+  parryPoseTime: 0.2
+  fatigueDuration: 1
+  fatigueFps: 4
+  disguiseFrame: {fileID: 21300000, guid: b21ad186f14f8514e8882900303f7acc, type: 3}
+  revealFrames:
+  - {fileID: 21300000, guid: 9664ec81b27fc0e46b41bf6bc11bb129, type: 3}
+  - {fileID: 21300000, guid: 668a1e35755051249ad035efa626eb33, type: 3}
+  - {fileID: 21300000, guid: 2306355376d614147a2a60c6a89cadcc, type: 3}
+  - {fileID: 21300000, guid: 0fc9ce94ec87efd42b50afa48eacbbdc, type: 3}
+  - {fileID: 21300000, guid: 6e2f6208bfcd5664aa2d9c61c0682cdd, type: 3}
+  jumpFrame: {fileID: 21300000, guid: 869c85186bcbba049ad768ae60a97728, type: 3}
+  runFrames:
+  - {fileID: 21300000, guid: e5dd4e8bd65bca846952b914a21a99c5, type: 3}
+  - {fileID: 21300000, guid: c0b46c8e655b2134491388afb8da00dc, type: 3}
+  - {fileID: 21300000, guid: 74f84dcca1b9d2f48bc0d0b1fae8b7e1, type: 3}
+  - {fileID: 21300000, guid: a6507154300270945a65d72d6fea5d0f, type: 3}
+  - {fileID: 21300000, guid: ccf8ac5036c258444a5fb0c28af07b4a, type: 3}
+  - {fileID: 21300000, guid: 0909e115323834f4ba2dbd3e805d0ce6, type: 3}
+  - {fileID: 21300000, guid: 0182af07ef2c5864c9b85c919249b8f7, type: 3}
+  stabFrames:
+  - {fileID: 21300000, guid: 0d2b5f5198f280f4c8bf03e3063db3bc, type: 3}
+  - {fileID: 21300000, guid: 09b3c7e24b12e3a419ad656c2d4c2608, type: 3}
+  - {fileID: 21300000, guid: bd43ce4807811954abfb11a54dd6824a, type: 3}
+  - {fileID: 21300000, guid: ff14d774b1b11c0418769cea586f57e8, type: 3}
+  - {fileID: 21300000, guid: 45722a68a21080748bd52d7d1bd03be1, type: 3}
+  - {fileID: 21300000, guid: bcfba9a15d4c133499e2efa71527c56e, type: 3}
+  - {fileID: 21300000, guid: e898d705fa7505342a1f38714afea71f, type: 3}
+  fatigueFrames:
+  - {fileID: 21300000, guid: 3ba96c57d9a09074e86827a87e05dd29, type: 3}
+  - {fileID: 21300000, guid: 87adf6c71e9164d45b9bbeee93e519ae, type: 3}
+  - {fileID: 21300000, guid: e79f3e17dfb676e44801da59aa807226, type: 3}
+  - {fileID: 21300000, guid: 9372a1e7cb291b140be26e129679ae5c, type: 3}
+  parryFrame: {fileID: 21300000, guid: 869c85186bcbba049ad768ae60a97728, type: 3}
+  defeatFrames:
+  - {fileID: 21300000, guid: e8d3e94c0df8f07458735f414265c873, type: 3}
+  - {fileID: 21300000, guid: 488deb220d2e78b4983d4b4151483b9f, type: 3}
+  - {fileID: 21300000, guid: fe83d07770673414aabc982dab7b8bff, type: 3}
+  - {fileID: 21300000, guid: 743266577ac1dd245b806a831f895f86, type: 3}
+  - {fileID: 21300000, guid: a0daf9c61fce9d747a10707e4d21ed7d, type: 3}
+--- !u!114 &4289119920684377322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3979020571006422762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc0f90b254112eb499c612e4fa82f4f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Collectibles.CrystalDrop
+  crystalPrefab: {fileID: 4914030784869760565, guid: 61deac18ea4d6034498c6957e8a207dc, type: 3}
+  minCount: 1
+  maxCount: 2
+  launchSpeed: 5
+  spawnOffset: {x: 0, y: 0.5}
+--- !u!1 &4239524819623889998
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 122017645154126926}
+  - component: {fileID: 5761996545158208728}
+  m_Layer: 0
+  m_Name: Visual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &122017645154126926
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4239524819623889998}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7955609725374611020}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &5761996545158208728
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4239524819623889998}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: b21ad186f14f8514e8882900303f7acc, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 3, y: 2}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
