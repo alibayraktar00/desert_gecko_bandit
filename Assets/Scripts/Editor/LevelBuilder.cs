@@ -137,6 +137,7 @@ namespace DesertGecko.EditorTools
             painter.FillPits();
             painter.DressCliffs();
             painter.DressCaveFloors();
+            painter.ScatterGroundCover();
             painter.DressBoundaries();
 
             GameObject player = TestSceneBuilder.SpawnPlayer(ctx, painter.Spawn);
@@ -190,16 +191,20 @@ namespace DesertGecko.EditorTools
             p.Boundary(-9f);
 
             Bolum_IlkAdimlar(p);
+            Dekor_IlkAdimlar(p);
             Baglanti_VadiyeInis(p);
 
             p.OriginX = KanyonX;
             Bolum_KanyonDuvarlari(p);
             Baglanti_MesayaSuzulus(p);
+            Dekor_KanyonDuvarlari(p);
 
             p.OriginX = AkbabaX;
             Bolum_AkbabaGolgesi(p);
+            Dekor_AkbabaGolgesi(p);
 
-            p.ShotPoints.AddRange(new[] { new Vector2(138f, 8f), new Vector2(156f, 3f), new Vector2(308f, 8f), new Vector2(325f, 4f) });
+            p.ShotPoints.AddRange(new[] { new Vector2(138f, 8f), new Vector2(156f, 3f), new Vector2(308f, 8f), new Vector2(325f, 4f), new Vector2(388f, 11f), new Vector2(355f, 8f), new Vector2(455f, 18f),
+                new Vector2(22f, 3f), new Vector2(62f, 9f), new Vector2(82f, 14f), new Vector2(205f, 4f), new Vector2(478f, 18f) });
         }
 
         // İlk Adımlar: her mekaniği tabelayla tek tek öğreten eğitim bölümü.
@@ -364,10 +369,15 @@ namespace DesertGecko.EditorTools
             // --- Birinci mesa: 3 kat. Duvar tırmanılamaz, katlar arası tek yol platformlar. ---
             const float floor1 = 3f, floor2 = 8f, floor3 = 13f, roof = 17f;
             p.BackWall(31f, 63f, floor1, roof);
-            p.RockMass(30f, 31f, floor1 + 3f, roof);  // giriş kapısının üstü
-            p.RockMass(30f, 64f, roof, 60f);          // tavan
-            p.RockMass(63f, 64f, floor1, floor3 - 1f); // sağ duvar, kapı en üst katta
-            p.RockMass(63f, 64f, floor3 + 3f, roof);
+            p.RockMass(27f, 31f, floor1 + 3f, roof);  // giriş tünelinin üstü
+            p.RockEdge(27f, 40f, floor1 + 3f, -1);
+            p.DoorFade(27f, -1, 4.5f, floor1, floor1 + 3f);
+            p.RockMass(27f, 66f, roof, 60f);          // tavan
+            p.RockMass(63f, 66f, GroundBottom, floor3 - 1f); // kalın sağ duvar, kapı en üst katta bir tünel
+            p.RockEdge(66f, floor3, GroundBottom, 1);
+            p.RockMass(63f, 66f, floor3 + 3f, roof);
+            p.RockEdge(66f, 40f, floor3 + 3f, 1);
+            p.DoorFade(66f, 1, 4.5f, floor3 - 1f, floor3 + 3f);
 
             // 1. kat: sağa koş, sağ uçtaki platformlardan yukarı çık
             p.Scorpion(38f, floor1);
@@ -411,10 +421,15 @@ namespace DesertGecko.EditorTools
             p.Ground(101.5f, 128f, baseY);
             p.Snake(108f, baseY);
             p.BackWall(113f, 127f, baseY, shaftRoof);
-            p.RockMass(112f, 113f, baseY + 3f, shaftRoof);
-            p.RockMass(112f, 128f, shaftRoof, 60f);
-            p.RockMass(127f, 128f, baseY, 19.5f);
-            p.RockMass(127f, 128f, 22.5f, shaftRoof);
+            p.RockMass(109f, 113f, baseY + 3f, shaftRoof);
+            p.RockEdge(109f, 40f, baseY + 3f, -1);
+            p.DoorFade(109f, -1, 4.5f, baseY, baseY + 3f);
+            p.RockMass(109f, 131f, shaftRoof, 60f);
+            p.RockMass(127f, 131f, GroundBottom, 19f);
+            p.RockEdge(131f, 19.5f, GroundBottom, 1);
+            p.RockMass(127f, 131f, 22.5f, shaftRoof);
+            p.RockEdge(131f, 40f, 22.5f, 1);
+            p.DoorFade(131f, 1, 4.5f, 19f, 22.5f);
             p.Sign(110.5f, baseY, "Çıkıntılardan aşağıdan\nzıplayarak geçebilirsin");
 
             p.Ledge(114f, 120f, 9.5f);
@@ -425,7 +440,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(116.5f, 15.3f);
             p.Ledge(121f, 126f, 17f);
             p.Crystal(123.5f, 17.8f);
-            p.Ledge(121f, 130f, 19.5f, register: true); // en üst çıkıntı kapıdan dışarı uzanır
+            p.Ledge(121f, 133f, 19.5f, register: true); // en üst çıkıntı tünelden dışarı uzanır
 
             // Son süzülüş ve akrep sürüsü
             p.CrystalArc(132f, 22.5f, 139f, 19.8f, 4);
@@ -459,6 +474,7 @@ namespace DesertGecko.EditorTools
             p.Boundary(-9f);
 
             Maden_KanyonAgzi(p);
+            Dekor_KanyonAgzi(p);
             p.OriginX = MadenSaftiX;
             Maden_Safti(p);
             Dekor_MadenSafti(p);
@@ -470,6 +486,7 @@ namespace DesertGecko.EditorTools
             Dekor_DerinGaleri(p);
             p.OriginX = SonTirmanisX;
             Maden_SonTirmanis(p);
+            Dekor_SonTirmanis(p);
 
             // Botun geri dönmesi ya da durup beklemesi gereken yerler; dünya koordinatı.
             p.OriginX = 0f;
@@ -480,7 +497,7 @@ namespace DesertGecko.EditorTools
                 new Vector2(20f, 3f), new Vector2(45f, 7f), new Vector2(72f, 12f), new Vector2(103f, 9f), new Vector2(135f, 4f),
                 new Vector2(152f, 4f), new Vector2(172f, 9f), new Vector2(192f, 11f), new Vector2(228f, 17f), new Vector2(250f, 19f),
                 new Vector2(282f, 20f), new Vector2(302f, 14f), new Vector2(340f, 5f), new Vector2(370f, 6f), new Vector2(408f, 12f),
-                new Vector2(450f, 22f),
+                new Vector2(450f, 22f), new Vector2(8f, 3f), new Vector2(88f, 14f), new Vector2(214f, 17f), new Vector2(424f, 22f), new Vector2(485f, 26f),
             });
         }
 
@@ -535,21 +552,22 @@ namespace DesertGecko.EditorTools
         {
             const float floorA = 1f, roofA = 9.5f, floorB = 4f, roofB = 11f, roofC = 22f, exitY = 16f;
 
-            p.CaveWall(0f, 8f, 12f);
+            p.CaveMouth(0f, 8f, 12f, 5f);
             p.CaveWall(8f, 101f, roofC);
             p.RockMass(8f, 62f, roofA, 60f);
             p.RockEdge(8f, 40f, roofA, -1);
             p.RockMass(62f, 66f, roofB, 60f);
             p.RockMass(66f, 76f, 15f, 60f);
             p.RockMass(76f, 80f, roofB, 60f);
-            p.RockMass(80f, 101f, roofC, 60f);
+            p.RockMass(80f, 104f, roofC, 60f);
             p.RockEdge(80f, roofC, roofB, 1);
-            p.RockMass(100f, 101f, GroundBottom, exitY - 0.5f); // sağ duvar, kapı en üstte
-            p.RockMass(100f, 101f, exitY + 3.5f, roofC);
+            p.RockMass(100f, 104f, GroundBottom, exitY - 0.5f); // kalın sağ duvar, kapı en üstte bir tünel
+            p.RockMass(100f, 104f, exitY + 3.5f, roofC);
             p.RockEdge(100f, exitY - 0.5f, floorB, -1);
             p.RockEdge(100f, roofC, exitY + 3.5f, -1);
-            p.RockEdge(101f, exitY - 0.5f, GroundBottom, 1);
-            p.RockEdge(101f, 40f, exitY + 3.5f, 1);
+            p.RockEdge(104f, exitY - 0.5f, GroundBottom, 1);
+            p.RockEdge(104f, 40f, exitY + 3.5f, 1);
+            p.DoorFade(104f, 1, 4.5f, exitY - 0.5f, exitY + 3.5f);
 
             // Kuyu ağzı: üç çürük tahta, altında iki tane daha
             p.Crumble(1.33f, 12f, "tahta_ray");
@@ -602,7 +620,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(83f, 10.8f);
             p.Scorpion(90f, floorB);
             p.Mover(94f, 5f, "tahta_kafes", new Vector2(0f, 11f), 2.4f);
-            p.Ledge(96.5f, 103f, exitY, register: true); // kapıdan dışarı uzanır
+            p.Ledge(96.5f, 105f, exitY, register: true); // tünelden dışarı uzanır
             p.Crystal(98f, exitY + 0.8f);
         }
 
@@ -646,9 +664,9 @@ namespace DesertGecko.EditorTools
         {
             const float floorA = 1f, roofA = 9f, floorB = 4f, roofB = 13f, shaftTop = 22f;
 
-            p.CaveWall(0f, 16f, shaftTop);
+            p.CaveMouth(0f, 16f, shaftTop, 7f);
             p.CaveWall(16f, 110f, roofB);
-            p.CaveWall(110f, 118f, 20f);
+            p.CaveMouth(110f, 118f, 20f, 6f);
             p.RockMass(16f, 62f, roofA, 60f);
             p.RockEdge(16f, 40f, roofA, -1);
             p.RockMass(62f, 110f, roofB, 60f);
@@ -745,13 +763,27 @@ namespace DesertGecko.EditorTools
         static readonly Color OrangeLight = new Color(1f, 0.6f, 0.2f, 0.34f);
         static readonly Color VioletLight = new Color(0.65f, 0.5f, 1f, 0.3f);
 
-        // Terk edilmiş işletme: yıkık kuyu, vagon, patlayıcı deposu, asansör makinesi. Gizli odada kaybolmuş bir madenci.
+        // Kanyonun kenarındaki son yerleşim: kurumuş ağaçlar, bozulmuş araba, kuyuyu gösteren tabela.
+        static void Dekor_KanyonAgzi(LevelPainter p)
+        {
+            p.Deco("yuz_tabela_aranan", -1.5f, 0f);
+            p.Deco("yuz_cali", 10f, 0f);
+            p.Deco("yuz_kaya_1", 26f, 2f);
+            p.Deco("yuz_agac_1", 38f, 2f);
+            p.Deco("yuz_agac_2", 54.5f, 10f);
+            p.Deco("yuz_direk", 60.5f, 10f);
+            p.Deco("yuz_araba", 81.5f, 12f);
+            p.Fence(89f, 96.5f, 12f);
+            p.Deco("yuz_tabela_yon", 98.8f, 12f);
+        }
+
+        // Terk edilmiş işletme: kırık kütükler, kazma kürek yığını, patlayıcı deposu, asansör makinesi. Gizli odada kaybolmuş bir madenci.
         static void Dekor_MadenSafti(LevelPainter p)
         {
             const float a = 1f, b = 4f, roofA = 9.5f, roofB = 11f, roofC = 22f;
 
             p.InCave = true;
-            p.Deco("mgr_yikik_iskele", 4.5f, a);
+            p.Deco("yuz_kutuk", 4.5f, a);
             p.Hang("tavan_kok", 13f, roofA);
             p.Hang("tavan_sarkit_2", 21f, roofA);
             p.Fener(24f, a);
@@ -761,9 +793,9 @@ namespace DesertGecko.EditorTools
 
             p.Hang("tavan_kok", 34f, roofA);
 
-            p.Deco("mgr_vagon", 42.5f, a);
+            p.Deco("yuz_kazma", 42.5f, a);
             p.Hang("tavan_sarkit_3", 41f, roofA);
-            p.Deco("mgr_matkap", 52.5f, a);
+            p.Deco("yuz_kaya_2", 52.5f, a);
             p.Hang("tavan_zincir", 57f, roofA);
             p.Deco("mgr_tnt", 59f, a);
             p.Deco("mgr_mantar", 61f, a);
@@ -772,16 +804,16 @@ namespace DesertGecko.EditorTools
             p.Hang("tavan_sarmasik", 64.5f, roofB);
             p.Deco("mgr_cevher_mavi", 67f, b);
             p.Glow(67f, b + 0.5f, BlueLight, 2.5f);
-            p.Deco("mgr_erzak", 72.5f, b);
-            p.Glow(73f, b + 1.1f, LampLight, 2.5f, 0.3f);
+            p.Deco("yuz_cuval", 71.5f, b);
+            p.Fener(76f, b);
 
             // Gizli oda
-            p.Deco("mgr_iskelet", 69f, 11.5f, thinFloor: true);
-            p.Deco("mgr_kemik", 74f, 11.5f, thinFloor: true);
+            p.Deco("mgr_iskelet", 69f, 11.5f);
+            p.Deco("yuz_kurukafa", 73.5f, 11.5f);
             p.Glow(71f, 13f, LampLight, 3f, 0.2f);
 
             p.Deco("mgr_cark", 90.5f, b);
-            p.Deco("mgr_varil", 83f, b);
+            p.Deco("yuz_sandik_varil", 83f, b);
             p.Hang("tavan_zincir", 88f, roofC);
             p.Hang("tavan_ag", 82f, roofC);
             p.Fener(98f, b);
@@ -791,12 +823,13 @@ namespace DesertGecko.EditorTools
         // Yeryüzünde madencilerin kampı ve kuyunun ağzındaki iskele.
         static void Dekor_RuzgarGecidi(LevelPainter p)
         {
-            p.Deco("mgr_kamp", 8f, 15f);
-            p.Deco("mgr_cadir", 13f, 15f);
-            p.Deco("mgr_kemik", 30f, 18f);
-            p.Deco("mgr_varil", 65f, 19f);
-            p.Deco("mgr_sandiklar", 70f, 19f);
-            p.Deco("mgr_kiris", 85.5f, 22f);
+            p.Deco("yuz_kamp", 9f, 15f);
+            p.Deco("yuz_cali_top", 13.5f, 15f);
+            p.Deco("yuz_kurukafa", 30f, 18f);
+            p.Deco("yuz_agac_2", 34.5f, 18f);
+            p.Deco("yuz_sandik_varil", 65f, 19f);
+            p.Deco("yuz_cuval", 70f, 19f);
+            p.Deco("yuz_kova_direk", 85.5f, 22f);
         }
 
         // Daha derin ve daha doğal: kökler, kristaller, mantarlar. Sonda buhar borularının geldiği baca.
@@ -815,11 +848,12 @@ namespace DesertGecko.EditorTools
             p.Glow(11.5f, a + 0.5f, MushroomLight, 2.5f);
 
             p.Hang("tavan_sarkit_2", 19f, roofA);
-            p.Deco("mgr_kemik", 22f, a);
+            p.Deco("yuz_mezar", 22.5f, a);
+            p.Deco("yuz_kurukafa", 19f, a);
 
             // Dövüş odası
             p.Deco("mgr_dikit_2", 33.5f, a);
-            p.Deco("mgr_varil", 44.5f, a);
+            p.Deco("yuz_sandik_varil", 44.5f, a);
             p.Hang("tavan_zincir", 45f, roofA);
             p.Hang("tavan_sarkit_2", 35f, roofA);
             p.Deco("mgr_tnt", 55f, a);
@@ -841,12 +875,55 @@ namespace DesertGecko.EditorTools
             p.Hang("tavan_damla", 105.5f, roofB);
             p.Drip(105.2f, roofB - 0.6f, b);
             p.Deco("mgr_su", 105.5f, b);
-            p.Deco("mgr_erzak", 107f, b);
 
             // Baca: sıcak hava borulardan geliyor
             p.WallPanel("mgr_boru", 114f, b, 3);
             p.Glow(114f, b + 1f, OrangeLight, 4f);
             p.InCave = false;
+        }
+
+        // Finale doğru: yel değirmeni, kaya, son kamp. Bitişin yanında aranıyor ilanı.
+        static void Dekor_SonTirmanis(LevelPainter p)
+        {
+            p.Deco("yuz_degirmen", 13f, 20f);
+            p.Deco("yuz_kaya_2", 3.8f, 20f);
+            p.Deco("yuz_cali", 53f, 22f);
+            p.Deco("yuz_kaya_1", 65.5f, 24f);
+            p.Deco("yuz_aranan_kavanoz", 76f, 24f);
+        }
+
+        // Level 1 dekoru: oynanışa dokunmaz.
+        static void Dekor_IlkAdimlar(LevelPainter p)
+        {
+            p.Deco("yuz_tabela_yon", -1f, 0f);
+            p.Deco("yuz_cali_top", 12f, 0f);
+            p.Deco("yuz_agac_1", 21.5f, 0f);
+            p.Deco("yuz_kaya_2", 27f, 0f);
+            p.Fence(34.6f, 46f, 2f); // sağ ucu kayaya dayanır
+            p.Deco("yuz_degirmen", 60f, 6f);
+            p.Deco("yuz_kurukafa", 67f, 6f);
+            p.Deco("yuz_araba", 80.5f, 12f);
+            p.Deco("yuz_direk", 108f, 10f);
+            p.Deco("yuz_kaya_1", 123.5f, 10f);
+            p.Deco("yuz_tabela_yon_2", 129f, 10f);
+        }
+
+        static void Dekor_KanyonDuvarlari(LevelPainter p)
+        {
+            p.Deco("yuz_agac_2", 13f, 0f);
+            p.Deco("yuz_kamp", 44f, 1f);
+            p.Deco("yuz_mezar", 62f, 12f);
+            p.Deco("yuz_cuval", 88.5f, 14f);
+            p.Fence(109.5f, 121f, 13f);
+            p.Deco("yuz_kova_direk", 133.5f, 13f);
+        }
+
+        static void Dekor_AkbabaGolgesi(LevelPainter p)
+        {
+            p.Deco("yuz_tabela_yon_2", 6.5f, 0f);
+            p.Deco("yuz_agac_1", 94f, 9f);
+            p.Deco("yuz_cadir", 153.5f, 16f);
+            p.Deco("yuz_aranan_kavanoz", 164.5f, 16f);
         }
 
         // =====================================================================
@@ -907,6 +984,9 @@ namespace DesertGecko.EditorTools
             // Sadece havadaki platformlar; yerdeki masalar boşluk geçişine yardım etmez.
             readonly List<(float xMin, float xMax, float top)> platforms = new List<(float, float, float)>();
             readonly List<float> checkpoints = new List<float>();
+            readonly List<(float xMin, float xMax)> indoors = new List<(float, float)>();
+            readonly List<(float x, float half)> occupied = new List<(float, float)>();
+            readonly List<(float x, float y, float half)> bigDecor = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float top)> lifts = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float top)> caveFloors = new List<(float, float, float)>();
             int count;
@@ -1015,14 +1095,14 @@ namespace DesertGecko.EditorTools
                         var next = all.Where(o => !o.Equals(f) && o.xMin <= x + eps && o.xMax >= x - eps).ToList();
                         if (next.Count > 0 && f.top - next.Max(o => o.top) < minHeight)
                             continue; // komşusu aynı boyda ya da yüksek: kenar görünmez
-                        CliffEdge(x, f.top, side);
+                        CliffEdge(x, f.top, side, 2); // taban görseliyle aynı sırada olursa çizim sırası rastgele değişir
                         if (next.Count > 0 && next.Max(o => o.xMax - o.xMin) >= minRubbleRoom)
                             Rubble(x, next.Max(o => o.top), side);
                     }
                 }
             }
 
-            void CliffEdge(float x, float top, int side)
+            void CliffEdge(float x, float top, int side, int order = 1)
             {
                 const float faceOffset = 0.375f; // görselde yamaç yüzeyi, ortanın bu kadar dışında
                 Sprite face = LayerArt("zemin_yamac"), cap = LayerArt("zemin_yamac_ust");
@@ -1034,10 +1114,10 @@ namespace DesertGecko.EditorTools
                 capSr.transform.position = position;
                 capSr.sprite = cap;
                 capSr.flipX = side > 0;
-                capSr.sortingOrder = 1;
+                capSr.sortingOrder = order;
 
                 SpriteRenderer sr = TiledArt(geometry, Name("Yamac"), face, position + Vector2.down * capHeight,
-                    new Vector2(face.bounds.size.x, top - capHeight - GroundBottom), 1);
+                    new Vector2(face.bounds.size.x, top - capHeight - GroundBottom), order);
                 sr.flipX = side > 0;
             }
 
@@ -1105,16 +1185,53 @@ namespace DesertGecko.EditorTools
             }
 
             /// <summary>Çarpışmasız mağara arka duvarı. Gökyüzünü kapatır, üstü kapalı hissi verir.</summary>
-            public void BackWall(float xMin, float xMax, float yMin, float yMax) =>
+            public void BackWall(float xMin, float xMax, float yMin, float yMax)
+            {
+                indoors.Add((xMin + OriginX, xMax + OriginX));
                 TiledArt(geometry, Name("ArkaDuvar"), LayerArt("kaya_arka"), new Vector2((xMin + xMax) / 2f + OriginX, yMax),
                     new Vector2(xMax - xMin, yMax - yMin), -40);
+            }
 
             /// <summary>Yer altının koyu arka duvarı: uçurumların dibine kadar iner, üstü çukurun ağzında biter.</summary>
             public void CaveWall(float xMin, float xMax, float top)
             {
+                indoors.Add((xMin + OriginX, xMax + OriginX));
                 SpriteRenderer sr = TiledArt(geometry, Name("MagaraDuvar"), LayerArt("kaya_arka"), new Vector2((xMin + xMax) / 2f + OriginX, top),
                     new Vector2(xMax - xMin, top - GroundBottom), -40);
                 sr.color = new Color(0.62f, 0.62f, 0.68f); // açık havadan belirgin biçimde karanlık
+            }
+
+            /// <summary>
+            /// Gökyüzüne açılan mağara ağzı: arka duvar düz bir çizgiyle bitmez, yukarı doğru basamak basamak açılır.
+            /// top: geçişin en üstü, fade: geçişin yüksekliği.
+            /// </summary>
+            public void CaveMouth(float xMin, float xMax, float top, float fade)
+            {
+                CaveWall(xMin, xMax, top - fade + 0.8f); // geçişin koyu ucu duvarın dikişini örter
+                float width = xMax - xMin;
+                var sr = new GameObject(Name("MagaraAgzi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.transform.position = new Vector3((xMin + xMax) / 2f + OriginX, top, 0f);
+                sr.sprite = pitSprite;
+                sr.sortingOrder = -39; // duvarın önünde, dekorun arkasında
+                sr.transform.localScale = new Vector3(width / pitSprite.bounds.size.x, fade / pitSprite.bounds.size.y, 1f);
+            }
+
+            /// <summary>
+            /// Tünel kapısı: içerinin karanlığı dışarı doğru basamak basamak açılır, düz çizgiyle gökyüzüne geçilmez.
+            /// outerX: tünelin dış ağzı, side: dışarının yönü (1 sağ, -1 sol), length: geçişin uzunluğu.
+            /// </summary>
+            public void DoorFade(float outerX, int side, float length, float yMin, float yMax)
+            {
+                float inner = outerX + OriginX - side * length;
+                indoors.Add((Mathf.Min(inner, outerX + OriginX) - 1f, Mathf.Max(inner, outerX + OriginX) + 0.5f));
+                var sr = new GameObject(Name("KapiGecisi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.transform.position = new Vector3(outerX + OriginX, (yMin + yMax) / 2f, 0f);
+                sr.transform.rotation = Quaternion.Euler(0f, 0f, side > 0 ? -90f : 90f); // saydam ucu dışarı baksın
+                sr.sprite = pitSprite;
+                sr.sortingOrder = -39;
+                sr.transform.localScale = new Vector3((yMax - yMin) / pitSprite.bounds.size.x, length / pitSprite.bounds.size.y, 1f);
             }
 
             /// <summary>Yer altı tabanı: dibe kadar katı kaya. Yanlarına Gila yapışıp tırmanabilir.</summary>
@@ -1322,70 +1439,119 @@ namespace DesertGecko.EditorTools
             public bool InCave;
 
             static readonly Color CaveTint = new Color(0.74f, 0.7f, 0.68f);
-            // Düz duran, yığın gerektirmeyen ya da çok daha derine gömülmesi gereken görseller.
-            static readonly HashSet<string> NoMound = new HashSet<string> { "mgr_su", "mgr_kemik", "mgr_kamp" };
+            // Görseller yandan çizili ve düz tabanlı; bunlar ayrıca zemine gömülür (görsel yüksekliğine oran).
             static readonly Dictionary<string, float> SinkOverride = new Dictionary<string, float>
             {
-                { "mgr_su", 0.62f }, { "mgr_vagon", 0.3f }, { "mgr_kemik", 0.28f }, { "mgr_kamp", 0.3f },
+                { "mgr_su", 0.62f },
             };
-            static readonly Dictionary<string, float> SinkCache = new Dictionary<string, float>();
 
-            /// <summary>
-            /// Görseller 3/4 açıdan çizili, tabanları tek köşeye iniyor. Yere dik baktığımız zemine otursun diye
-            /// tabanın gerçekten geniş olduğu satıra kadar toprağa gömülür (zemin görselin önünde kalır). Birim cinsinden.
-            /// </summary>
-            static float GroundSink(string sprite, Sprite s)
-            {
-                if (SinkOverride.TryGetValue(sprite, out float fraction))
-                    return s.bounds.size.y * fraction;
-                if (SinkCache.TryGetValue(sprite, out float cached))
-                    return cached;
-
-                var tex = new Texture2D(2, 2);
-                tex.LoadImage(File.ReadAllBytes(AssetDatabase.GetAssetPath(s.texture)));
-                Color32[] px = tex.GetPixels32();
-                int rowsToScan = tex.height * 2 / 5; // en fazla %40 gömülür, nesne kaybolmasın
-                int sinkRows = rowsToScan;
-                for (int y = 0; y < rowsToScan; y++) // GetPixels32: y=0 alt satır
-                {
-                    int first = -1, last = -1;
-                    for (int x = 0; x < tex.width; x++)
-                        if (px[y * tex.width + x].a > 0)
-                        {
-                            if (first < 0) first = x;
-                            last = x;
-                        }
-                    if (first >= 0 && last - first >= tex.width * 0.62f)
-                    {
-                        sinkRows = y;
-                        break;
-                    }
-                }
-                Object.DestroyImmediate(tex);
-                float sink = sinkRows / 32f;
-                SinkCache[sprite] = sink;
-                return sink;
-            }
-
-            /// <summary>Zemine oturan görsel: toprağa gömülür, önünde taş yığını, mağarada altında gölge.</summary>
-            /// <param name="thinFloor">İnce çıkıntının üstünde: gömülürse altından görünürdü.</param>
-            public void Deco(string sprite, float x, float y, int order = -10, bool thinFloor = false)
+            /// <summary>Zemine oturan görsel: düz tabanıyla toprağa hafifçe girer, mağarada altına gölge düşer.</summary>
+            public void Deco(string sprite, float x, float y, int order = -10)
             {
                 Sprite s = TestSceneBuilder.Prop(sprite);
                 float wx = x + OriginX;
+                float sink = SinkOverride.TryGetValue(sprite, out float fraction) ? s.bounds.size.y * fraction : 0.1f; // kaynaktaki ince zemin çizgisi toprağın arkasında kalsın
                 var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
                 sr.transform.SetParent(decor);
-                float sink = GroundSink(sprite, s);
-                sr.transform.position = new Vector3(wx, y - (thinFloor ? Mathf.Min(sink, 0.2f) : sink), 0f);
+                sr.transform.position = new Vector3(wx, y - sink, 0f);
                 sr.sprite = s;
                 sr.sortingOrder = order;
+                occupied.Add((wx, s.bounds.size.x / 2f));
                 if (InCave)
                 {
                     sr.color = CaveTint;
                     Shadow(wx, y, s.bounds.size.x);
                 }
-                if (!NoMound.Contains(sprite))
-                    Mound(wx, y, s.bounds.size.x);
+                else if (s.bounds.size.x >= BigDecorWidth)
+                    bigDecor.Add((wx, y, s.bounds.size.x / 2f));
+            }
+
+            /// <summary>Çit: direkten direğe dizilir, iki ucu da direkte biter (ya da kayanın arkasına girer).</summary>
+            public void Fence(float xMin, float xMax, float y)
+            {
+                float width = TestSceneBuilder.Prop("yuz_cit").bounds.size.x;
+                int count = Mathf.Max(1, Mathf.RoundToInt((xMax - xMin) / width));
+                float step = count > 1 ? (xMax - xMin - width) / (count - 1) : 0f;
+                for (int i = 0; i < count; i++)
+                    Deco("yuz_cit", xMin + width / 2f + i * step, y);
+            }
+
+            // --- Zemin örtüsü: nesneler yalnız kalmasın, zemin boş durmasın ---
+
+            const float BigDecorWidth = 1.8f;
+            const int CoverOrder = -9, DistantOrder = -25;
+            static readonly Color DistantTint = new Color(0.86f, 0.66f, 0.6f); // arka planın sıcak pusuna yakın
+            static readonly string[] CoverSprites = { "yuz_cali_a", "yuz_cali_c", "yuz_top_a", "yuz_top_b", "yuz_top_c", "yuz_kaktus_b" };
+            static readonly string[] DistantSprites =
+            {
+                "yuz_kaya_1", "yuz_kaya_2", "yuz_cali_b", "yuz_agac_1", "yuz_agac_2", "yuz_kaktus_a", "yuz_kaktus_c", "yuz_cali_a", "yuz_top_b",
+            };
+            static readonly string[] CaveSprites = { "mgr_dikit_1", "yuz_kaya_2", "yuz_kaya_1" };
+
+            /// <summary>
+            /// Açık havadaki her zemine önde küçük çalı ve taşlar, arkada puslu kaya ve ağaçlar; büyük nesnelerin
+            /// yanına da çalı serper. Mağara tabanına seyrek taş. Yerleşim sabit tohumlu: her kurulumda aynı çıkar.
+            /// </summary>
+            public void ScatterGroundCover()
+            {
+                var random = new System.Random(4242);
+                float Between(float a, float b) => a + (float)random.NextDouble() * (b - a);
+                string Pick(string[] list) => list[random.Next(list.Length)];
+                bool Indoors(float x) => indoors.Any(r => x >= r.xMin && x <= r.xMax);
+                bool Free(float x, float half) => !occupied.Any(o => Mathf.Abs(o.x - x) < o.half + half);
+
+                foreach (var g in grounds)
+                {
+                    if (g.xMax - g.xMin < 3f)
+                        continue;
+                    // Arka sıra: sürekli bir uzak bant, oyuncu ile gökyüzü arasını doldurur.
+                    for (float x = g.xMin + Between(0.4f, 1.5f); x < g.xMax; x += Between(2.2f, 4.2f))
+                        if (!Indoors(x))
+                            Cover(Pick(DistantSprites), x, g, 0.72f, DistantTint, DistantOrder);
+                    // Ön sıra: küçük çalılar ve taş öbekleri, çoğu yerde ikişer ikişer.
+                    for (float x = g.xMin + Between(1f, 3f); x < g.xMax; x += Between(3f, 6.5f))
+                    {
+                        if (Indoors(x) || !Free(x, 0.7f))
+                            continue;
+                        Cover(Pick(CoverSprites), x, g, 1f, Color.white, CoverOrder);
+                        if (random.NextDouble() < 0.5)
+                            Cover(Pick(CoverSprites), x + Between(0.9f, 1.5f), g, 0.8f, Color.white, CoverOrder);
+                    }
+                }
+
+                foreach (var d in bigDecor)
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        float x = d.x + side * (d.half + Between(0.1f, 0.5f));
+                        var g = grounds.FirstOrDefault(o => x >= o.xMin && x <= o.xMax && Mathf.Abs(o.top - d.y) < 0.01f);
+                        if (g.xMax > g.xMin)
+                            Cover(Pick(CoverSprites), x, g, 0.9f, Color.white, CoverOrder);
+                    }
+
+                foreach (var f in caveFloors)
+                {
+                    if (f.xMax - f.xMin < 4f)
+                        continue;
+                    for (float x = f.xMin + Between(1f, 4f); x < f.xMax; x += Between(5f, 9f))
+                        if (Free(x, 0.6f))
+                            Cover(Pick(CaveSprites), x, f, 0.55f, CaveTint, CoverOrder);
+                }
+            }
+
+            // Görsel zeminin kenarından taşarsa havada kalır: sığmıyorsa koyulmaz.
+            void Cover(string sprite, float x, (float xMin, float xMax, float top) surface, float scale, Color color, int order)
+            {
+                Sprite s = TestSceneBuilder.Prop(sprite);
+                float half = s.bounds.size.x * scale / 2f;
+                if (x - half < surface.xMin || x + half > surface.xMax)
+                    return;
+                var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(decor);
+                sr.transform.position = new Vector3(x, surface.top - 0.1f * scale, 0f);
+                sr.transform.localScale = new Vector3(scale, scale, 1f);
+                sr.sprite = s;
+                sr.color = color;
+                sr.sortingOrder = order;
             }
 
             // Duvara düşen yumuşak gölge: nesneyi arkasındaki kayaya bağlar.
@@ -1400,26 +1566,6 @@ namespace DesertGecko.EditorTools
                 sr.sprite = glowSprite;
                 sr.color = new Color(0f, 0f, 0f, 0.75f);
                 sr.sortingOrder = -11;
-            }
-
-            // Taban önünde zeminin kendi taş görselinden iki yana yığın: birleşim yeri görünmesin.
-            void Mound(float wx, float y, float width)
-            {
-                Sprite rubble = LayerArt("zemin_yamac_dip");
-                float half = width * 0.6f;
-                float scaleX = Mathf.Min(1f, half / rubble.bounds.size.x);
-                foreach (int side in new[] { -1, 1 })
-                {
-                    var sr = new GameObject("Yigin").AddComponent<SpriteRenderer>();
-                    sr.transform.SetParent(decor);
-                    sr.transform.position = new Vector3(wx + side * half / 2f, y + rubble.bounds.size.y * 0.75f - 0.06f, 0f);
-                    sr.transform.localScale = new Vector3(scaleX, 0.75f, 1f);
-                    sr.sprite = rubble;
-                    sr.flipX = side > 0; // yüksek tarafları ortada buluşur
-                    sr.sortingOrder = 3;
-                    if (InCave)
-                        sr.color = new Color(0.82f, 0.78f, 0.76f);
-                }
             }
 
             /// <summary>Arka duvara üst üste dizilen, duvarla kaynaşsın diye koyulaştırılmış panel.</summary>
@@ -1467,7 +1613,7 @@ namespace DesertGecko.EditorTools
             public void Fener(float x, float y)
             {
                 Deco("mgr_fener", x, y);
-                Glow(x - 0.1f, y + 1.3f, LampLight, 3f, 0.35f);
+                Glow(x - 0.39f, y + 1.44f, LampLight, 3f, 0.35f);
             }
 
             public void Drip(float x, float top, float bottom)
@@ -1595,8 +1741,11 @@ namespace DesertGecko.EditorTools
                     surfaceDepth: surface.depth, widthFactor: surface.width);
             }
 
-            public void Plant(string sprite, float x, float groundTop) =>
+            public void Plant(string sprite, float x, float groundTop)
+            {
+                occupied.Add((x + OriginX, 0.8f));
                 TestSceneBuilder.PropDecor(decor, sprite, x + OriginX, groundTop, ctx.Tile);
+            }
 
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x + OriginX, groundTop);
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);
@@ -1607,6 +1756,7 @@ namespace DesertGecko.EditorTools
             {
                 x += OriginX;
                 checkpoints.Add(x);
+                occupied.Add((x, 1f));
                 CombatSetupBuilder.Place(ctx.Combat.Checkpoint, actors, Name("Checkpoint"), x, groundTop);
             }
 
@@ -1630,6 +1780,7 @@ namespace DesertGecko.EditorTools
             /// <summary>Eğitim tabelası: oyuncu yaklaşınca üstünde yazı belirir.</summary>
             public void Sign(float x, float groundTop, string text)
             {
+                occupied.Add((x + OriginX, 0.6f));
                 var root = new GameObject(Name("Tabela"));
                 root.transform.SetParent(decor);
                 root.transform.position = new Vector3(x + OriginX, groundTop, 0f);

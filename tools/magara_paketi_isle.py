@@ -28,6 +28,12 @@ PIXEL = 3         # kaynakta bir oyun pikselinin kaç piksel olduğu
 MERGE = 2         # bu kadar oyun pikseli yakındaki parçalar aynı obje sayılır
 MIN_PIXELS = 40   # bundan küçük parçalar kırıntı sayılır
 
+# Kamp görselindeki parçaların sınırları (oyun pikseli)
+CAMP_FIRE_TOP, CAMP_FIRE_RIGHT, CAMP_LOG_RIGHT = 19, 42, 25
+# Düz duran ya da duvara asılan görseller tabanı düzleştirilmez.
+KEEP_BASE = {"mgr_su", "mgr_boru", "mgr_diken"}
+TRIM_FLOATING = {"mgr_vagon", "mgr_matkap"}
+
 # Önizlemedeki numara -> dosya adı. "tavan_" ile başlayanlar üst kenarından asılır (SpriteImportRules).
 OBJECTS = {
     0: "mgr_kristal_siyah", 1: "tavan_kristal", 2: "mgr_kristal_kucuk", 3: "mgr_diken", 4: "mgr_mantar_kutuk",
@@ -35,7 +41,7 @@ OBJECTS = {
     11: "mgr_sandiklar", 12: "mgr_cadir", 13: "mgr_iskelet", 14: "mgr_boru", 15: "tavan_ip_merdiven", 16: "mgr_erzak",
     17: "tavan_sarkit_1", 18: "tavan_sarkit_2", 20: "tavan_sarkit_3", 19: "mgr_dikit_1", 21: "mgr_dikit_2",
     22: "mgr_cevher_mavi", 23: "mgr_cevher_turuncu", 24: "tavan_kok", 25: "tavan_sarmasik", 26: "mgr_mantar",
-    27: "mgr_vagon", 28: "mgr_kiris", 29: "mgr_tnt", 30: "mgr_varil", 31: "mgr_fener", 32: "tavan_zincir",
+    27: "mgr_vagon", 28: "mgr_kiris", 29: "mgr_tnt", 30: "mgr_varil", 32: "tavan_zincir",
     33: "mgr_kemik", 34: "mgr_kamp", 35: "tavan_ag",
     37: "ada_1", 38: "ada_2", 40: "ada_3", 41: "ada_4", 42: "tahta_zincir", 39: "tahta_tekerlek", 43: "tahta_ray",
     44: "iskele_kirmizi", 45: "tahta_korkuluk", 46: "iskele_cift", 47: "kaya_cikinti", 48: "kaya_destek",
@@ -85,6 +91,51 @@ def remove_lamp_halo(crop):
     distance = np.abs(upper[..., :3].astype(np.int32) - np.array([140, 112, 78])).max(axis=2)
     upper[(distance < 34) & (upper[..., 3] > 0)] = 0
     return out
+
+
+def flatten_base(crop):
+    """
+    Görseller 3/4 açıdan çizili, tabanları çapraz iniyor. Her sütunu tepesi sabit kalacak şekilde
+    aşağı uzatır: taban düz bir çizgi olur, yandan görünen zemine tam oturur.
+    Çok kısa sütunlara (havadaki bez ucu, ip) dokunmaz; onlar uzatılırsa bozulur.
+    """
+    h, w = crop.shape[:2]
+    out = crop.copy()
+    alpha = crop[..., 3] > 0
+    for x in range(w):
+        rows = np.where(alpha[:, x])[0]
+        if len(rows) == 0:
+            continue
+        top, low = rows[0], rows[-1]
+        gap = h - 1 - low
+        if gap == 0 or gap > (low - top) * 0.8:
+            continue
+        for y in range(top, h):
+            src = top + round((y - top) * (low - top) / (h - 1 - top))
+            out[y, x] = crop[src, x]
+    return out
+
+
+def split_camp(crop):
+    """Kamp: odun ve bez havada duruyor; ateş halkasından ayrılıp yere kendi başına konur."""
+    h, w = crop.shape[:2]
+    parts = {"mgr_kamp_ates": np.zeros_like(crop), "mgr_odun": np.zeros_like(crop), "mgr_bez": np.zeros_like(crop)}
+    for y in range(h):
+        for x in range(w):
+            if crop[y, x, 3] == 0:
+                continue
+            if y >= CAMP_FIRE_TOP and x < CAMP_FIRE_RIGHT:
+                part = "mgr_kamp_ates"
+            elif x < CAMP_LOG_RIGHT:
+                part = "mgr_odun"
+            else:
+                part = "mgr_bez"
+            parts[part][y, x] = crop[y, x]
+    result = {}
+    for name, part in parts.items():
+        rows, cols = np.where(part[..., 3].any(axis=1))[0], np.where(part[..., 3].any(axis=0))[0]
+        result[name] = part[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+    return result
 
 
 def components(alpha):
@@ -158,6 +209,20 @@ def main():
             if target and not args.preview:
                 if target == "mgr_fener":
                     crop = remove_lamp_halo(crop)
+                if target == "mgr_kamp":
+                    for part_name, part in split_camp(crop).items():
+                        Image.fromarray(flatten_base(part), "RGBA").save(OUTPUT_DIR / f"{part_name}.png")
+                        print(f"{part_name}: {part.shape[1]}x{part.shape[0]}")
+                    number += 1
+                    continue
+                if target.startswith("mgr_") and target not in KEEP_BASE:
+                    crop = flatten_base(crop)
+                if target in TRIM_FLOATING:
+                    # Yere değmeyen sütunlar (ray uçları): havada kalmasınlar diye silinir.
+                    alpha = crop[..., 3] > 0
+                    crop[:, ~alpha[-1]] = 0
+                    cols = np.where(alpha[-1])[0]
+                    crop = crop[:, cols[0]:cols[-1] + 1]
                 Image.fromarray(crop, "RGBA").save(OUTPUT_DIR / f"{target}.png")
                 # Yürünen yüzey: en geniş satırın %60'ına ulaşan ilk satır (platform tablosu için)
                 widths = (crop[..., 3] > 0).sum(axis=1)
