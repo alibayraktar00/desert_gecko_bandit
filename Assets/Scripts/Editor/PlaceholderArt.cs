@@ -266,6 +266,64 @@ namespace DesertGecko.EditorTools
             }
         });
 
+        // Boru parçaları: koyu çelik, yer yer pas. Yan yana tekrar edince dikişsiz birleşir.
+        static readonly Color32 PipeDark = new Color32(0x2E, 0x2C, 0x32, 0xFF);
+        static readonly Color32 PipeMid = new Color32(0x5C, 0x5A, 0x60, 0xFF);
+        static readonly Color32 PipeLight = new Color32(0x8E, 0x8F, 0x94, 0xFF);
+        static readonly Color32 PipeRust = new Color32(0x7A, 0x48, 0x2E, 0xFF);
+        static readonly Vector2 TopCenter = new Vector2(0.5f, 1f);
+
+        // Dikey: 16 genişlik, 64 boy (2 birim). Her tekrarda bir kelepçe.
+        public static Sprite PipeVertical() => Create("boru_dikey", 16, 64, TopCenter, c =>
+        {
+            c.Rect(1, 0, 14, 63, PipeDark);
+            c.Rect(2, 0, 13, 63, PipeMid);
+            c.Rect(4, 0, 6, 63, PipeLight);
+            c.Rect(11, 0, 13, 63, new Color32(0x44, 0x42, 0x48, 0xFF));
+            c.Rect(0, 26, 15, 33, PipeDark);
+            c.Rect(1, 27, 14, 32, PipeMid);
+            c.Rect(3, 27, 5, 32, PipeLight);
+            c.Rect(7, 45, 9, 50, PipeRust);
+            c.Set(2, 29, PipeDark);
+            c.Set(13, 29, PipeDark);
+        });
+
+        public static Sprite PipeHorizontal() => Create("boru_yatay", 64, 16, TopCenter, c =>
+        {
+            c.Rect(0, 1, 63, 14, PipeDark);
+            c.Rect(0, 2, 63, 13, PipeMid);
+            c.Rect(0, 9, 63, 11, PipeLight);
+            c.Rect(0, 2, 63, 4, new Color32(0x44, 0x42, 0x48, 0xFF));
+            c.Rect(26, 0, 33, 15, PipeDark);
+            c.Rect(27, 1, 32, 14, PipeMid);
+            c.Rect(27, 10, 32, 12, PipeLight);
+            c.Rect(46, 5, 51, 7, PipeRust);
+        });
+
+        // Birleşim: boruların kesiştiği ya da döndüğü yerdeki kalın parça.
+        public static Sprite PipeJoint() => Create("boru_birlesim", 22, 22, Center, c =>
+        {
+            c.Rect(1, 1, 20, 20, PipeDark);
+            c.Rect(2, 2, 19, 19, PipeMid);
+            c.Rect(4, 13, 14, 17, PipeLight);
+            c.Rect(2, 2, 19, 4, new Color32(0x44, 0x42, 0x48, 0xFF));
+            foreach (var (x, y) in new[] { (3, 3), (18, 3), (3, 18), (18, 18) })
+                c.Set(x, y, PipeDark);
+            c.Rect(14, 6, 17, 8, PipeRust);
+        });
+
+        // Vana: kırmızı çarklı birleşim.
+        public static Sprite PipeValve() => Create("boru_vana", 26, 26, Center, c =>
+        {
+            var wheel = new Color32(0x9A, 0x3A, 0x2C, 0xFF);
+            c.Disc(13f, 13f, 12f, PipeDark);
+            c.Disc(13f, 13f, 11f, wheel);
+            c.Disc(13f, 13f, 8f, PipeDark);
+            c.Rect(12, 3, 13, 22, wheel);
+            c.Rect(3, 12, 22, 13, wheel);
+            c.Disc(13f, 13f, 3f, PipeLight);
+        });
+
         // --- Arayüz ---
 
         public static Sprite Heart(int fill) => Create($"kalp_{(fill == 2 ? "dolu" : fill == 1 ? "yarim" : "bos")}", 16, 16, Center, c =>

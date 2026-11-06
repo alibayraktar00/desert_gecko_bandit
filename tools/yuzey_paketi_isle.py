@@ -71,6 +71,59 @@ def lantern():
     return out[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
 
 
+# Kamp ateşi: alevler kamp görselinden silinir, yerine dalgalanan ve duman tüten kareler üretilir.
+FIRE_ERASE = (0, 0, 25, 36)  # x0, y0, x1, y1 (oyun pikseli)
+FIRE_FRAMES, FIRE_W, FIRE_H = 12, 32, 54
+FLAME_BANDS = [(255, 244, 190), (255, 216, 90), (250, 150, 40), (214, 84, 30), (120, 34, 22)]
+SMOKE_COLOR = (180, 168, 162)
+
+
+def flame(canvas, cx, height, half_width, t, phase):
+    """Tek alev dili. Halkalar içten dışa renklenir; t tam döngüde başa döndüğü için animasyon dikişsizdir."""
+    for row in range(height):
+        v = row / height
+        width = half_width * (1 - v ** 1.4) * (0.75 + 0.5 * min(1, v * 4))
+        sway = np.sin(2 * np.pi * (2 * t + phase) - row * 0.55) * (0.3 + 2.2 * v)
+        center = cx + sway
+        y = FIRE_H - 1 - row
+        for x in range(int(center - width - 1), int(center + width + 2)):
+            distance = abs(x + 0.5 - center) / max(width, 0.6)
+            if distance > 1 or not 0 <= x < FIRE_W:
+                continue
+            level = distance + v * 0.75
+            band = 0 if level < 0.35 else 1 if level < 0.65 else 2 if level < 1.0 else 3
+            if distance > 0.8:
+                band = max(band, 3)
+            current = canvas[y, x]
+            if current[3] == 0 or band < FLAME_BANDS.index(tuple(current[:3])):
+                canvas[y, x] = (*FLAME_BANDS[band], 255)
+
+
+def fire_frames():
+    frames = []
+    for i in range(FIRE_FRAMES):
+        t = i / FIRE_FRAMES
+        canvas = np.zeros((FIRE_H, FIRE_W, 4), dtype=np.uint8)
+        cx = FIRE_W / 2
+        tall = 15 + int(round(2.5 * np.sin(2 * np.pi * t * 3)))
+        flame(canvas, cx - 4.5, 8 + int(round(1.5 * np.sin(2 * np.pi * (t * 2 + 0.3)))), 2.6, t, 0.35)
+        flame(canvas, cx + 4.5, 7 + int(round(1.5 * np.sin(2 * np.pi * (t * 2 + 0.7)))), 2.4, t, 0.7)
+        flame(canvas, cx, tall, 4.2, t, 0.0)
+        # Duman: alevin üstünden süzülen, gittikçe büyüyüp solan kümeler
+        for puff in range(4):
+            age = (t + puff / 4) % 1
+            y = FIRE_H - 1 - (17 + age * 33)
+            x = cx + np.sin(2 * np.pi * (age * 1.2 + puff * 0.3)) * (0.5 + age * 2.5)
+            radius = 0.8 + age * 1.6
+            alpha = int(210 * (1 - age) ** 0.8)
+            for py in range(int(y - radius), int(y + radius) + 2):
+                for px in range(int(x - radius), int(x + radius) + 2):
+                    if (px + 0.5 - x) ** 2 + (py + 0.5 - y) ** 2 <= radius ** 2 and 0 <= px < FIRE_W and 0 <= py < FIRE_H and canvas[py, px, 3] == 0:
+                        canvas[py, px] = (*SMOKE_COLOR, alpha)
+        frames.append(canvas)
+    return frames
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--preview", type=Path)
@@ -90,6 +143,13 @@ def main():
             sprites[name] = crop[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
 
     sprites["mgr_fener"] = lantern()
+
+    camp = sprites["yuz_kamp"].copy()
+    x0, y0, x1, y1 = FIRE_ERASE
+    camp[y0:y1, x0:x1] = 0
+    sprites["yuz_kamp"] = camp
+    for i, frame in enumerate(fire_frames()):
+        sprites[f"yuz_ates_{i}"] = frame
 
     if args.preview:
         canvas = Image.new("RGBA", (1280, 760), (90, 130, 150, 255))

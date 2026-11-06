@@ -1,0 +1,348 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &702674742689551396
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7439272795279631025}
+  - component: {fileID: 3973182267119427980}
+  m_Layer: 0
+  m_Name: Visual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7439272795279631025
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702674742689551396}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 371704099531024684}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &3973182267119427980
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 702674742689551396}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: b9e3a35aff0dca94c8ceae04c1923e84, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 4, y: 2}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!1 &7575762255700310645
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 371704099531024684}
+  - component: {fileID: 4888889249846742850}
+  - component: {fileID: 777371275385871474}
+  - component: {fileID: 7078810274758693418}
+  - component: {fileID: 6329183650061141115}
+  m_Layer: 8
+  m_Name: Armadillo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &371704099531024684
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7575762255700310645}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7439272795279631025}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!50 &4888889249846742850
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7575762255700310645}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 3
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 1
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 4
+--- !u!61 &777371275385871474
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7575762255700310645}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.575}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.95, y: 1.15}
+  m_EdgeRadius: 0
+--- !u!114 &7078810274758693418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7575762255700310645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 675783ffea142f244ad274bc9cb31f09, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.Armadillo
+  maxHealth: 4
+  contactDamage: 1
+  patrolSpeed: 1.1
+  chaseSpeed: 4
+  patrolDistance: 3
+  detectRange: 5
+  loseRange: 8
+  verticalTolerance: 2.5
+  belowTolerance: 1.1
+  edgeMargin: 1.2
+  contactPause: 0.5
+  knockbackVelocity: {x: 4, y: 3}
+  stunDuration: 0.3
+  flashDuration: 0.12
+  flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
+  deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  spriteRenderer: {fileID: 3973182267119427980}
+  spriteFacesLeft: 0
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 64
+  killY: -12
+  sightRange: 8
+  sightHeight: 1.6
+  attackCooldown: 1.2
+  noticeDuration: 0.6
+  curlDuration: 0.28
+  rollSpeed: 9
+  rollOvershoot: 2.5
+  maxRollDistance: 10
+  unfoldDuration: 0.5
+  rollDamage: 2
+  dustInterval: 0.1
+  dustColor: {r: 0.5411765, g: 0.38431373, b: 0.2509804, a: 1}
+  swingRange: 2
+  swingDuration: 0.7
+  swingReach: 1.7
+  swingDamage: 1
+  swingCooldown: 0.8
+  dazeDuration: 2.6
+  recoverDuration: 0.7
+  crashBounce: {x: 3.5, y: 5}
+  hurtDuration: 0.25
+  sparkColor: {r: 1, g: 0.84705883, b: 0.3529412, a: 1}
+  walkTime: 3.5
+  idleTime: 1.4
+  idleFrames:
+  - {fileID: 21300000, guid: 84875d1aea00026449e8b71cb168b3a7, type: 3}
+  - {fileID: 21300000, guid: 8e5b3683fcd7c3f478a6e003699521c4, type: 3}
+  - {fileID: 21300000, guid: 8621687e63301ed4c96362eb78291f26, type: 3}
+  - {fileID: 21300000, guid: e1af621c3bac190479cfa50455f922eb, type: 3}
+  - {fileID: 21300000, guid: d64422d8dcf5f4546a668d14fded9506, type: 3}
+  - {fileID: 21300000, guid: 65aed0f869c561e4a83738ab6dbd975a, type: 3}
+  - {fileID: 21300000, guid: 406c25d1fd268ef429ce87398b1d054b, type: 3}
+  idleFps: 5
+  patrolFrames:
+  - {fileID: 21300000, guid: b9e3a35aff0dca94c8ceae04c1923e84, type: 3}
+  - {fileID: 21300000, guid: 22a2845b35107df4e8e45d00a1fcb826, type: 3}
+  - {fileID: 21300000, guid: dc284fd13fa7a88468eaae1fbe3ae37e, type: 3}
+  - {fileID: 21300000, guid: 77cc1eba8821ac34ab0310b124bb8a8c, type: 3}
+  - {fileID: 21300000, guid: ca463ad43717e8a4788ed89b7085342b, type: 3}
+  - {fileID: 21300000, guid: 6a9b6ef8db31a714a86acbc5d5a09ff3, type: 3}
+  - {fileID: 21300000, guid: bd2f7f8de606fc34a85caff1a0f0a49f, type: 3}
+  patrolFps: 9
+  noticeFrames:
+  - {fileID: 21300000, guid: e129fc4c73b5cc1409153f19a2cfc1b2, type: 3}
+  - {fileID: 21300000, guid: f6320e79f59f0ac4c86d2059c0e2474b, type: 3}
+  - {fileID: 21300000, guid: 81a1deba283fde24b9f42ae79f0fd98b, type: 3}
+  - {fileID: 21300000, guid: a5a441c3d313c6b4983a6387a57694a8, type: 3}
+  - {fileID: 21300000, guid: d654377f686ec3c418b320d22c99d915, type: 3}
+  - {fileID: 21300000, guid: f8bbc7970d9c46c478b031a8f6a312a1, type: 3}
+  - {fileID: 21300000, guid: 026d96f710faa1a4290b6e40d4ae13cf, type: 3}
+  curlFrames:
+  - {fileID: 21300000, guid: d0a243ee9c53c4e4390d611c450aab4b, type: 3}
+  - {fileID: 21300000, guid: fb1bef0b68f6e81439a7aac374ed9b63, type: 3}
+  - {fileID: 21300000, guid: 3efe1125c86cf2b439f6452fbe87a717, type: 3}
+  rollFrames:
+  - {fileID: 21300000, guid: ac90d1df3ed913a46a6e852bdc24c659, type: 3}
+  - {fileID: 21300000, guid: 1242e9a8462057d489fec776fe19063f, type: 3}
+  - {fileID: 21300000, guid: 3e394f71e30a78f4cb31586bc264d09e, type: 3}
+  - {fileID: 21300000, guid: 3d532b86447d7504f83c6bd0b5c7f715, type: 3}
+  - {fileID: 21300000, guid: 53888972a840c5247b543c9f85880cba, type: 3}
+  - {fileID: 21300000, guid: 050f2adc5a5b7dd48a6f7c03375ddd4d, type: 3}
+  - {fileID: 21300000, guid: 6cb7f088443435b46a41afedb5465fac, type: 3}
+  rollFps: 20
+  dazeFrames:
+  - {fileID: 21300000, guid: 3ffc61b9acfb60d4e9e66e4c185385f7, type: 3}
+  - {fileID: 21300000, guid: 1f70794bc6e41e146ac863a8634dae7c, type: 3}
+  - {fileID: 21300000, guid: b6d3e0067e1fc3d4e8cef5310efc9bc0, type: 3}
+  - {fileID: 21300000, guid: 6ba4413fc9017ba4ab0f1512a77b7847, type: 3}
+  - {fileID: 21300000, guid: ef83cd09b2090e449894afb9a81cfc49, type: 3}
+  - {fileID: 21300000, guid: 890d5ad756ebd484999f17f56db7748e, type: 3}
+  - {fileID: 21300000, guid: ce12c11f4043ca54182b95e83118f584, type: 3}
+  - {fileID: 21300000, guid: 07137ec1d6235f9408d73f637170c683, type: 3}
+  - {fileID: 21300000, guid: 82cc04fa5d76c044e9d7d749d8e1fddf, type: 3}
+  dazeFps: 8
+  recoverFrames:
+  - {fileID: 21300000, guid: 0de5d7a222b866e45a7530cc65d0edb8, type: 3}
+  - {fileID: 21300000, guid: a64a1503f4ffaea46967af9f0a030e41, type: 3}
+  - {fileID: 21300000, guid: c548ad456fb4e2d4ca41ad82385abc31, type: 3}
+  - {fileID: 21300000, guid: 23566ce261fd17f49b35b72ad70998b7, type: 3}
+  - {fileID: 21300000, guid: 8671387307fa739489cf9d15fcc8ffd3, type: 3}
+  - {fileID: 21300000, guid: 84154e419a76685419446999f599e6c6, type: 3}
+  - {fileID: 21300000, guid: 3db1c42f023ff7849b60d280fbd852a9, type: 3}
+  - {fileID: 21300000, guid: 1b6d63ba8bd509749b23822b7901e7be, type: 3}
+  - {fileID: 21300000, guid: 25af848ea61f94d40b1e3de6c8e34f1c, type: 3}
+  hurtFrame: {fileID: 21300000, guid: a64a1503f4ffaea46967af9f0a030e41, type: 3}
+  defeatFrames:
+  - {fileID: 21300000, guid: eb13b8545641f744bae6e04934638762, type: 3}
+  - {fileID: 21300000, guid: bb1bc67b790420748ac30bc762859874, type: 3}
+  - {fileID: 21300000, guid: 761ba57eed519b84482749ed19ab3233, type: 3}
+  - {fileID: 21300000, guid: e628cd74ab692af47a0c45e117d1eab4, type: 3}
+  - {fileID: 21300000, guid: 2d2b2447bc016104997fd320ac76393d, type: 3}
+  - {fileID: 21300000, guid: 6abd8dc2dec8e2c48af0a98076ba51ef, type: 3}
+  - {fileID: 21300000, guid: 80a3ee06b5f9dca4bad1f6b79ea4465f, type: 3}
+  - {fileID: 21300000, guid: f2f3df926574d8a45a545108b92d0ffa, type: 3}
+--- !u!114 &6329183650061141115
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7575762255700310645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc0f90b254112eb499c612e4fa82f4f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Collectibles.CrystalDrop
+  crystalPrefab: {fileID: 4914030784869760565, guid: 61deac18ea4d6034498c6957e8a207dc, type: 3}
+  minCount: 1
+  maxCount: 2
+  launchSpeed: 5
+  spawnOffset: {x: 0, y: 0.5}

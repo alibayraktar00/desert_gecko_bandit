@@ -27,6 +27,7 @@ namespace DesertGecko.EditorTools
             public EnemyBullet EnemyBullet;
             public Rattlesnake Rattlesnake;
             public Jackal Jackal;
+            public Armadillo Armadillo;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -50,6 +51,7 @@ namespace DesertGecko.EditorTools
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
             a.Jackal = BuildJackal(a.Crystal);
+            a.Armadillo = BuildArmadillo(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -223,6 +225,54 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<Jackal>(root, "Jackal");
+        }
+
+        // Kare sırası (tools/gemini_armadillo_isle.py): 0-6 bekleme, 7-13 devriye, 14-20 fark, 21-23 kapanma,
+        // 24-30 top, 31-39 sersem, 40-48 toparlanma, 49-56 yenik.
+        static Armadillo BuildArmadillo(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("armadillo", 57);
+            Object[] Range(int from, int to)
+            {
+                var frames = new Object[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            var root = new GameObject("Armadillo") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.95f, 1.15f);
+            box.offset = new Vector2(0f, 0.575f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[7], 8);
+            var armadillo = root.AddComponent<Armadillo>();
+            SetField(armadillo, "spriteRenderer", sr);
+            SetMask(armadillo, "groundMask", GameLayers.GroundMask);
+            SetArray(armadillo, "idleFrames", Range(0, 6));
+            SetArray(armadillo, "patrolFrames", Range(7, 13));
+            SetArray(armadillo, "noticeFrames", Range(14, 20));
+            SetArray(armadillo, "curlFrames", Range(21, 23));
+            SetArray(armadillo, "rollFrames", Range(24, 30));
+            SetArray(armadillo, "dazeFrames", Range(31, 39));
+            SetArray(armadillo, "recoverFrames", Range(40, 48));
+            SetField(armadillo, "hurtFrame", f[41]);
+            SetArray(armadillo, "defeatFrames", Range(49, 56));
+
+            // Kareler sağa bakar. Hantal yürür, dört darbede ölür (sadece sersemken vurulabilir).
+            var so = new SerializedObject(armadillo);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 1.1f;
+            so.FindProperty("maxHealth").intValue = 4;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Armadillo>(root, "Armadillo");
         }
 
         static Sprite[] LoadEnemyFrames(string enemy, int count)

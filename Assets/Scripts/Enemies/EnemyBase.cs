@@ -63,6 +63,8 @@ namespace DesertGecko.Enemies
         protected virtual bool CanChase => true;
         /// <summary>true iken yerinde durur (örneğin nişan alırken).</summary>
         protected virtual bool HoldPosition => false;
+        /// <summary>true iken saldırılar işlemez (zırh, kabuk).</summary>
+        protected virtual bool Invulnerable => false;
         protected PlayerHealth Player => player;
 
         public event Action<EnemyBase> Died;
@@ -199,7 +201,7 @@ namespace DesertGecko.Enemies
             body.linearVelocity = new Vector2(direction * speed, body.linearVelocity.y);
         }
 
-        bool IsBlocked(int direction)
+        protected bool IsBlocked(int direction)
         {
             Bounds b = box.bounds;
             Vector2 footProbe = new Vector2(b.center.x + direction * (b.extents.x + 0.05f), b.min.y + 0.1f);
@@ -233,6 +235,11 @@ namespace DesertGecko.Enemies
         {
             if (!IsAlive || amount <= 0)
                 return;
+            if (Invulnerable)
+            {
+                OnBlocked();
+                return;
+            }
 
             health = Mathf.Max(0, health - amount);
             flashUntil = Time.time + flashDuration;
@@ -254,6 +261,7 @@ namespace DesertGecko.Enemies
         }
 
         protected virtual void OnDamaged() { }
+        protected virtual void OnBlocked() { }
         protected virtual void OnDied() { }
 
         /// <summary>Bu yöne döner ve devriyesine o yönde devam eder.</summary>

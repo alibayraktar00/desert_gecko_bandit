@@ -515,6 +515,111 @@ namespace DesertGecko.Tests
 
         // --- Yılan silahşor ---
 
+        // --- Madenci Armadillo ---
+
+        [UnityTest]
+        public IEnumerator Armadillo_UyarirKapanirYuvarlanir_ZirhiIslemez()
+        {
+            Ground(-20f, 20f);
+            Player(new Vector2(-7.5f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(Armadillo.ArmadilloState.Notice, armadillo.State, "önce uyarı vermeli");
+
+            yield return new WaitForSeconds(0.75f);
+            Assert.AreEqual(Armadillo.ArmadilloState.Roll, armadillo.State);
+            Assert.Less(armadillo.GetComponent<Rigidbody2D>().linearVelocity.x, -8f, "oyuncuya doğru hızla yuvarlanmalı");
+
+            int before = armadillo.Health;
+            armadillo.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(before, armadillo.Health, "yuvarlanırken hasar almamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Armadillo_DuvaraCarpinca_Sersemler_VurulabilirSonraToparlanir()
+        {
+            Ground(-20f, 20f);
+            Wall(-3f);
+            PlayerHealth player = Player(new Vector2(-1.5f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(3f, 0.05f));
+
+            // Oyuncu havada tutulur: top ona çarpıp durmasın, duvara kadar gitsin.
+            var movement = player.GetComponent<PlayerController>();
+            float limit = Time.time + 3f;
+            while (armadillo.State != Armadillo.ArmadilloState.Daze && Time.time < limit)
+            {
+                movement.Teleport(new Vector2(-1.5f, 1.4f));
+                yield return null;
+            }
+            Assert.AreEqual(Armadillo.ArmadilloState.Daze, armadillo.State, "duvara çarpınca sersemlemeli");
+
+            int before = armadillo.Health;
+            armadillo.TakeDamage(1, Vector2.right);
+            Assert.AreEqual(before - 1, armadillo.Health, "sersemken hasar almalı");
+
+            yield return new WaitForSeconds(2.8f);
+            Assert.AreEqual(Armadillo.ArmadilloState.Recover, armadillo.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Armadillo_OyuncuyuGecinceAcilir_GeriDoner()
+        {
+            Ground(-30f, 30f);
+            PlayerHealth player = Player(new Vector2(-4f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(0f, 0.05f));
+
+            float limit = Time.time + 3f;
+            while (armadillo.State != Armadillo.ArmadilloState.Unfold && Time.time < limit)
+                yield return null;
+            Assert.AreEqual(Armadillo.ArmadilloState.Unfold, armadillo.State, "oyuncuyu geçince açılmalı");
+            Assert.Less(armadillo.transform.position.x, -2f, "oyuncuya kadar yuvarlanmış olmalı");
+            Assert.Greater(armadillo.transform.position.x, -7f, "çok uzağa gitmemeli");
+
+            yield return new WaitForSeconds(0.6f);
+            int toPlayer = player.transform.position.x >= armadillo.transform.position.x ? 1 : -1;
+            Assert.AreEqual(toPlayer, armadillo.FacingDirection, "oyuncuya dönmeli");
+            Assert.That(armadillo.State, Is.EqualTo(Armadillo.ArmadilloState.Notice).Or.EqualTo(Armadillo.ArmadilloState.Swing), "yeniden saldırmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Armadillo_YakindakiniKazmaylaVurur()
+        {
+            Ground(-20f, 20f);
+            PlayerHealth health = Player(new Vector2(-1.5f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(0f, 0.05f));
+
+            yield return new WaitForSeconds(0.15f);
+            Assert.AreEqual(Armadillo.ArmadilloState.Swing, armadillo.State, "yakındakine kazma sallamalı");
+            yield return new WaitForSeconds(0.5f);
+            Assert.Less(health.CurrentHealth, health.MaxHealth, "kazma can yakmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Armadillo_DuvarArkasindakiniGormez()
+        {
+            Ground(-20f, 20f);
+            Wall(-3f);
+            Player(new Vector2(-4.5f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(0f, 0.05f));
+            yield return new WaitForSeconds(0.3f);
+            Assert.AreEqual(Armadillo.ArmadilloState.Patrol, armadillo.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Armadillo_UcurumKenarindaDurur_Dusmez()
+        {
+            Ground(-6f, 20f);
+            Player(new Vector2(-5.5f, 0.05f));
+            Armadillo armadillo = Zirhli(new Vector2(0f, 0.05f));
+            float limit = Time.time + 3f;
+            while (armadillo.State != Armadillo.ArmadilloState.Daze && Time.time < limit)
+                yield return null;
+            Assert.AreEqual(Armadillo.ArmadilloState.Daze, armadillo.State, "kenarda çarpmış gibi sersemlemeli");
+            yield return new WaitForSeconds(0.6f);
+            Assert.Greater(armadillo.transform.position.y, -0.5f, "uçuruma düşmemeli");
+        }
+
         [UnityTest]
         public IEnumerator Cakal_OnceIrkilir_SonraOyuncudanHizliKovalar()
         {
@@ -762,6 +867,13 @@ namespace DesertGecko.Tests
             Jackal jackal = Object.Instantiate(LoadPrefab<Jackal>("Jackal"), position, Quaternion.identity);
             Track(jackal.gameObject);
             return jackal;
+        }
+
+        Armadillo Zirhli(Vector2 position)
+        {
+            Armadillo armadillo = Object.Instantiate(LoadPrefab<Armadillo>("Armadillo"), position, Quaternion.identity);
+            Track(armadillo.gameObject);
+            return armadillo;
         }
 
         Rattlesnake Snake(Vector2 position)
