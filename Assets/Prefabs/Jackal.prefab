@@ -228,6 +228,7 @@ MonoBehaviour:
   loseRange: 10
   verticalTolerance: 2.5
   belowTolerance: 1.1
+  aboveTolerance: 0.6
   edgeMargin: 1.2
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}

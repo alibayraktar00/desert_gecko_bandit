@@ -170,7 +170,8 @@ namespace DesertGecko.Enemies
                 return;
             }
             // Kenarda ya da duvarda bekler: uçuruma atlamaz.
-            bool canRun = IsGrounded() && !IsBlocked(direction) && Mathf.Abs(Player.transform.position.x - transform.position.x) > stopDistance;
+            bool canRun = IsGrounded() && !IsBlocked(direction) && !PlayerStandsAbove
+                && Mathf.Abs(Player.transform.position.x - transform.position.x) > stopDistance;
             body.linearVelocity = new Vector2(canRun ? direction * chaseRunSpeed : 0f, body.linearVelocity.y);
         }
 

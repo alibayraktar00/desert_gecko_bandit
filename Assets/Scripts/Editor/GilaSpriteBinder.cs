@@ -59,6 +59,7 @@ namespace DesertGecko.EditorTools
                 so.FindProperty("apexFrame").objectReferenceValue = LoadFrames("apex").FirstOrDefault();
                 so.FindProperty("fallFrame").objectReferenceValue = LoadFrames("fall").FirstOrDefault();
                 so.FindProperty("tintByState").boolValue = false;
+                SetTailVariants(so);
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 // Kareler ayak hizasından pivotlu, görsel kökle aynı yerde durmalı.
@@ -73,6 +74,30 @@ namespace DesertGecko.EditorTools
             finally
             {
                 PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        // Her karenin kuyruk halleri: Gila/kuyruk/<kare>_k0.._k9 (kopuk, sonra ince başlayıp büyüyen).
+        static void SetTailVariants(SerializedObject so)
+        {
+            var frames = new[] { "idle", "run", "wall", "rise", "apex", "fall", "crouch" }.SelectMany(LoadFrames).ToArray();
+            var variants = frames
+                .Select(f => (full: f, stages: Enumerable.Range(0, 10)
+                    .Select(k => AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteImportRules.GilaFolder}kuyruk/{f.name}_k{k}.png"))
+                    .ToArray()))
+                .Where(v => v.stages.All(s => s != null))
+                .ToArray();
+
+            SerializedProperty prop = so.FindProperty("tailVariants");
+            prop.arraySize = variants.Length;
+            for (int i = 0; i < variants.Length; i++)
+            {
+                SerializedProperty element = prop.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("full").objectReferenceValue = variants[i].full;
+                SerializedProperty stages = element.FindPropertyRelative("stages");
+                stages.arraySize = variants[i].stages.Length;
+                for (int j = 0; j < variants[i].stages.Length; j++)
+                    stages.GetArrayElementAtIndex(j).objectReferenceValue = variants[i].stages[j];
             }
         }
 

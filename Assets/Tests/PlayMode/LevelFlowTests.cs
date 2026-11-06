@@ -153,6 +153,31 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
+        public IEnumerator Ucurum_YuksekZemindeKenarinAltindaDusmusSayilir([Values(0, 1)] int level)
+        {
+            yield return SceneManager.LoadSceneAsync(LevelCatalog.Levels[level].Scene);
+            yield return new WaitForFixedUpdate();
+
+            PitZone[] zones = Object.FindObjectsByType<PitZone>(FindObjectsInactive.Exclude);
+            Assert.Greater(zones.Length, 0, "levelde uçurum bölgesi olmalı");
+            PitZone highest = zones[0];
+            foreach (PitZone z in zones)
+                if (z.GetComponent<Collider2D>().bounds.max.y > highest.GetComponent<Collider2D>().bounds.max.y)
+                    highest = z;
+            Bounds b = highest.GetComponent<Collider2D>().bounds;
+            Assert.Greater(b.max.y, -14f + 1f, "bölge eski sabit sınırdan yukarıda başlamalı");
+
+            PlayerController player = LevelManager.Current.Player;
+            PlayerHealth health = player.GetComponent<PlayerHealth>();
+            player.Teleport(new Vector2(b.center.x, b.max.y - 0.5f));
+            for (int i = 0; i < 5; i++)
+                yield return new WaitForFixedUpdate();
+
+            Assert.AreEqual(health.MaxHealth - 2, health.CurrentHealth, "düşmüş sayılmalı");
+            Assert.Less(Vector2.Distance(player.transform.position, health.CheckpointPosition), 1f, "checkpoint'e dönmeli");
+        }
+
+        [UnityTest]
         public IEnumerator Ucuruma_Dusmek_CaniAzaltir_VeCheckpointeDondurur()
         {
             yield return SceneManager.LoadSceneAsync(LevelCatalog.Levels[0].Scene);

@@ -32,6 +32,8 @@ namespace DesertGecko.Enemies
         [SerializeField] protected float verticalTolerance = 2.5f;
         [Tooltip("Oyuncu bundan daha aşağıdaysa kovalamaz: kenarın tepesinde onu beklemesin")]
         [SerializeField] protected float belowTolerance = 1.1f;
+        [Tooltip("Oyuncu bundan yüksek bir yüzeyde duruyorsa kovalamaz: platformun altından peşinden gitmesin")]
+        [SerializeField] protected float aboveTolerance = 0.6f;
         [Tooltip("Uçurum kenarına en fazla bu kadar yaklaşır: tırmanan oyuncuya çıkacak yer kalsın")]
         [SerializeField] protected float edgeMargin = 1.2f;
 
@@ -158,6 +160,20 @@ namespace DesertGecko.Enemies
             return Physics2D.Raycast(new Vector2(b.center.x, b.min.y + 0.05f), Vector2.down, 0.15f, groundMask);
         }
 
+        /// <summary>Oyuncu daha yüksek bir yüzeyde duruyor. Zıplarken sayılmaz: kovalama bozulmasın.</summary>
+        protected bool PlayerStandsAbove
+        {
+            get
+            {
+                if (player == null)
+                    return false;
+                if (playerMovement == null)
+                    playerMovement = player.GetComponent<PlayerController>();
+                return playerMovement != null && playerMovement.IsGrounded
+                    && player.transform.position.y - transform.position.y > aboveTolerance;
+            }
+        }
+
         void UpdateAggro()
         {
             if (!CanChase || player == null || !player.IsAlive)
@@ -170,7 +186,7 @@ namespace DesertGecko.Enemies
             if (playerMovement == null)
                 playerMovement = player.GetComponent<PlayerController>();
             // Aşağıda kalan ya da duvara tırmanan oyuncuyu kenarda beklemez, devriyesine döner.
-            if (toPlayer.y < -belowTolerance || (playerMovement != null && playerMovement.State == PlayerController.MoveState.WallCling))
+            if (toPlayer.y < -belowTolerance || PlayerStandsAbove || (playerMovement != null && playerMovement.State == PlayerController.MoveState.WallCling))
             {
                 IsChasing = false;
                 return;

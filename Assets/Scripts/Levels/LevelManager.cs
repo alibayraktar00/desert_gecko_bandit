@@ -70,7 +70,14 @@ namespace DesertGecko.Levels
 
         void Update()
         {
-            if (IsComplete || player == null || health == null || player.transform.position.y >= killY)
+            if (player != null && player.transform.position.y < killY)
+                PlayerFell();
+        }
+
+        /// <summary>Oyuncu uçuruma düştü: can yakar, ölmediyse son checkpoint'e döner.</summary>
+        public void PlayerFell()
+        {
+            if (IsComplete || player == null || health == null)
                 return;
 
             bool wasAlive = health.IsAlive;

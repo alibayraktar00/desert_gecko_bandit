@@ -206,6 +206,32 @@ namespace DesertGecko.Tests
         // --- Kuyruk ---
 
         [UnityTest]
+        public IEnumerator Kuyruk_BeklemedeYok_SonraYavasYavasBuyur()
+        {
+            Ground(-10f, 40f);
+            PlayerHealth health = Player(new Vector2(0f, 0.05f));
+            TailAttack tail = health.GetComponent<TailAttack>();
+            PlayerController controller = health.GetComponent<PlayerController>();
+            SetPrivate(tail, "projectilePrefab", ProjectileTemplate());
+            SetPrivate(tail, "cooldown", 0.4f);
+            SetPrivate(tail, "regrowDuration", 0.6f);
+            yield return new WaitForSeconds(0.1f);
+
+            Assert.IsTrue(tail.TryThrow());
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(0f, tail.TailGrowth, "beklemede kuyruk hiç olmamalı");
+            Assert.IsFalse(controller.HasTail);
+
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(tail.TailGrowth, Is.GreaterThan(0f).And.LessThan(1f), "bekleme bitince büyümeli");
+            Assert.IsFalse(controller.HasTail, "tam büyümeden kullanılamamalı");
+
+            yield return new WaitForSeconds(0.45f);
+            Assert.AreEqual(1f, tail.TailGrowth);
+            Assert.IsTrue(controller.HasTail);
+        }
+
+        [UnityTest]
         public IEnumerator Kuyruk_FirlatincaGider_BeklemeSonundaGeriGelir()
         {
             Ground(-10f, 10f);
@@ -214,6 +240,7 @@ namespace DesertGecko.Tests
             var controller = health.GetComponent<PlayerController>();
             SetPrivate(tail, "projectilePrefab", ProjectileTemplate());
             SetPrivate(tail, "cooldown", 0.3f);
+            SetPrivate(tail, "regrowDuration", 0f);
             yield return null;
 
             Assert.IsTrue(tail.TryThrow());
@@ -765,6 +792,44 @@ namespace DesertGecko.Tests
 
             mouse.TakeDamage(3, Vector2.right);
             Assert.IsFalse(mouse.IsAlive, "kuyruk savuşturulamamalı");
+        }
+
+        // --- Platform altından takip ---
+
+        void Shelf(float xMin, float xMax, float top)
+        {
+            var go = Track(new GameObject("Shelf") { layer = LayerMask.NameToLayer("Ground") });
+            go.transform.position = new Vector3((xMin + xMax) / 2f, top - 0.25f, 0f);
+            go.AddComponent<BoxCollider2D>().size = new Vector2(xMax - xMin, 0.5f);
+        }
+
+        [UnityTest]
+        public IEnumerator Takip_PlatformdakiOyuncuyuAltindanKovalamaz()
+        {
+            Ground(-20f, 20f);
+            Shelf(-6f, 6f, 2.2f);
+            Player(new Vector2(-2f, 2.3f));
+            Scorpion scorpion = Object.Instantiate(LoadPrefab<Scorpion>("Scorpion"), new Vector2(0f, 0.05f), Quaternion.identity);
+            Track(scorpion.gameObject);
+
+            yield return new WaitForSeconds(0.6f);
+            Assert.IsFalse(scorpion.IsChasing, "üstteki platformda duran oyuncuyu kovalamamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Takip_ZiplayanOyuncuyuKovalamayiBirakmaz()
+        {
+            Ground(-20f, 20f);
+            PlayerHealth health = Player(new Vector2(-3f, 0.05f));
+            Scorpion scorpion = Object.Instantiate(LoadPrefab<Scorpion>("Scorpion"), new Vector2(0f, 0.05f), Quaternion.identity);
+            Track(scorpion.gameObject);
+            yield return new WaitForSeconds(0.2f);
+            Assert.IsTrue(scorpion.IsChasing);
+
+            health.GetComponent<PlayerController>().Teleport(new Vector2(-3f, 1.5f));
+            yield return new WaitForFixedUpdate();
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(scorpion.IsChasing, "havadaki oyuncu yüzünden bırakmamalı");
         }
 
         [UnityTest]

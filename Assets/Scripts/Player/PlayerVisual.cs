@@ -8,6 +8,14 @@ namespace DesertGecko.Player
     /// </summary>
     public class PlayerVisual : MonoBehaviour
     {
+        /// <summary>Bir karenin kuyruksuzdan büyümeye doğru halleri (tools/gila_kuyruk_isle.py).</summary>
+        [System.Serializable]
+        public struct TailVariant
+        {
+            public Sprite full;
+            public Sprite[] stages;
+        }
+
         [SerializeField] PlayerController controller;
         [SerializeField] SpriteRenderer spriteRenderer;
 
@@ -28,6 +36,9 @@ namespace DesertGecko.Player
         [Tooltip("Dikey hız bu aralıktayken zirve karesi gösterilir")]
         [SerializeField] float apexVelocityRange = 2.5f;
 
+        [Header("Kuyruk")]
+        [SerializeField] TailVariant[] tailVariants;
+
         [Header("Esneme")]
         [SerializeField] Vector2 jumpStretch = new Vector2(0.75f, 1.3f);
         [SerializeField] Vector2 landSquash = new Vector2(1.3f, 0.7f);
@@ -44,6 +55,28 @@ namespace DesertGecko.Player
         Sprite[] currentFrames;
         float animTime;
         readonly Sprite[] single = new Sprite[1];
+        readonly System.Collections.Generic.Dictionary<Sprite, Sprite[]> variantsByFrame =
+            new System.Collections.Generic.Dictionary<Sprite, Sprite[]>();
+        TailAttack tail;
+
+        void Awake()
+        {
+            tail = GetComponentInParent<TailAttack>();
+            if (tailVariants == null)
+                return;
+            foreach (TailVariant v in tailVariants)
+                if (v.full != null)
+                    variantsByFrame[v.full] = v.stages;
+        }
+
+        // Kuyruk gittiyse karenin kuyruksuz ya da büyümekte olan hali.
+        Sprite WithTailState(Sprite frame)
+        {
+            float growth = tail != null ? tail.TailGrowth : 1f;
+            if (growth >= 1f || frame == null || !variantsByFrame.TryGetValue(frame, out Sprite[] stages) || stages == null || stages.Length == 0)
+                return frame;
+            return stages[Mathf.Clamp(Mathf.FloorToInt(growth * stages.Length), 0, stages.Length - 1)];
+        }
 
         void Reset()
         {
@@ -139,7 +172,7 @@ namespace DesertGecko.Player
 
             animTime += Time.deltaTime * fps;
             int index = (int)Mathf.Repeat(Mathf.Floor(animTime), frames.Length);
-            spriteRenderer.sprite = frames[index];
+            spriteRenderer.sprite = WithTailState(frames[index]);
         }
 
         Sprite[] Single(Sprite sprite)

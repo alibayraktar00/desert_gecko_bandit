@@ -204,7 +204,7 @@ namespace DesertGecko.EditorTools
             Dekor_AkbabaGolgesi(p);
 
             p.ShotPoints.AddRange(new[] { new Vector2(138f, 8f), new Vector2(156f, 3f), new Vector2(308f, 8f), new Vector2(325f, 4f), new Vector2(388f, 11f), new Vector2(355f, 8f), new Vector2(455f, 18f),
-                new Vector2(22f, 3f), new Vector2(62f, 9f), new Vector2(82f, 14f), new Vector2(205f, 4f), new Vector2(478f, 18f) });
+                new Vector2(22f, 3f), new Vector2(34f, 4f), new Vector2(62f, 9f), new Vector2(82f, 14f), new Vector2(205f, 4f), new Vector2(478f, 18f) });
         }
 
         // İlk Adımlar: her mekaniği tabelayla tek tek öğreten eğitim bölümü.
@@ -1048,8 +1048,37 @@ namespace DesertGecko.EditorTools
                     float x0 = sorted[i].xMax, x1 = sorted[i + 1].xMin;
                     if (x1 - x0 <= 0f)
                         continue;
-                    Pit(x0, x1, Mathf.Min(sorted[i].top, sorted[i + 1].top) - 0.05f, -50);
+                    float rim = Mathf.Min(sorted[i].top, sorted[i + 1].top);
+                    Pit(x0, x1, rim - 0.05f, -50);
+                    OutdoorPitZones(x0, x1, rim);
                 }
+            }
+
+            // Zeminler arası boşluk mağaranın üstüne denk gelebilir: orası uçurum değil, tabanı var.
+            void OutdoorPitZones(float x0, float x1, float rim)
+            {
+                float from = x0;
+                foreach (var r in indoors.OrderBy(r => r.xMin))
+                {
+                    if (r.xMax <= from || r.xMin >= x1)
+                        continue;
+                    if (r.xMin > from)
+                        PitKillZone(from, r.xMin, rim);
+                    from = Mathf.Max(from, r.xMax);
+                }
+                if (from < x1)
+                    PitKillZone(from, x1, rim);
+            }
+
+            /// <summary>Alçak kenarın bu kadar altına inen oyuncu düşmüş sayılır; bol pay süzülüşe ve yapışmaya yer bırakır.</summary>
+            void PitKillZone(float x0, float x1, float rim)
+            {
+                const float depthBelowRim = 4.5f, zoneHeight = 40f;
+                var go = new GameObject(Name("UcurumBolgesi"));
+                go.transform.SetParent(geometry);
+                go.transform.position = new Vector3((x0 + x1) / 2f, rim - depthBelowRim - zoneHeight / 2f, 0f);
+                go.AddComponent<BoxCollider2D>().size = new Vector2(x1 - x0, zoneHeight);
+                go.AddComponent<PitZone>();
             }
 
             // order: açık havada arka planın, mağarada arka duvarın hemen önünde; dekorun arkasında.
@@ -1085,7 +1114,7 @@ namespace DesertGecko.EditorTools
             /// </summary>
             public void DressCliffs()
             {
-                const float eps = 0.01f, minHeight = 1.5f, minRubbleRoom = 4f;
+                const float eps = 0.01f, minHeight = 0.8f, minRubbleRoom = 4f;
                 foreach (var g in grounds)
                 {
                     foreach (int side in new[] { -1, 1 }) // zeminin sol ve sağ kenarı
@@ -1309,8 +1338,11 @@ namespace DesertGecko.EditorTools
             }
 
             /// <summary>Yer altı uçurumu: dipsiz görünsün diye arka duvarın önüne karanlık koyar.</summary>
-            public void Chasm(float xMin, float xMax, float top) =>
+            public void Chasm(float xMin, float xMax, float top)
+            {
                 Pit(xMin + OriginX, xMax + OriginX, top - 0.05f, -35);
+                PitKillZone(xMin + OriginX, xMax + OriginX, top);
+            }
 
             /// <summary>
             /// Tavan ve dış cephe: katı kaya, Default katmanında. Gila çarpar ama yapışıp tırmanamaz;

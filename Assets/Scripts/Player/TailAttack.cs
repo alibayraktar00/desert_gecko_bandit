@@ -5,21 +5,29 @@ using UnityEngine;
 namespace DesertGecko.Player
 {
     /// <summary>
-    /// Uzak mesafe kuyruk fırlatma (K). Kuyruk fırlatılınca yeniden çıkana kadar (5 sn)
-    /// HasTail false olur: çift zıplama zayıflar, süzülme kapanır.
+    /// Uzak mesafe kuyruk fırlatma (K). Kuyruk fırlatılınca karakterden kopar, kısa süre sonra kalçadan ince
+    /// çıkar ve bekleme boyunca yavaş yavaş büyür. Tamamen çıkana kadar HasTail false: çift zıplama zayıflar, süzülme kapanır.
     /// </summary>
     [RequireComponent(typeof(PlayerController), typeof(PlayerInputReader), typeof(PlayerHealth))]
     public class TailAttack : MonoBehaviour
     {
         [SerializeField] TailProjectile projectilePrefab;
-        [SerializeField] float cooldown = 5f;
+        [Tooltip("Koptuktan sonra yeni kuyruk çıkmaya başlayana kadarki süre")]
+        [SerializeField] float cooldown = 0.8f;
+        [Tooltip("İnce başlayıp eski haline dönene kadarki süre")]
+        [SerializeField] float regrowDuration = 9.7f;
         [Tooltip("Hafif yukarı atış + düşük yerçekimi: yerdeki düşmana isabet eder, ~8 birim menzil")]
         [SerializeField] Vector2 launchVelocity = new Vector2(13f, 0.8f);
         [SerializeField] Vector2 spawnOffset = new Vector2(0.4f, 0.4f);
 
         /// <summary>0 = yeni fırlatıldı, 1 = kuyruk hazır. Arayüzdeki çember bunu gösterir.</summary>
-        public float CooldownProgress => controller.HasTail ? 1f : Mathf.Clamp01(1f - (readyAt - Time.time) / cooldown);
+        public float CooldownProgress => controller.HasTail ? 1f : Mathf.Clamp01(1f - (readyAt - Time.time) / (cooldown + regrowDuration));
         public bool IsReady => controller.HasTail;
+
+        /// <summary>Kuyruğun görünen boyu: 0 = yok, 1 = tam. PlayerVisual karesini buna göre seçer.</summary>
+        public float TailGrowth => controller == null || controller.HasTail ? 1f
+            : regrowDuration <= 0f ? 0f
+            : Mathf.Clamp01(1f - (readyAt - Time.time) / regrowDuration);
 
         public event Action Thrown;
         public event Action TailRegrown;
@@ -70,7 +78,7 @@ namespace DesertGecko.Player
             projectile.Launch(new Vector2(launchVelocity.x * direction, launchVelocity.y));
 
             controller.HasTail = false;
-            readyAt = Time.time + cooldown;
+            readyAt = Time.time + cooldown + regrowDuration;
             Thrown?.Invoke();
             return true;
         }

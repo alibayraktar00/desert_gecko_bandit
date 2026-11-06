@@ -170,7 +170,7 @@ namespace DesertGecko.Enemies
 
         bool SeesPlayer()
         {
-            if (Time.time < nextAttackAt || !IsGrounded() || Player == null || !Player.IsAlive)
+            if (Time.time < nextAttackAt || !IsGrounded() || Player == null || !Player.IsAlive || PlayerStandsAbove)
                 return false;
             Vector2 toPlayer = Player.transform.position - transform.position;
             if (Mathf.Abs(toPlayer.x) > sightRange || Mathf.Abs(toPlayer.y) > sightHeight)
