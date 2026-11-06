@@ -23,6 +23,7 @@ namespace DesertGecko.Core
         {
             new LevelInfo("Level_1", "1  Kızgın Kum Vadisi", "Kızgın Kum Vadisi"),
             new LevelInfo("Level_2", "2  Terk Edilmiş Maden", "Kızgın Kum Vadisi"),
+            new LevelInfo("Level_3", "3  Ayaz Gecesi", "Kızgın Kum Vadisi"),
         };
 
         public static int Count => Levels.Length;

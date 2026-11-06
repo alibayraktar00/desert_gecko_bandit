@@ -689,6 +689,11 @@ MonoBehaviour:
   wallJumpControlLock: 0.18
   ledgeHopVelocity: {x: 3, y: 7}
   wallRegrabDelay: 0.15
+  swingAcceleration: 24
+  maxSwingSpeed: 11.5
+  swingReelSpeed: 8
+  swingReleaseBoost: {x: 0.8, y: 3}
+  swingAttachOffset: {x: 0, y: 0.6}
   groundMask:
     serializedVersion: 2
     m_Bits: 64
@@ -755,6 +760,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 257
   tongueRenderer: {fileID: 1520626191703333835}
+  hookRange: 7
+  hookRopeLength: 3.6
 --- !u!114 &3194893899143709635
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -46,6 +46,9 @@ namespace DesertGecko.Player
         public event Action Died;
         public event Action Respawned;
 
+        /// <summary>Oyuncu checkpoint'e döndü (ölüm ya da uçurum). Yükselen çamur, fırtına gibi kovalayanlar kendini sıfırlar.</summary>
+        public event Action ReturnedToCheckpoint;
+
         /// <summary>Oyuncu öldükten sonra yeniden doğunca. Düşmanlar buna bakıp kendini sıfırlar.</summary>
         public static event Action PlayerRespawned;
 
@@ -118,6 +121,14 @@ namespace DesertGecko.Player
 
             controller.Teleport(CheckpointPosition);
             StartInvincibility(invincibleDuration);
+            ReturnedToCheckpoint?.Invoke();
+        }
+
+        /// <summary>Donma gibi itmeyen hasar: dokunulmazlığa takılmaz, karakteri savurmaz.</summary>
+        public void LoseHealthQuietly(int amount)
+        {
+            if (IsAlive && amount > 0 && !LoseHealth(amount))
+                StartInvincibility(0.4f);
         }
 
         public void Heal(int amount)
@@ -162,6 +173,7 @@ namespace DesertGecko.Player
             StartInvincibility(respawnInvincibility);
 
             Respawned?.Invoke();
+            ReturnedToCheckpoint?.Invoke();
             PlayerRespawned?.Invoke();
         }
 

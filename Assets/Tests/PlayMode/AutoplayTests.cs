@@ -70,7 +70,7 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
-        public IEnumerator Bot_LeveliBitirir([Values(0, 1)] int level)
+        public IEnumerator Bot_LeveliBitirir([Values(0, 1, 2)] int level)
         {
             yield return SceneManager.LoadSceneAsync(LevelCatalog.Levels[level].Scene);
             yield return null;
@@ -84,6 +84,53 @@ namespace DesertGecko.Tests
             Assert.Greater(run.DoubleJumps, 0, $"Bot hiç çift zıplama kullanmadı.\n{report}");
         }
 
+        /// <summary>Level 3'ü oyun çalışırken görüntüler: ışıklar, gayzer, çamur ve fırtına ancak burada gerçek halindedir.</summary>
+        [UnityTest]
+        public IEnumerator Gorsel_Level3()
+        {
+            yield return SceneManager.LoadSceneAsync("Level_3");
+            yield return null;
+            PlayerController player = LevelManager.Current.Player;
+            var follow = Object.FindAnyObjectByType<CameraFollow>();
+            var points = new[]
+            {
+                new Vector2(3f, 0.1f), new Vector2(55f, 3f), new Vector2(130f, 4f), new Vector2(230f, 9.1f), new Vector2(255f, 3.1f),
+                new Vector2(265f, 3.1f), new Vector2(283f, 13.6f), new Vector2(308f, 16f), new Vector2(345f, 24.1f), new Vector2(170f, 4f), new Vector2(456f, 16.1f), new Vector2(480f, 18.1f),
+            };
+            string dir = Path.Combine(Application.dataPath, "..", "Temp", "Screenshots");
+            for (int i = 0; i < points.Length; i++)
+            {
+                player.Frozen = false;
+                player.Teleport(points[i]);
+                player.Frozen = true; // boşluğun üstünde de görüntü alınabilsin
+                follow.SnapToTarget();
+                float wait = points[i].x == 345f ? 4.2f : 2.2f; // fırtına ekrana girsin
+                for (float t = 0f; t < wait; t += Time.deltaTime)
+                {
+                    if (t < 0.1f) follow.SnapToTarget();
+                    yield return null;
+                }
+                File.WriteAllBytes(Path.Combine(dir, $"oyun_{i:00}_{points[i].x:0}.png"), RenderCamera());
+            }
+        }
+
+        static byte[] RenderCamera()
+        {
+            Camera cam = Camera.main;
+            var rt = new RenderTexture(640, 360, 24);
+            var request = new UnityEngine.Rendering.RenderPipeline.StandardRequest { destination = rt };
+            UnityEngine.Rendering.RenderPipeline.SubmitRenderRequest(cam, request);
+            RenderTexture.active = rt;
+            var tex = new Texture2D(640, 360, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, 640, 360), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            byte[] png = tex.EncodeToPNG();
+            Object.Destroy(tex);
+            rt.Release();
+            return png;
+        }
+
         /// <summary>Bir level oynanışı: karar verme, kayıt, rapor.</summary>
         class BotRun
         {
@@ -92,6 +139,16 @@ namespace DesertGecko.Tests
             readonly PlayerHealth health;
             readonly PlayerWallet wallet;
             readonly TailAttack tail;
+            readonly TongueAttack tongueAttack;
+            int swingsDone;
+            ColdFront storm;
+            float stormClosest = float.PositiveInfinity;
+            bool stormShot;
+            float coldestHeat = 1f, coldSeconds;
+            int freezeHits;
+            BodyHeat heat;
+            float swingStartedAt;
+            bool latchPressed;
             readonly BoxCollider2D box;
             readonly Rigidbody2D body;
             readonly Keyboard keyboard;
@@ -115,6 +172,7 @@ namespace DesertGecko.Tests
             // Karar durumu
             bool spaceWasDown;
             float groundJumpPressedAt = -1f;
+            float doublePressedAt = -1f;
             bool doubleUsed;
             bool releaseForDouble;
             bool tongueWasDown, tailWasDown, waitingForTail;
@@ -193,8 +251,53 @@ namespace DesertGecko.Tests
             /// <summary>Basılı tuş yeni basış sayılmaz: bir kare bırak, bir kare bas; zıplama gerçekleşene kadar.</summary>
             bool PressCycleForDouble()
             {
-                releaseForDouble = !releaseForDouble;
-                return !releaseForDouble;
+                // Basıştan sonra kısa süre basılı kalsın: hemen bırakılırsa çift zıplama kesilir.
+                if (elapsed - doublePressedAt < 0.12f)
+                    return true;
+                if (spaceWasDown)
+                    return false;
+                doublePressedAt = elapsed;
+                return true;
+            }
+
+            bool InGeyserColumn(Bounds b) =>
+                Object.FindObjectsByType<Geyser>(FindObjectsInactive.Exclude).Any(g => g.GetComponent<BoxCollider2D>().bounds.Contains(b.center));
+
+            // Kancada: sallanarak hız kazan, ileri doğru yükselirken bırak.
+            List<Key> SwingKeys(Bounds b, Vector2 v, int dir)
+            {
+                var keys = new List<Key>();
+                Transform anchor = player.SwingAnchor;
+                bool past = anchor != null && (b.center.x - anchor.position.x) * dir > 1.2f;
+                bool release = (past && v.x * dir > 5f) || elapsed - swingStartedAt > 7f;
+                if (release)
+                {
+                    swingsDone++;
+                    Log($"kancadan uçtu x={b.center.x:0.0} y={b.min.y:0.0} hız={v.x:0.0}");
+                    keys.Add(dir > 0 ? Key.D : Key.A);
+                    keys.Add(Key.Space); // süzülme için basılı başlasın
+                    return keys;
+                }
+                keys.Add(Key.J);
+                keys.Add(v.x >= 0f ? Key.D : Key.A); // salınımı büyüt
+                if (Mathf.Abs(v.x) < 0.5f)
+                {
+                    keys.Remove(Key.A);
+                    keys.Remove(Key.D);
+                    keys.Add(dir > 0 ? Key.D : Key.A);
+                }
+                return keys;
+            }
+
+            // Havada, altı boşken önünde kanca varsa yapış.
+            bool WantsToLatch(Bounds b, int dir)
+            {
+                var hook = tongueAttack.HookInReach;
+                if (hook == null)
+                    return false;
+                if ((hook.transform.position.x - b.center.x) * dir < 0.8f)
+                    return false;
+                return !Physics2D.Raycast(new Vector2(b.center.x, b.min.y), Vector2.down, 3f, groundMask);
             }
 
             // Sıcak hava sütununda yerdeyse zıplasın: havada basılı tutunca yükselir.
@@ -202,12 +305,12 @@ namespace DesertGecko.Tests
                 Object.FindObjectsByType<Thermal>(FindObjectsInactive.Exclude).Any(t => t.GetComponent<BoxCollider2D>().bounds.Contains(b.center));
 
             bool OnMover(Bounds b) =>
-                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>().bounds)
+                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>()).Where(c => c != null).Select(c => c.bounds)
                     .Any(p => b.center.x > p.min.x && b.center.x < p.max.x && Mathf.Abs(p.max.y - b.min.y) < 0.25f);
 
             // Asansör tam üstündeyse ve zıplama menzilindeyse üstüne çıksın.
             bool UnderLift(Bounds b) =>
-                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>().bounds)
+                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>()).Where(c => c != null).Select(c => c.bounds)
                     .Any(p => b.center.x > p.min.x && b.center.x < p.max.x && p.max.y > b.min.y + 0.5f && p.max.y < b.min.y + 2.5f);
 
             /// <summary>Hedef yukarıdaysa altına gelince zıplasın (tek yönlü çıkıntılar).</summary>
@@ -227,6 +330,11 @@ namespace DesertGecko.Tests
                 health = player.GetComponent<PlayerHealth>();
                 wallet = player.GetComponent<PlayerWallet>();
                 tail = player.GetComponent<TailAttack>();
+                tongueAttack = player.GetComponent<TongueAttack>();
+                heat = player.GetComponent<BodyHeat>();
+                storm = Object.FindAnyObjectByType<ColdFront>();
+                if (heat != null)
+                    heat.Froze += () => freezeHits++;
                 box = player.GetComponent<BoxCollider2D>();
                 body = player.GetComponent<Rigidbody2D>();
                 LoadRoute();
@@ -291,8 +399,8 @@ namespace DesertGecko.Tests
                     // Duvara tırmanırken x değişmez ama bu da ilerlemedir; yüksek duvarın tepesinde vazgeçmesin.
                     if (player.State == PlayerController.MoveState.WallCling && player.Velocity.y > 0.1f)
                         lastProgressTime = elapsed;
-                    // Asansörde beklemek de ilerlemedir.
-                    if (player.IsGrounded && OnMover(box.bounds))
+                    // Asansörde, gayzerde ve kancada beklemek de ilerlemedir.
+                    if (player.IsSwinging || (player.IsGrounded && (OnMover(box.bounds) || InGeyserColumn(box.bounds))))
                         lastProgressTime = elapsed;
                     float idle = elapsed - lastProgressTime;
                     if (idle > GiveUpSeconds)
@@ -319,6 +427,23 @@ namespace DesertGecko.Tests
                         velocities.Add(player.Velocity);
                     }
 
+                    if (storm != null && storm.IsRunning)
+                    {
+                        float lead = x - storm.FrontX;
+                        stormClosest = Mathf.Min(stormClosest, lead);
+                        if (!stormShot && lead < 8f)
+                        {
+                            stormShot = true;
+                            File.WriteAllBytes(Path.Combine(Application.dataPath, "..", "Temp", "Screenshots", "oyun_firtina.png"), RenderCamera());
+                            Log($"fırtına yakın x={x:0.0} ara={lead:0.0}");
+                        }
+                    }
+                    if (heat != null)
+                    {
+                        coldestHeat = Mathf.Min(coldestHeat, heat.Heat);
+                        if (heat.Heat < 0.55f)
+                            coldSeconds += Time.deltaTime;
+                    }
                     Press(Decide());
                     yield return null;
                     elapsed += Time.deltaTime;
@@ -346,6 +471,29 @@ namespace DesertGecko.Tests
                     doubleUsed = false;
                     releaseForDouble = false;
                 }
+
+                if (state == PlayerController.MoveState.Swinging)
+                {
+                    latchPressed = false;
+                    return SwingKeys(b, v, moveDir);
+                }
+                if ((state == PlayerController.MoveState.Airborne || state == PlayerController.MoveState.Gliding) && WantsToLatch(b, moveDir))
+                {
+                    // Basış olarak algılansın: önceki karede J bırakılmış olmalı.
+                    latchPressed = !latchPressed;
+                    if (latchPressed)
+                    {
+                        swingStartedAt = elapsed;
+                        keys.Add(Key.J);
+                        keys.Add(moveDir > 0 ? Key.D : Key.A);
+                        keys.Add(Key.Space);
+                        return keys;
+                    }
+                }
+
+                // Gayzerin üstünde, hedef yukarıdaysa fışkırmasını bekle.
+                if (grounded && InGeyserColumn(b) && !RouteDone && route.Count > 0 && route[routeIndex].y > b.min.y + 3f)
+                    return keys;
 
                 // Hedef yukarıdaysa asansörde sabit dur: koşarsa kenardan düşer.
                 if (grounded && OnMover(b) && !RouteDone && route.Count > 0
@@ -462,7 +610,11 @@ namespace DesertGecko.Tests
                 sb.AppendLine($"=== {sceneName} ===");
                 sb.AppendLine($"sonuç: {(Completed ? "BİTİRDİ" : "BİTİREMEDİ")}  süre: {elapsed:0.0} sn");
                 sb.AppendLine($"kristal: {collected} / {crystalStart.Count} (yerleştirilen)  düşman: {killed} / {enemies.Count} öldürüldü");
-                sb.AppendLine($"çift zıplama: {DoubleJumps}");
+                sb.AppendLine($"çift zıplama: {DoubleJumps}  kancadan uçuş: {swingsDone}");
+                if (storm != null)
+                    sb.AppendLine($"fırtınayla en yakın ara: {stormClosest:0.0}  dağıldı: {storm.HasEnded}");
+                if (heat != null)
+                    sb.AppendLine($"en düşük ısı: {coldestHeat:0.00}  üşüyerek geçen süre: {coldSeconds:0} sn  donma hasarı: {freezeHits}");
                 sb.AppendLine($"düşman hasarı: {enemyDamageHits}  uçuruma düşme: {pitFalls}  ölüm: {deaths}  takılma: {stuckPoints.Count}");
                 foreach (string e in events)
                     sb.AppendLine(e);

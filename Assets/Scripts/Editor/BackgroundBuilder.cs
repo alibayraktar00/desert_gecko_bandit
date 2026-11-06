@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Collections.Generic;
 using DesertGecko.Environment;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -40,6 +41,37 @@ namespace DesertGecko.EditorTools
             new Layer { Name = "OrtaTepeler", Sprite = "bg_gunduz_orta", Follow = new Vector2(0.6f, 0.5f), HorizonY = 0f, Order = -80, Repeat = true, TileCount = 4 },
         };
 
+        // Gündüz katmanlarıyla aynı şekiller, hemen önlerinde: şafakta solarak gündüzü açığa çıkarırlar.
+        static readonly Layer[] NightLayers =
+        {
+            new Layer { Name = "GeceGokyuzu", Sprite = "bg_gece_gokyuzu_uzun", Follow = new Vector2(1f, 1f), HorizonY = -1.2f, Order = -99, Repeat = true, TileCount = 5 },
+            new Layer { Name = "GeceMesalar", Sprite = "bg_gece_uzak", Follow = new Vector2(0.85f, 0.75f), HorizonY = 1.2f, Order = -89, Repeat = true, TileCount = 4 },
+            new Layer { Name = "GeceTepeler", Sprite = "bg_gece_orta", Follow = new Vector2(0.6f, 0.5f), HorizonY = 0f, Order = -79, Repeat = true, TileCount = 4 },
+            new Layer { Name = "GeceOnPlan", Sprite = "bg_gece_on", Follow = new Vector2(0.4f, 0.3f), HorizonY = -1f, Order = -70, Repeat = true, TileCount = 4 },
+        };
+
+        const string UnlitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";
+
+        /// <summary>Gece katmanlarını gündüzün önüne ekler; hepsi ışıktan etkilenmez, gökyüzü kendi renginde kalır.</summary>
+        public static SpriteRenderer[] BuildNight()
+        {
+            var root = GameObject.Find(RootName).transform;
+            var material = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+            foreach (SpriteRenderer sr in root.GetComponentsInChildren<SpriteRenderer>())
+                sr.sharedMaterial = material;
+            var night = new List<SpriteRenderer>();
+            foreach (Layer layer in NightLayers)
+            {
+                SpriteRenderer sr = AddLayer(root, layer, Camera.main);
+                if (sr != null)
+                {
+                    sr.sharedMaterial = material;
+                    night.Add(sr);
+                }
+            }
+            return night.ToArray();
+        }
+
         [MenuItem("Desert Gecko/Arka Planı Kur")]
         public static void BuildInActiveScene()
         {
@@ -60,38 +92,42 @@ namespace DesertGecko.EditorTools
 
             var root = new GameObject(RootName).transform;
             foreach (Layer layer in DayLayers)
-            {
-                Sprite sprite = LoadSprite(layer.Sprite);
-                if (sprite == null)
-                    continue;
-
-                var go = new GameObject(layer.Name);
-                go.transform.SetParent(root);
-                var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = sprite;
-                sr.sortingOrder = layer.Order;
-
-                // Gökyüzü ortadan, diğerleri alt kenardan pivotlu.
-                // Gökyüzü kameraya 1:1 kilitli ve HorizonY ile aşağı kaydırılır; diğer katmanlar ufuk hizasına göre konumlanır.
-                Vector2 origin = (layer.Follow == Vector2.one)
-                    ? new Vector2(CameraOrigin.x, CameraOrigin.y + layer.HorizonY)
-                    : new Vector2(CameraOrigin.x, layer.HorizonY - BottomPadPixels / PixelsPerUnit);
-
-                var parallax = go.AddComponent<ParallaxLayer>();
-                var so = new SerializedObject(parallax);
-                so.FindProperty("cameraTransform").objectReferenceValue = cam.transform;
-                so.FindProperty("followFactor").vector2Value = layer.Follow;
-                so.FindProperty("cameraOrigin").vector2Value = CameraOrigin;
-                so.FindProperty("layerOrigin").vector2Value = origin;
-                so.FindProperty("repeatX").boolValue = layer.Repeat;
-                if (layer.TileCount > 0)
-                    so.FindProperty("tileCount").intValue = layer.TileCount;
-                so.ApplyModifiedPropertiesWithoutUndo();
-
-                parallax.Setup();
-                parallax.Follow(cam.transform.position);
-            }
+                AddLayer(root, layer, cam);
             return true;
+        }
+
+        static SpriteRenderer AddLayer(Transform root, Layer layer, Camera cam)
+        {
+            Sprite sprite = LoadSprite(layer.Sprite);
+            if (sprite == null)
+                return null;
+
+            var go = new GameObject(layer.Name);
+            go.transform.SetParent(root);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = layer.Order;
+
+            // Gökyüzü ortadan, diğerleri alt kenardan pivotlu.
+            // Gökyüzü kameraya 1:1 kilitli ve HorizonY ile aşağı kaydırılır; diğer katmanlar ufuk hizasına göre konumlanır.
+            Vector2 origin = (layer.Follow == Vector2.one)
+                ? new Vector2(CameraOrigin.x, CameraOrigin.y + layer.HorizonY)
+                : new Vector2(CameraOrigin.x, layer.HorizonY - BottomPadPixels / PixelsPerUnit);
+
+            var parallax = go.AddComponent<ParallaxLayer>();
+            var so = new SerializedObject(parallax);
+            so.FindProperty("cameraTransform").objectReferenceValue = cam.transform;
+            so.FindProperty("followFactor").vector2Value = layer.Follow;
+            so.FindProperty("cameraOrigin").vector2Value = CameraOrigin;
+            so.FindProperty("layerOrigin").vector2Value = origin;
+            so.FindProperty("repeatX").boolValue = layer.Repeat;
+            if (layer.TileCount > 0)
+                so.FindProperty("tileCount").intValue = layer.TileCount;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            parallax.Setup();
+            parallax.Follow(cam.transform.position);
+            return sr;
         }
 
         static Sprite LoadSprite(string name)

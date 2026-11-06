@@ -508,6 +508,23 @@ namespace DesertGecko.EditorTools
             SetField(scoreUI, "label", label);
         }
 
+        /// <summary>Gece levellerinin ısı çubuğu: kuyruk çemberinin yanında.</summary>
+        public static void BuildHeatBar(BodyHeat heat, Sprite solid, Sprite icon)
+        {
+            Transform hud = GameObject.Find("HUD").transform;
+            RectTransform root = CreateRect("IsiCubugu", hud, new Vector2(0f, 1f), new Vector2(30f, -31f), new Vector2(58f, 12f));
+            ImageAt("Simge", root, new Vector2(0f, 1f), Vector2.zero, new Vector2(12f, 12f), icon);
+            Image back = ImageAt("Arka", root, new Vector2(0f, 1f), new Vector2(14f, -2f), new Vector2(44f, 8f), solid);
+            back.color = new Color(0f, 0f, 0f, 0.55f);
+            Image fill = ImageAt("Dolgu", root, new Vector2(0f, 1f), new Vector2(15f, -3f), new Vector2(42f, 6f), solid);
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillAmount = 1f;
+            var ui = root.gameObject.AddComponent<BodyHeatUI>();
+            SetField(ui, "heat", heat);
+            SetField(ui, "fill", fill);
+        }
+
         static RectTransform CreateRect(string name, Transform parent, Vector2 anchor, Vector2 position, Vector2 size)
         {
             var go = new GameObject(name, typeof(RectTransform)) { layer = LayerMask.NameToLayer("UI") };

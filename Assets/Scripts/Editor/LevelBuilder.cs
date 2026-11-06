@@ -9,6 +9,7 @@ using DesertGecko.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 namespace DesertGecko.EditorTools
@@ -59,8 +60,32 @@ namespace DesertGecko.EditorTools
         [MenuItem("Desert Gecko/Levelleri Kur/Level 2")]
         public static string BuildLevel2() => BuildSingleLevel(1, Level_2);
 
+        [MenuItem("Desert Gecko/Levelleri Kur/Level 3")]
+        public static string BuildLevel3() => BuildSingleLevel(2, Level_3);
+
         /// <summary>EditorBridge için: menü, level ve sahne listesi; bağlantı noktalarının görüntüsüyle.</summary>
         public static string BuildAllWithShots() => BuildAll("Temp/Screenshots") + " tasarım uyarısı";
+
+        /// <summary>Level 3'ün çalışma anında değişen hallerini (şafak, fırtına) görüntüler; sahneyi kaydetmez.</summary>
+        public static string PreviewLevel3()
+        {
+            string previous = EditorSceneManager.GetActiveScene().path;
+            EditorSceneManager.OpenScene($"{SceneFolder}/Level_3.unity");
+            var sky = Object.FindAnyObjectByType<NightSky>();
+            foreach (float t in new[] { 0f, 0.35f, 0.65f, 1f })
+            {
+                sky.Preview(t);
+                SceneCapture.Capture($"Temp/Screenshots/L3onizleme_safak_{t * 100f:0}.png", new Vector3(SafakX + 30f, 21f, -10f));
+            }
+            sky.Preview(0f);
+            var storm = GameObject.Find("AyazFirtinasi").transform;
+            storm.position = new Vector3(CepheX + 30f, 0f, 0f);
+            foreach (SpriteRenderer sr in storm.GetComponentsInChildren<SpriteRenderer>())
+                sr.enabled = true;
+            SceneCapture.Capture("Temp/Screenshots/L3onizleme_firtina.png", new Vector3(CepheX + 34f, 25f, -10f));
+            EditorSceneManager.OpenScene(string.IsNullOrEmpty(previous) ? $"{SceneFolder}/Level_3.unity" : previous); // değişiklikler kaydedilmeden atılır
+            return "tamam";
+        }
 
         /// <summary>
         /// Tek bir leveli yeniden kurar, diğer sahnelere dokunmaz. Açık sahnede kaydedilmemiş değişiklik
@@ -111,7 +136,7 @@ namespace DesertGecko.EditorTools
             if (shotDir != null)
                 SceneCapture.Capture(Path.Combine(shotDir, "menu.png"), new Vector3(0f, 1.5f, -10f));
 
-            var definitions = new System.Action<LevelPainter>[] { Level_1, Level_2 };
+            var definitions = new System.Action<LevelPainter>[] { Level_1, Level_2, Level_3 };
             for (int i = 0; i < definitions.Length; i++)
             {
                 LevelCatalog.LevelInfo info = LevelCatalog.Levels[i];
@@ -144,6 +169,8 @@ namespace DesertGecko.EditorTools
             Camera cam = TestSceneBuilder.CreateCamera(painter.Spawn + new Vector2(0f, 1.5f), player.transform, out CameraFollow follow);
             CombatSetupBuilder.BuildHud(cam, player, ctx.Combat);
             BackgroundBuilder.Build();
+            if (painter.Night)
+                painter.FinishNight(player);
 
             Canvas menus = UiKit.CreateCanvas("Menuler", cam, 200);
             LevelCompleteUI complete = BuildCompletePanel(menus.transform);
@@ -766,6 +793,296 @@ namespace DesertGecko.EditorTools
             p.Goal(80f, 24f);
             p.Boundary(82f);
         }
+
+        // Level 3: Ayaz Gecesi. Gila soğukkanlı: gece üşür, yavaşlar; ateşten ateşe ilerler.
+        // Her bölümün kendi fikri var: ısı, dille sallanma, gayzer ve yükselen çamur, fırtınadan kaçış, şafak.
+        const float TelgrafX = 100f, KaplicaX = 205f, CepheX = 330f, SafakX = 455f;
+
+        static void Level_3(LevelPainter p)
+        {
+            p.Spawn = new Vector2(0f, 0f);
+            p.Night = true;
+            p.DawnStartX = SafakX + 2f;
+            p.DawnEndX = SafakX + 40f;
+            p.Boundary(-9f);
+
+            Ayaz_Kamp(p);
+            p.OriginX = TelgrafX;
+            Ayaz_TelgrafKanyonu(p);
+            p.OriginX = KaplicaX;
+            Ayaz_Kaplica(p);
+            p.OriginX = CepheX;
+            Ayaz_SogukCephe(p);
+            p.OriginX = SafakX;
+            Ayaz_Safak(p);
+
+            // Botun durup bekleyeceği ya da sırayla tırmanacağı yerler; dünya koordinatı.
+            p.OriginX = 0f;
+            p.Route(262f, 3f, 272f, 8.5f, 278f, 8.5f, 287f, 13.5f, 290f, 13.5f, 297f, 8f, 308f, 6f, 309f, 9.5f, 319f, 13f, 309f, 16.5f, 319f, 20f, 327f, 24f);
+            p.ShotPoints.AddRange(new[]
+            {
+                new Vector2(5f, 3f), new Vector2(40f, 5f), new Vector2(56f, 5f), new Vector2(112f, 7f), new Vector2(135f, 8f),
+                new Vector2(160f, 8f), new Vector2(190f, 12f), new Vector2(212f, 11f), new Vector2(262f, 8f), new Vector2(285f, 12f),
+                new Vector2(315f, 13f), new Vector2(345f, 26f), new Vector2(395f, 22f), new Vector2(450f, 18f), new Vector2(480f, 18f), new Vector2(500f, 21f),
+            });
+        }
+
+        // Ayaz Kampı (yüzey). Fikir: vücut ısısı. Ateşler arası mesafe giderek açılır, sonda kor arabası.
+        static void Ayaz_Kamp(LevelPainter p)
+        {
+            // Tanıtım: ateşin başında başla, soğuğu tabela anlatır
+            p.Ground(-8f, 16f, 0f);
+            p.Fire(-2f, 0f);
+            p.Deco("yuz_kamp", -5.5f, 0f);
+            p.Sign(3f, 0f, "Güneş battı, çöl buz kesti.\nÜşüdükçe yavaşlarsın, ateşte ısın");
+            p.CrystalLine(7f, 0.8f, 3, 1.2f);
+            p.Plant("kaktus_07", 12f, 0f);
+
+            p.Ground(16f, 30f, 1f);
+            p.Scorpion(22f, 1f);
+            p.Sign(26f, 1f, "Ateş böceğini dille yakala (J):\nısıtır ve can verir");
+            p.Firefly(28.5f, 2.4f);
+
+            p.Ground(30f, 48f, 2f);
+            p.Checkpoint(32f, 2f);
+            p.Fire(35f, 2f);
+            p.Deco("yuz_kazma", 39f, 2f);
+            p.Snake(44f, 2f);
+            p.Crystal(41f, 3f);
+
+            // Sertleşme: uzun boşluk, tek ısı kaynağı üstünde binilen araba
+            p.BrazierCart(51f, 2f, new Vector2(8f, 0f), 2.2f);
+            p.CrystalArc(52f, 4f, 59f, 4f, 3);
+
+            p.Ground(62f, 80f, 4f);
+            p.Deco("yuz_araba", 66f, 4f);
+            p.SahteCali(69f, 4f);
+            p.Jackal(73f, 4f);
+            p.Firefly(76f, 5.6f);
+
+            // Bükülme: üstte ısınıp alta dalan iki yol; ateş sadece üst yolda
+            p.Ground(84f, 100f, 3f);
+            p.Checkpoint(86f, 3f);
+            p.Brazier(89f, 3f);
+            p.Fare(93f, 3f);
+            p.Pole(97f, 3f, 7.2f);
+            p.Sign(94.5f, 3f, "Eski telgraf hattı. Fenere dille yapış:\nJ basılı sallan, bırakınca uç");
+        }
+
+        // Telgraf Kanyonu (yüzey). Fikir: dille sallanma. Tek fener, zincir, hareketli, sonra yukarı doğru.
+        static void Ayaz_TelgrafKanyonu(LevelPainter p)
+        {
+            const float wireTop = 10f;
+
+            // Tanıtım: tek fener, kısa boşluk; süzülerek de geçilir, korkmadan denensin
+            p.Wire(-3f, wireTop, 19f, wireTop);
+            p.Hook(8f, 7.5f);
+            p.CrystalArc(4f, 6f, 12f, 6f, 3);
+            p.Ground(16f, 26f, 3f);
+            p.Pole(19f, 3f, 7f);
+            p.Scorpion(23f, 3f);
+
+            // Zincir: artık süzülüş yetmez, iki fener arka arkaya
+            p.Pole(25f, 3f, 7f);
+            p.Wire(25f, wireTop, 56f, wireTop);
+            p.Hook(33f, 7.5f);
+            p.Hook(42f, 7.5f);
+            p.Firefly(37.5f, 5.5f);
+            p.Ground(50f, 62f, 3f);
+            p.Checkpoint(52f, 3f);
+            p.Pole(56f, 3f, 7f);
+            p.Snake(59f, 3f);
+
+            // Hareketli: hat üstünde makaralı fener
+            p.Pole(61f, 3f, 8f);
+            p.Wire(61f, 11f, 86f, 11f);
+            p.MovingHook(66f, 8f, 10f, 11f, 3f);
+            p.CrystalArc(67f, 6f, 76f, 6f, 3);
+            p.Ground(83f, 90f, 5f);
+            p.Pole(86f, 5f, 6f);
+            p.Plant("kaktus_12", 88f, 5f);
+
+            // Bükülme: yukarı doğru iki fener, karşı kayada yılan
+            p.Pole(89f, 5f, 9f);
+            p.Wire(89f, 14f, 118f, 15f);
+            p.Hook(95f, 11f);
+            p.Hook(104f, 12.5f);
+            p.Crystal(99.5f, 10f);
+            p.Ground(112f, 129f, 9f);
+            p.Checkpoint(113.5f, 9f);
+            p.Brazier(116f, 9f);
+            p.Pole(118f, 9f, 6f);
+            p.Armadillo(121f, 9f);
+        }
+
+        // Kaplıca (yer altı). Giriş: sıcak yamaçtan yürüyerek. Fikir: gayzer; çıkış: yükselen çamurda baca tırmanışı.
+        // Sıcakta Gila hızlanır: soğuk yüzeyin tam tersi.
+        static void Ayaz_Kaplica(LevelPainter p)
+        {
+            const float roofA = 15f, roofB = 23f, roofShaft = 30f, doorY = 24f;
+
+            // Kaya kütlesi: tünel, sonra yükselen tavan
+            p.CaveWall(24f, 125f, 40f);
+            p.RockMass(24f, 44f, 15f, 60f);
+            p.RockEdge(24f, 15f, 9f, -1);
+            p.DoorFade(24f, -1, 4f, 9f, 15f);
+            p.RockMass(44f, 62f, roofA, 60f);
+            p.RockMass(62f, 100f, roofB, 60f);
+            p.RockEdge(62f, roofB, roofA, -1);
+            p.RockMass(100f, 125f, roofShaft, 60f);
+            p.RockEdge(100f, roofShaft, roofB, -1);
+
+            p.HotZone(26f, 125f, -5f, 40f);
+            p.Sign(28f, 9f, "Kaplıcanın sıcağı içine işler:\nburada daha hızlısın");
+            Dekor_Kaplica(p);
+
+            // Tünelden aşağı basamak basamak
+            p.CaveFloor(24f, 36f, 9f);
+            p.CaveFloor(36f, 40f, 7.5f);
+            p.CaveFloor(40f, 44f, 5.5f);
+            p.CaveFloor(44f, 62f, 3f);
+            p.Checkpoint(49f, 3f);
+            p.Firefly(52f, 4.6f);
+
+            // Tanıtım: taş üstünde gayzer. Bekle, fışkırınca havalan.
+            p.Sign(55f, 3f, "Gayzer kabarınca üstüne gel,\nseni yukarı fırlatır");
+            p.Geyser(60f, 3f, 8f, 3.6f, 0f);
+            p.BoilingPool(62f, 100f, 1.5f);
+            p.Ledge(64f, 72f, 8.5f, register: true);
+            p.CrystalLine(66f, 9.4f, 3, 2f);
+            p.Scorpion(70f, 8.5f);
+
+            // Sertleşme: kaya kaya gayzerler, tek sıra
+            p.Slab(72f, 76f, 8.5f, 1.2f);
+            p.Geyser(75f, 8.5f, 8.5f, 3.6f, 0.35f);
+            p.Ledge(78f, 86f, 13.5f, register: true);
+            p.Snake(84f, 13.5f);
+            p.Crystal(80f, 14.3f);
+
+            // Bükülme: iki gayzer sırayla; ilki ikinciye atar
+            p.Slab(86f, 89f, 13.5f, 1.2f);
+            p.Geyser(87.5f, 13.5f, 6f, 3.2f, 0.6f);
+            p.Ledge(92f, 100f, 8f, register: true); // alçakta: baca dibinden girilir, üstten atlanamaz
+            p.Checkpoint(94f, 8f);
+            p.Bug(97f, 9.4f);
+
+            // Baca: dibi kapalı oda, çamur yükselir. Raflar sağa sola, ortadaki sütuna da tırmanılır.
+            p.CaveFloor(100f, 118f, 6f);
+            p.Sign(104f, 6f, "Bu çatlak kaynıyor.\nHızlı tırman!");
+            p.Slab(99f, 100f, 26f, 15f, fringe: false); // yan duvarlar tırmanılır: çamurdan kaçışın ikinci yolu
+            p.RockEdge(100f, 26f, 11f, 1);
+            p.Slab(117.5f, 118f, doorY - 0.5f, doorY - 6.5f, fringe: false);
+            p.Ledge(101f, 107f, 9.5f);
+            p.Ledge(111f, 117f, 13f);
+            p.Ledge(101f, 107f, 16.5f);
+            p.Ledge(111f, 117f, 20f);
+            p.Crystal(104f, 10.3f);
+            p.Crystal(114f, 13.8f);
+            p.Crystal(104f, 17.3f);
+            p.Crystal(114f, 20.8f);
+            p.Mud(100f, 118f, 0f, doorY - 1f, 7.5f, 1.25f); // yerden 6 birim aşağıda başlar: tabana çıkana kadar kaçacak zaman var
+
+            p.RockMass(118f, 125f, GroundBottom, doorY - 0.5f);
+            p.RockMass(118f, 125f, doorY + 4f, roofShaft);
+            p.RockEdge(118f, doorY - 0.5f, 6f, -1);
+            p.RockEdge(125f, doorY - 0.5f, GroundBottom, 1);
+            p.DoorFade(125f, 1, 4.5f, doorY - 0.5f, doorY + 4f);
+            p.Ledge(106f, 126f, doorY, register: true);
+        }
+
+        // Sıcak ışıklar, kaynak çevresi mantar ve maden kalıntısı: dışarının mavisinden sonra içerisi turuncu olsun.
+        static void Dekor_Kaplica(LevelPainter p)
+        {
+            foreach (var (x, y, radius) in new[] { (32f, 12f, 11f), (50f, 9f, 14f), (66f, 14f, 15f), (82f, 17f, 15f), (95f, 16f, 13f), (109f, 11f, 15f), (109f, 23f, 15f) })
+                p.SpringGlow(x, y, radius, 1.9f);
+
+            p.InCave = true;
+            p.Deco("mgr_mantar_kutuk", 31f, 9f);
+            p.Deco("mgr_cevher_turuncu", 34f, 9f);
+            p.Deco("mgr_cevher_turuncu", 46.5f, 3f);
+            p.Deco("mgr_vagon", 53f, 3f);
+            p.Deco("mgr_mantar", 57f, 3f);
+            p.Deco("mgr_varil", 103f, 6f);
+            p.Deco("mgr_cevher_mavi", 113.5f, 6f);
+            p.Hang("tavan_sarkit_2", 48f, 15f);
+            p.Hang("tavan_kok", 54f, 15f);
+            p.Hang("tavan_sarkit_1", 59f, 15f);
+            p.Hang("tavan_kristal", 68f, 23f);
+            p.Hang("tavan_sarkit_3", 74f, 23f);
+            p.Hang("tavan_sarkit_2", 83f, 23f);
+            p.Hang("tavan_damla", 91f, 23f);
+            p.Hang("tavan_zincir", 96f, 23f);
+            p.Hang("tavan_sarkit_2", 104f, 30f);
+            p.Hang("tavan_kok", 113f, 30f);
+            p.Drip(54f, 15f, 3.3f);
+            p.Drip(83f, 23f, 14f);
+            p.InCave = false;
+        }
+
+        // Soğuk Cephe (yüzey). Fikir: arkadan gelen fırtına. Durmadan koşulur; öğrenilen her şey hızlı hızlı gelir.
+        static void Ayaz_SogukCephe(LevelPainter p)
+        {
+            p.Ground(0f, 22f, 24f);
+            p.Checkpoint(2.5f, 24f);
+            p.Fire(5.5f, 24f);
+            p.Sign(9f, 24f, "Ufukta ayaz fırtınası!\nDurma, büyük ateşe koş");
+            p.Storm(-14f, 12f, 122f, 3.9f);
+
+            p.Ground(26f, 40f, 22f);
+            p.Scorpion(33f, 22f);
+            p.Crystal(30f, 23f);
+
+            p.Crumble(41.33f, 22f, "tahta_ray");
+            p.Crumble(44f, 22f, "tahta_ray");
+            p.Crumble(46.67f, 22f, "tahta_ray");
+            p.Ground(49f, 60f, 20f);
+            p.Checkpoint(50.5f, 20f);
+            p.Brazier(53f, 20f);
+            p.Jackal(57f, 20f);
+
+            p.Pole(59f, 20f, 7f);
+            p.Wire(59f, 27f, 78f, 25f);
+            p.Hook(68f, 23.5f);
+            p.CrystalArc(64f, 22f, 72f, 21f, 3);
+            p.Ground(76f, 90f, 18f);
+            p.Pole(78f, 18f, 7f);
+            p.Firefly(84f, 19.6f);
+            p.SahteCali(86f, 18f);
+
+            p.Thermal(90f, 96f, 10f, 26f, 22f);
+            p.Crystal(93f, 23f);
+            p.Ground(97f, 111f, 22f);
+            p.Checkpoint(98.5f, 22f);
+            p.Snake(104f, 22f);
+            p.Fare(108f, 22f);
+
+            // Son atlayış: aşağıda büyük ateş
+            p.Ground(116f, 148f, 16f);
+            p.Fire(124f, 16f, 5f);
+            p.Fire(127f, 16f, 5f);
+            p.Deco("yuz_kaya_1", 120f, 16f);
+            p.Deco("yuz_cadir", 131f, 16f);
+            p.Checkpoint(135f, 16f);
+            p.Sign(138f, 16f, "Fırtına ateşe yaklaşamaz.\nGün doğmak üzere");
+        }
+
+        // Şafak (yüzey). Fikir: gece biter, ayaz kalkar. Son grup gün ışığında, bitiş tepede.
+        static void Ayaz_Safak(LevelPainter p)
+        {
+            p.Scorpion(22f, 16f);
+            p.Plant("kaktus_25", 18f, 16f);
+            p.Ground(23f, 42f, 18f);
+            p.Checkpoint(24.5f, 18f);
+            p.SahteCali(28f, 18f);
+            p.Snake(32f, 18f);
+            p.Armadillo(38.5f, 18f);
+            p.Ground(42f, 56f, 20f);
+            p.Fare(51f, 20f); // bayrağın önünde: kenardan uzak, köşe kuralına takılmasın
+            p.Deco("yuz_degirmen", 48f, 20f);
+            p.Goal(53f, 20f);
+            p.Boundary(56f);
+        }
+
 
         // Dekorlar yalnızca görsel: oynanışa dokunmaz, bölümlerin hikâyesini anlatır.
         static readonly Color LampLight = new Color(1f, 0.72f, 0.36f, 0.4f);
@@ -1521,6 +1838,347 @@ namespace DesertGecko.EditorTools
                 TestSceneBuilder.PropPlatform(geometry, Name(prefix), centerX, top, sprite, ctx.Tile, ctx.GroundLayer, oneWay: true,
                     surfaceDepth: surface.depth, widthFactor: surface.width);
                 return geometry.GetChild(geometry.childCount - 1).gameObject;
+            }
+
+            // --- Level 3: gece mekanikleri ---
+
+            /// <summary>Bu level gece: arka plan, ışıklar, vücut ısısı ve ısı çubuğu kurulur.</summary>
+            public bool Night;
+            public float DawnStartX, DawnEndX;
+
+            const string UnlitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";
+            static readonly Color FireLight = new Color(1f, 0.62f, 0.3f);
+            static readonly Color SpringLight = new Color(1f, 0.55f, 0.28f);
+            const int SwingOrder = 3;
+
+            static Material Unlit => AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+
+            static Light2D PointLight(Transform parent, Vector2 world, Color color, float radius, float intensity, float flicker = 0f)
+            {
+                var light = new GameObject("Isik").AddComponent<Light2D>();
+                light.transform.SetParent(parent);
+                light.transform.position = world;
+                light.lightType = Light2D.LightType.Point;
+                light.pointLightOuterRadius = radius;
+                light.pointLightInnerRadius = radius * 0.2f;
+                light.color = color;
+                light.intensity = intensity;
+                if (flicker > 0f)
+                    light.gameObject.AddComponent<LightFlicker>().Configure(flicker);
+                return light;
+            }
+
+            // Gökyüzünün önünde de görünen ışık halesi: arka plan ışıktan etkilenmediği için ayrıca çizilir.
+            void Halo(Transform parent, Vector2 world, Color color, float radius)
+            {
+                glowSprite = glowSprite != null ? glowSprite : PlaceholderArt.Glow();
+                var sr = new GameObject(Name("Hale")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(parent);
+                sr.transform.position = world;
+                sr.transform.localScale = Vector3.one * (radius * 2f / glowSprite.bounds.size.x);
+                sr.sprite = glowSprite;
+                sr.sharedMaterial = Unlit;
+                sr.color = color;
+                sr.sortingOrder = -30;
+                sr.gameObject.AddComponent<AmbientGlow>().Configure(1.5f, 0.12f, 0.25f);
+            }
+
+            static WarmthSource HeatCircle(Transform parent, Vector2 world, float radius, float rate)
+            {
+                var go = new GameObject("Isi");
+                go.transform.SetParent(parent);
+                go.transform.position = world;
+                go.AddComponent<CircleCollider2D>().radius = radius;
+                var source = go.AddComponent<WarmthSource>();
+                source.Configure(rate, false);
+                return source;
+            }
+
+            /// <summary>Kamp ateşi: taş halka, alev, sıcak ışık. Yanından koşarak geçen bile büyük ölçüde ısınır.</summary>
+            public void Fire(float x, float y, float radius = 3.6f)
+            {
+                float wx = x + OriginX;
+                Deco("mgr_kamp_ates", x, y);
+                Campfire(wx, y + 0.1f);
+                foreach (var loop in decor.GetComponentsInChildren<DesertGecko.Effects.SpriteLoop>())
+                    loop.GetComponent<SpriteRenderer>().sharedMaterial = Unlit; // alev gecede de parlak
+                HeatCircle(decor, new Vector2(wx, y + 0.8f), radius, 1.4f);
+                PointLight(decor, new Vector2(wx, y + 1f), FireLight, radius * 2.8f, 1.9f, 0.14f);
+                Halo(decor, new Vector2(wx, y + 1f), new Color(1f, 0.58f, 0.25f, 0.42f), radius * 1.5f);
+            }
+
+            /// <summary>Kor sepeti: küçük ısı noktası. Kaynar kaya üstünde ya da yol kenarında.</summary>
+            public void Brazier(float x, float y)
+            {
+                float wx = x + OriginX;
+                Deco("gece_mangal", x, y);
+                HeatCircle(decor, new Vector2(wx, y + 0.7f), 2.4f, 1.1f);
+                PointLight(decor, new Vector2(wx, y + 0.9f), FireLight, 6.5f, 1.6f, 0.1f);
+                Halo(decor, new Vector2(wx, y + 0.9f), new Color(1f, 0.58f, 0.25f, 0.34f), 3f);
+            }
+
+            /// <summary>Üstünde kor sepeti taşıyan platform: boşluğu geçerken ısıtır.</summary>
+            public void BrazierCart(float centerX, float top, Vector2 travel, float speed, float phase = 0f)
+            {
+                Mover(centerX, top, "tahta_zincir", travel, speed, phase);
+                Transform cart = geometry.GetChild(geometry.childCount - 1);
+                float wx = centerX + OriginX;
+                var sr = new GameObject("Mangal").AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(cart);
+                sr.transform.position = new Vector3(wx, top - 0.05f, 0f);
+                sr.sprite = TestSceneBuilder.Prop("gece_mangal");
+                sr.sortingOrder = 0;
+                HeatCircle(cart, new Vector2(wx, top + 0.8f), 2.6f, 1f);
+                PointLight(cart, new Vector2(wx, top + 1f), FireLight, 7f, 1.6f, 0.1f);
+                Halo(cart, new Vector2(wx, top + 1f), new Color(1f, 0.58f, 0.25f, 0.34f), 3f);
+            }
+
+            /// <summary>Ateş böceği: dille yakalanır, can ve ısı verir. Kendi küçük ışığı var.</summary>
+            public void Firefly(float x, float y)
+            {
+                Bug(x, y);
+                Transform bug = actors.GetChild(actors.childCount - 1);
+                PointLight(bug, new Vector2(x + OriginX, y), new Color(0.75f, 1f, 0.45f), 2.6f, 0.9f, 0.2f);
+            }
+
+            // Hat parçaları: fenerlerin zinciri bu hatta çıkar. y(x): sarkık hattın yüksekliği.
+            readonly List<(float x0, float y0, float x1, float y1)> wires = new List<(float, float, float, float)>();
+            const float WireSag = 1.1f;
+
+            /// <summary>Tahta telgraf direği: tepesi yuz_direk'ten, gövdesi tekrar eder.</summary>
+            public void Pole(float x, float groundTop, float height)
+            {
+                float wx = x + OriginX;
+                Sprite head = LayerArt("gece_direk_tepe"), trunk = LayerArt("gece_direk_govde");
+                float headHeight = head.bounds.size.y;
+                float top = groundTop + height;
+                occupied.Add((wx, 0.6f));
+                TiledArt(decor, Name("DirekGovde"), trunk, new Vector2(wx + 0.06f, top - headHeight + 0.05f), new Vector2(trunk.bounds.size.x, height - headHeight + 0.2f), -6);
+                TiledArt(decor, Name("DirekTepe"), head, new Vector2(wx, top), head.bounds.size, -6);
+            }
+
+            /// <summary>İki direğin tepesi arasında sarkan hat.</summary>
+            public void Wire(float xA, float yA, float xB, float yB)
+            {
+                const int segments = 12;
+                xA += OriginX;
+                xB += OriginX;
+                wires.Add((xA, yA, xB, yB));
+                Vector2 unit = ctx.Solid.bounds.size;
+                for (int i = 0; i < segments; i++)
+                {
+                    Vector2 a = WirePoint(xA, yA, xB, yB, (float)i / segments), b = WirePoint(xA, yA, xB, yB, (i + 1f) / segments);
+                    var sr = new GameObject(Name("Hat")).AddComponent<SpriteRenderer>();
+                    sr.transform.SetParent(decor);
+                    sr.transform.position = (a + b) / 2f;
+                    Vector2 d = b - a;
+                    sr.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+                    sr.transform.localScale = new Vector3((d.magnitude + 0.04f) / unit.x, 0.07f / unit.y, 1f);
+                    sr.sprite = ctx.Solid;
+                    sr.color = new Color32(0x24, 0x18, 0x18, 0xFF);
+                    sr.sortingOrder = -6;
+                }
+            }
+
+            static Vector2 WirePoint(float xA, float yA, float xB, float yB, float t) =>
+                new Vector2(Mathf.Lerp(xA, xB, t), Mathf.Lerp(yA, yB, t) - Mathf.Sin(t * Mathf.PI) * WireSag);
+
+            float WireYAt(float wx, float fallback)
+            {
+                foreach (var w in wires)
+                    if (wx >= w.x0 && wx <= w.x1)
+                        return WirePoint(w.x0, w.y0, w.x1, w.y1, Mathf.InverseLerp(w.x0, w.x1, wx)).y;
+                return fallback;
+            }
+
+            /// <summary>Hatta zincirle asılı kanca feneri: dil yapışır, yanından geçeni de ısıtır. Hat yoksa zincir roofY'ye çıkar.</summary>
+            public void Hook(float x, float y, float roofY = 0f)
+            {
+                float wx = x + OriginX;
+                BuildHook(actors, wx, y, WireYAt(wx, roofY));
+                platforms.Add((wx - 3f, wx + 3f, y - 4.2f));
+                lifts.Add((wx - 3f, wx + 3f, y - 4.2f));
+            }
+
+            /// <summary>Hat üstünde gidip gelen makaralı kanca.</summary>
+            public void MovingHook(float x, float y, float wireY, float travelX, float speed, float phase = 0f)
+            {
+                float wx = x + OriginX;
+                var trolley = new GameObject(Name("Makara"));
+                trolley.transform.SetParent(actors);
+                trolley.transform.position = new Vector2(wx, wireY);
+                var sr = trolley.AddComponent<SpriteRenderer>();
+                sr.sprite = ctx.Solid;
+                sr.color = new Color32(0x3A, 0x2A, 0x24, 0xFF);
+                sr.sortingOrder = -5;
+                Vector2 unit = ctx.Solid.bounds.size;
+                trolley.transform.localScale = Vector3.one;
+                BuildHook(trolley.transform, wx, y, wireY);
+                var body = trolley.AddComponent<Rigidbody2D>();
+                body.bodyType = RigidbodyType2D.Kinematic;
+                trolley.AddComponent<MovingPlatform>().Configure(new Vector2(travelX, 0f), speed, phase);
+                sr.enabled = false; // makara görseli çocukta: kök ölçeği bozulmasın
+                var wheel = new GameObject("Teker").AddComponent<SpriteRenderer>();
+                wheel.transform.SetParent(trolley.transform);
+                wheel.transform.position = new Vector2(wx, wireY);
+                wheel.transform.localScale = new Vector3(0.5f / unit.x, 0.28f / unit.y, 1f);
+                wheel.sprite = ctx.Solid;
+                wheel.color = sr.color;
+                wheel.sortingOrder = -5;
+                platforms.Add((wx - 3f, wx + travelX + 3f, y - 4.2f));
+                lifts.Add((wx - 3f, wx + travelX + 3f, y - 4.2f));
+            }
+
+            void BuildHook(Transform parent, float wx, float y, float chainTop)
+            {
+                var root = new GameObject(Name("Kanca"));
+                root.transform.SetParent(parent);
+                root.transform.position = new Vector2(wx, y);
+
+                Vector2 unit = ctx.Solid.bounds.size;
+                float length = Mathf.Max(0.1f, chainTop - y);
+                var chain = new GameObject("Zincir").AddComponent<SpriteRenderer>();
+                chain.transform.SetParent(root.transform);
+                chain.transform.position = new Vector2(wx, y + length / 2f);
+                chain.transform.localScale = new Vector3(0.09f / unit.x, length / unit.y, 1f);
+                chain.sprite = ctx.Solid;
+                chain.color = new Color32(0x2C, 0x20, 0x20, 0xFF);
+                chain.sortingOrder = SwingOrder - 1;
+
+                Sprite art = TestSceneBuilder.Prop("gece_kanca_fener");
+                var lantern = new GameObject("Fener").AddComponent<SpriteRenderer>();
+                lantern.transform.SetParent(root.transform);
+                lantern.transform.position = new Vector2(wx, y - art.bounds.size.y + 0.12f); // halkası kancanın noktasında
+                lantern.sprite = art;
+                lantern.sharedMaterial = Unlit;
+                lantern.sortingOrder = SwingOrder;
+
+                var marker = new GameObject("Hedef").AddComponent<SpriteRenderer>();
+                marker.transform.SetParent(root.transform);
+                marker.transform.position = new Vector2(wx, y);
+                marker.sprite = ctx.Combat.Ring;
+                marker.sharedMaterial = Unlit;
+                marker.color = new Color(1f, 0.95f, 0.6f, 0.95f);
+                marker.sortingOrder = SwingOrder + 1;
+
+                root.AddComponent<SwingPoint>().Configure(marker);
+                HeatCircle(root.transform, new Vector2(wx, y - 1.5f), 2.8f, 0.9f);
+                PointLight(root.transform, new Vector2(wx, y - 0.5f), FireLight, 6f, 1.6f, 0.1f);
+                Halo(root.transform, new Vector2(wx, y - 0.5f), new Color(1f, 0.7f, 0.35f, 0.4f), 2.4f);
+            }
+
+            /// <summary>Periyotla fışkıran gayzer. reach: sütunun boyu; cycle: tur süresi.</summary>
+            public void Geyser(float x, float floorY, float reach, float cycle, float phase, float width = 2f)
+            {
+                float wx = x + OriginX;
+                var go = new GameObject(Name("Gayzer"));
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector2(wx, floorY);
+                go.AddComponent<BoxCollider2D>();
+
+                Sprite art = LayerArt("gece_gayzer");
+                SpriteRenderer column = TiledArt(go.transform, "Sutun", art, new Vector2(wx, floorY + reach), new Vector2(width, reach), 4);
+                column.sharedMaterial = Unlit;
+                Deco("mgr_su", x, floorY);
+                go.AddComponent<Geyser>().Configure(width, reach, cycle, phase, column);
+                PointLight(go.transform, new Vector2(wx, floorY + reach * 0.5f), new Color(0.65f, 0.85f, 1f), reach * 0.7f + 2f, 0.55f);
+                platforms.Add((wx - 3f, wx + 3f, floorY + reach * 0.75f));
+                lifts.Add((wx - 3f, wx + 3f, floorY + reach * 0.75f));
+            }
+
+            /// <summary>Yer altının sıcak bölgesi: içinde Gila hızlanır, çubuk dolu kalır. Duvarlar turuncu aydınlanır.</summary>
+            public void HotZone(float xMin, float xMax, float yMin, float yMax)
+            {
+                var go = new GameObject(Name("SicakBolge"));
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector2((xMin + xMax) / 2f + OriginX, (yMin + yMax) / 2f);
+                go.AddComponent<BoxCollider2D>().size = new Vector2(xMax - xMin, yMax - yMin);
+                go.AddComponent<WarmthSource>().Configure(0f, true);
+            }
+
+            /// <summary>Mağara ışığı: sıcak yer altı duvarını boyar.</summary>
+            public void SpringGlow(float x, float y, float radius = 11f, float intensity = 0.95f) =>
+                PointLight(decor, new Vector2(x + OriginX, y), SpringLight, radius, intensity, 0.06f);
+
+            /// <summary>Kaynar çamur havuzu: değen yanar. Üstünden gayzerle ya da kayalarla geçilir.</summary>
+            public void BoilingPool(float xMin, float xMax, float y)
+            {
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
+                Pit(wx0, wx1, y - 0.05f, -35);
+                MudArt(geometry, (wx0 + wx1) / 2f, y, xMax - xMin, 2.5f, 6);
+                PointLight(decor, new Vector2((wx0 + wx1) / 2f, y + 1f), SpringLight, (xMax - xMin) * 0.6f + 3f, 0.85f, 0.05f);
+                var zone = new GameObject(Name("KaynarHavuz"));
+                zone.transform.SetParent(geometry);
+                zone.transform.position = new Vector2((wx0 + wx1) / 2f, y - 0.45f - 5f);
+                zone.AddComponent<BoxCollider2D>().size = new Vector2(xMax - xMin, 10f);
+                zone.AddComponent<PitZone>();
+            }
+
+            static void MudArt(Transform parent, float wx, float y, float width, float depth, int order)
+            {
+                Sprite body = LayerArt("gece_camur"), crest = LayerArt("gece_camur_ust");
+                SpriteRenderer b = TiledArt(parent, "Camur", body, new Vector2(wx, y - 0.1f), new Vector2(width, depth), order);
+                b.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+                SpriteRenderer c = TiledArt(parent, "CamurUst", crest, new Vector2(wx, y + 0.1f), new Vector2(width, crest.bounds.size.y), order + 1);
+                c.sharedMaterial = b.sharedMaterial;
+            }
+
+            /// <summary>Bacada yükselen kaynar çamur. Oyuncu triggerY'yi geçince kabarır.</summary>
+            public RisingMud Mud(float xMin, float xMax, float bottomY, float topY, float triggerY, float speed)
+            {
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
+                var go = new GameObject(Name("YukselenCamur"));
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector2((wx0 + wx1) / 2f, bottomY);
+                MudArt(go.transform, (wx0 + wx1) / 2f, bottomY, xMax - xMin, 30f, 8);
+                PointLight(go.transform, new Vector2((wx0 + wx1) / 2f, bottomY + 1f), SpringLight, 10f, 1.1f, 0.06f);
+                var mud = go.AddComponent<RisingMud>();
+                mud.Configure(bottomY, topY, new Vector2(wx0, wx1), triggerY, speed);
+                return mud;
+            }
+
+            /// <summary>Arkadan gelen ayaz fırtınası: triggerX'i geçince başlar, endX'te dağılır.</summary>
+            public void Storm(float behindX, float triggerX, float endX, float speed)
+            {
+                const float top = 62f, height = 110f, backWidth = 60f;
+                float x = behindX + OriginX;
+                var go = new GameObject("AyazFirtinasi");
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector2(x, 0f);
+                Sprite art = LayerArt("gece_firtina"), frontArt = LayerArt("gece_firtina_on");
+                var material = Unlit;
+
+                SpriteRenderer back = TiledArt(go.transform, "Govde", art, new Vector2(x - 5f - backWidth / 2f, top), new Vector2(backWidth, height), 40);
+                back.sharedMaterial = material;
+                back.color = Color.white;
+
+                var billows = new List<SpriteRenderer>();
+                float[] alphas = { 0.75f, 0.85f, 0.95f, 1f };
+                for (int i = 0; i < alphas.Length; i++)
+                {
+                    SpriteRenderer layer = TiledArt(go.transform, "Kabarma" + i, frontArt, new Vector2(x - i * 1.6f, top), new Vector2(frontArt.bounds.size.x, height), 41 + alphas.Length - i);
+                    layer.sharedMaterial = material;
+                    layer.color = new Color(0.9f - i * 0.1f, 0.94f - i * 0.1f, 1f - i * 0.08f, alphas[i]);
+                    billows.Add(layer);
+                }
+                go.AddComponent<ColdFront>().Configure(x, triggerX + OriginX, endX + OriginX, billows.ToArray(), speed);
+                foreach (SpriteRenderer sr in go.GetComponentsInChildren<SpriteRenderer>())
+                    sr.enabled = false; // başlayınca görünür
+            }
+
+            /// <summary>Oyuncu ve sahne kurulduktan sonra gece düzeni. Gündüz leveli için çağrılmaz.</summary>
+            public void FinishNight(GameObject player)
+            {
+                SpriteRenderer[] nightLayers = BackgroundBuilder.BuildNight();
+                var heat = player.AddComponent<BodyHeat>();
+                CombatSetupBuilder.BuildHeatBar(heat, ctx.Solid, TestSceneBuilder.Prop("gece_alev_simge"));
+
+                // Gila'nın çevresi soluk aydınlık: gece karanlığında kaybolmasın.
+                Light2D aura = PointLight(player.transform, player.transform.position + Vector3.up * 0.6f, new Color(0.85f, 0.88f, 1f), 7f, 0.5f);
+
+                var sun = GameObject.Find("Global Light 2D").GetComponent<Light2D>();
+                new GameObject("Gece").AddComponent<NightSky>().Configure(player.transform, sun, nightLayers, new[] { aura }, DawnStartX, DawnEndX, Camera.main,
+                    new Color32(22, 17, 53, 255)); // gökyüzü görselinin en üst rengi
             }
 
             // --- Dekor (çarpışmasız) ---

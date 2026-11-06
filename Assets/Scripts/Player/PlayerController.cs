@@ -11,7 +11,7 @@ namespace DesertGecko.Player
     [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(PlayerInputReader))]
     public class PlayerController : MonoBehaviour
     {
-        public enum MoveState { Grounded, Airborne, WallCling, Gliding }
+        public enum MoveState { Grounded, Airborne, WallCling, Gliding, Swinging }
 
         [Header("Koşma")]
         [SerializeField] float runSpeed = 5.5f;
@@ -51,6 +51,14 @@ namespace DesertGecko.Player
         [SerializeField] Vector2 ledgeHopVelocity = new Vector2(3f, 7f);
         [SerializeField] float wallRegrabDelay = 0.15f;
 
+        [Header("Dille sallanma")]
+        [SerializeField] float swingAcceleration = 24f;
+        [SerializeField] float maxSwingSpeed = 11.5f;
+        [SerializeField] float swingReelSpeed = 8f;
+        [Tooltip("Bırakınca savrulmaya eklenen hız")]
+        [SerializeField] Vector2 swingReleaseBoost = new Vector2(0.8f, 3f);
+        [SerializeField] Vector2 swingAttachOffset = new Vector2(0f, 0.6f);
+
         [Header("Algılama")]
         [SerializeField] LayerMask groundMask;
         [SerializeField] float probeDepth = 0.06f;
@@ -62,6 +70,9 @@ namespace DesertGecko.Player
         /// <summary>Sıcaklık sistemi bunu ayarlar (sıcakta &gt; 1, soğukta &lt; 1).</summary>
         public float SpeedMultiplier { get; set; } = 1f;
 
+        /// <summary>Soğukta zıplama kısalır.</summary>
+        public float JumpMultiplier { get; set; } = 1f;
+
         /// <summary>Kuyruk fırlatılınca false olur. Kuyruk yokken çift zıplama zayıflar ve süzülme olmaz.</summary>
         public bool HasTail { get; set; } = true;
 
@@ -72,6 +83,8 @@ namespace DesertGecko.Player
         public int FacingDirection { get; private set; } = 1;
         public Vector2 Velocity => body.linearVelocity;
         public bool IsGrounded => State == MoveState.Grounded;
+        public bool IsSwinging => State == MoveState.Swinging;
+        public Transform SwingAnchor => swingAnchor;
 
         public event Action Jumped;
         public event Action DoubleJumped;
@@ -101,6 +114,11 @@ namespace DesertGecko.Player
         float dropThroughUntil;
 
         float thermalUntil, thermalSpeed;
+
+        Transform swingAnchor;
+        float swingLength, swingTargetLength;
+        Vector2 swingVelocity;
+        bool carryMomentum; // savrulma hızı havada koşu hızına düşürülmesin
 
         readonly Collider2D[] probeHits = new Collider2D[8];
         readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
@@ -140,10 +158,125 @@ namespace DesertGecko.Player
         {
             EndDropThrough();
             ProbeSurroundings();
+            if (State == MoveState.Swinging)
+            {
+                Swing();
+                return;
+            }
             UpdateState();
             HandleJump();
             ApplyHorizontal();
             ApplyVertical();
+        }
+
+        /// <summary>Kancaya yapışır. targetLength: halatın kısalacağı boy (dil çekerek yukarı alır).</summary>
+        public void BeginSwing(Transform anchor, float targetLength)
+        {
+            swingAnchor = anchor;
+            swingLength = Vector2.Distance(body.position + swingAttachOffset, anchor.position);
+            swingTargetLength = Mathf.Min(targetLength, swingLength);
+            swingVelocity = body.linearVelocity;
+            State = MoveState.Swinging;
+            airJumpsLeft = 1;
+            rising = false;
+            jumpCut = false;
+            lastJumpPressTime = float.NegativeInfinity;
+            lastGroundedTime = float.NegativeInfinity;
+        }
+
+        /// <summary>Kancayı bırakır: savrulduğu yöne uçar, çift zıplaması yenilenmiş olur.</summary>
+        public void EndSwing()
+        {
+            if (State != MoveState.Swinging)
+                return;
+            swingAnchor = null;
+            State = MoveState.Airborne;
+            Vector2 v = swingVelocity;
+            if (Mathf.Abs(v.x) > 1f)
+                v.x += Mathf.Sign(v.x) * swingReleaseBoost.x;
+            if (v.magnitude > 4f)
+                v.y += swingReleaseBoost.y;
+            body.linearVelocity = v;
+            carryMomentum = true;
+            airJumpsLeft = 1;
+            body.gravityScale = baseGravityScale;
+        }
+
+        void Swing()
+        {
+            if (swingAnchor == null || !swingAnchor.gameObject.activeInHierarchy)
+            {
+                swingAnchor = null;
+                State = MoveState.Airborne;
+                return;
+            }
+            // Zıplama tuşu da bırakır: oyuncu dili tutarken havada karar verebilsin.
+            if (Time.time - lastJumpPressTime <= jumpBufferTime)
+            {
+                lastJumpPressTime = float.NegativeInfinity;
+                EndSwing();
+                return;
+            }
+
+            float dt = Time.fixedDeltaTime;
+            body.gravityScale = 0f;
+            Vector2 anchor = swingAnchor.position;
+            Vector2 at = body.position + swingAttachOffset;
+            Vector2 toBody = at - anchor;
+            float distance = toBody.magnitude;
+            Vector2 radial = distance > 0.01f ? toBody / distance : Vector2.down;
+            Vector2 tangent = new Vector2(-radial.y, radial.x); // sağa doğru
+            if (tangent.x < 0f)
+                tangent = -tangent;
+
+            // Fizik motoru duvarda hızı kestiyse onu kabul et.
+            Vector2 v = body.linearVelocity;
+            if (groundContact && v.y <= 0.01f && radial.y > 0.9f && distance < swingTargetLength + 0.05f)
+            {
+                // Yere değdiyse sallanma biter: halat yere sürtmesin.
+                swingVelocity = new Vector2(v.x, 0f);
+                swingAnchor = null;
+                State = MoveState.Airborne;
+                return;
+            }
+
+            v += Vector2.down * (Mathf.Abs(Physics2D.gravity.y) * baseGravityScale * 0.7f * dt);
+            v += tangent * (input.Move.x * swingAcceleration * dt);
+
+            swingLength = Mathf.MoveTowards(swingLength, swingTargetLength, swingReelSpeed * dt);
+            float excess = distance - swingLength;
+            if (excess > -0.02f)
+            {
+                // Halat gergin: dışa doğru hız kalkar, kalan fark bir sonraki adımda toparlanır.
+                float along = Vector2.Dot(v, tangent);
+                along = Mathf.Clamp(along, -maxSwingSpeed, maxSwingSpeed);
+                swingVelocity = tangent * along;
+                body.linearVelocity = swingVelocity - radial * Mathf.Clamp(excess / dt, -2f, 10f);
+            }
+            else
+            {
+                swingVelocity = v;
+                body.linearVelocity = v;
+            }
+
+            if (Mathf.Abs(input.Move.x) > 0.1f)
+                FacingDirection = input.Move.x > 0f ? 1 : -1;
+        }
+
+        /// <summary>Gayzer gibi dışarıdan fırlatma: yukarı hız verir, çift zıplamayı yeniler.</summary>
+        public void Launch(float upwardSpeed)
+        {
+            if (State == MoveState.Swinging)
+                swingAnchor = null;
+            Vector2 v = body.linearVelocity;
+            if (v.y >= upwardSpeed)
+                return;
+            body.linearVelocity = new Vector2(v.x, upwardSpeed);
+            State = MoveState.Airborne;
+            lastGroundedTime = float.NegativeInfinity;
+            airJumpsLeft = 1;
+            rising = false;
+            jumpCut = false;
         }
 
         bool InThermal => Time.time < thermalUntil;
@@ -372,7 +505,7 @@ namespace DesertGecko.Player
         void SetJumpVelocity(float height)
         {
             float gravity = Mathf.Abs(Physics2D.gravity.y) * baseGravityScale;
-            body.linearVelocity = new Vector2(body.linearVelocity.x, Mathf.Sqrt(2f * gravity * height));
+            body.linearVelocity = new Vector2(body.linearVelocity.x, Mathf.Sqrt(2f * gravity * height * JumpMultiplier));
         }
 
         void ApplyHorizontal()
@@ -385,6 +518,16 @@ namespace DesertGecko.Player
             float inputX = MovementLocked ? 0f : input.Move.x;
             float maxSpeed = (State == MoveState.Gliding ? glideHorizontalSpeed : runSpeed) * SpeedMultiplier;
             float target = inputX * maxSpeed + CarrierSpeedX;
+
+            if (carryMomentum)
+            {
+                // Savrulmanın hızı korunur; sadece ters yöne basınca ya da yere inince biter.
+                bool againstFlight = inputX * v.x < -0.01f;
+                if (State == MoveState.Grounded || State == MoveState.WallCling || againstFlight || Mathf.Abs(v.x) <= maxSpeed)
+                    carryMomentum = false;
+                else
+                    return;
+            }
 
             bool onGround = State == MoveState.Grounded;
             bool speedingUp = Mathf.Abs(target) > 0.01f && (Mathf.Sign(target) == Mathf.Sign(v.x) || Mathf.Abs(v.x) < 0.01f);
@@ -456,6 +599,8 @@ namespace DesertGecko.Player
 
         public void Teleport(Vector2 position)
         {
+            swingAnchor = null;
+            carryMomentum = false;
             body.position = position;
             transform.position = position;
             body.linearVelocity = Vector2.zero;
@@ -465,6 +610,8 @@ namespace DesertGecko.Player
         /// <summary>Hasar alınca geri itme: hızı doğrudan ayarlar ve kısa süre yön kontrolünü kilitler.</summary>
         public void Knockback(Vector2 velocity, float controlLock)
         {
+            swingAnchor = null;
+            carryMomentum = false;
             body.linearVelocity = velocity;
             controlLockUntil = Time.time + controlLock;
             wallRegrabAllowedAt = Time.time + controlLock;

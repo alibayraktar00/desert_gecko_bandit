@@ -1,0 +1,84 @@
+using DesertGecko.Effects;
+using DesertGecko.Player;
+using UnityEngine;
+
+namespace DesertGecko.Environment
+{
+    /// <summary>
+    /// Sıcak su gayzeri: belirli aralıkla fışkırır, içindeki Gila'yı yukarı fırlatır. Önce kabarcıklarla haber verir.
+    /// Zamanı kendi saatiyle tutar; aynı evreyle kurulan gayzerler sırayla çalışır.
+    /// </summary>
+    [RequireComponent(typeof(BoxCollider2D))]
+    public class Geyser : MonoBehaviour
+    {
+        [SerializeField] float period = 4f;
+        [SerializeField] float warnTime = 0.8f;
+        [SerializeField] float eruptTime = 1.5f;
+        [Range(0f, 1f)]
+        [SerializeField] float phase;
+        [SerializeField] float launchSpeed = 15f;
+        [SerializeField] SpriteRenderer column;
+        [SerializeField] Color bubbleColor = new Color32(0xE2, 0xF4, 0xFA, 0xFF);
+
+        BoxCollider2D zone;
+        float baseHeight, clock, height, nextBubble;
+
+        public bool IsErupting => CycleTime >= period - eruptTime;
+        public bool IsWarning => !IsErupting && CycleTime >= period - eruptTime - warnTime;
+        float CycleTime => Mathf.Repeat(clock + phase * period, period);
+
+        public void Configure(float width, float reach, float cycle, float startPhase, SpriteRenderer columnArt)
+        {
+            period = cycle;
+            phase = startPhase;
+            column = columnArt;
+            zone = GetComponent<BoxCollider2D>();
+            zone.isTrigger = true;
+            zone.size = new Vector2(width, reach);
+            zone.offset = new Vector2(0f, reach / 2f);
+            // Sütunun tepesinden sonra biraz daha yükselecek kadar hız (yerçekimi: 9.81 x 3.5).
+            launchSpeed = Mathf.Sqrt(2f * 34.3f * Mathf.Max(reach * 0.35f, 2f));
+        }
+
+        void Awake()
+        {
+            zone = GetComponent<BoxCollider2D>();
+            zone.isTrigger = true;
+            baseHeight = zone.size.y;
+            if (column != null)
+                column.size = new Vector2(column.size.x, 0f);
+        }
+
+        void Update()
+        {
+            clock += Time.deltaTime;
+            bool erupting = IsErupting;
+            float target = erupting ? baseHeight : IsWarning ? 0.8f : 0f;
+            height = Mathf.MoveTowards(height, target, (erupting ? baseHeight * 4f : baseHeight * 3f) * Time.deltaTime);
+            if (column != null)
+            {
+                column.size = new Vector2(column.size.x, height);
+                column.transform.localPosition = new Vector3(0f, height, 0f);
+                column.enabled = height > 0.02f;
+            }
+            if ((IsWarning || erupting) && Time.time >= nextBubble)
+            {
+                nextBubble = Time.time + (erupting ? 0.1f : 0.16f);
+                float spread = zone.size.x * 0.4f;
+                PixelBurst.Spawn(transform.position + new Vector3(Random.Range(-spread, spread), 0.15f, 0f), bubbleColor, 2, 2.2f, 0.35f);
+            }
+        }
+
+        void OnTriggerStay2D(Collider2D other)
+        {
+            if (!IsErupting)
+                return;
+            var player = other.GetComponentInParent<PlayerController>();
+            if (player == null)
+                return;
+            // Sütun henüz oyuncuya yetişmediyse fırlatmasın.
+            if (player.transform.position.y - transform.position.y <= height)
+                player.Launch(launchSpeed);
+        }
+    }
+}

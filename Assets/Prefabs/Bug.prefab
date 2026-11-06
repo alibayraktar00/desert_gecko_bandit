@@ -143,6 +143,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Collectibles.Bug
   healAmount: 2
+  heatAmount: 0.45
   hoverHeight: 0.12
   hoverSpeed: 4
   burstColor: {r: 0.4862745, g: 0.76862746, b: 0.2901961, a: 1}

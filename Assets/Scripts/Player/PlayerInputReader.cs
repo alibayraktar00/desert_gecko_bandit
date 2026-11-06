@@ -19,6 +19,7 @@ namespace DesertGecko.Player
         public bool JumpPressed { get; private set; }
         public bool JumpHeld { get; private set; }
         public bool TonguePressed { get; private set; }
+        public bool TongueHeld { get; private set; }
         public bool TailPressed { get; private set; }
         public bool CamouflagePressed { get; private set; }
 
@@ -82,6 +83,7 @@ namespace DesertGecko.Player
         {
             Move = Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1f);
             JumpHeld = jump.IsPressed();
+            TongueHeld = tongue.IsPressed();
             // "Pressed" bayrakları FixedUpdate tüketene kadar açık kalır,
             // böylece iki fizik adımı arasında basılan tuş kaybolmaz.
             JumpPressed |= jump.WasPressedThisFrame();
