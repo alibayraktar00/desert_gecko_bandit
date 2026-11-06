@@ -92,11 +92,15 @@ namespace DesertGecko.Player
         bool jumpCut;
         bool rising;
 
+        const float ThermalAcceleration = 30f;
+        const float CarrierRiseSlack = 0.5f;
         const float SurfaceSkin = 0.015f; // fizik motorunun yüzey payı: bitişik katı kata sürtünüp takılmasın
         bool solidUnderfoot;
         Collider2D standingOneWay; // üstünde durulan tek yönlü platform
         Collider2D droppedThrough; // aşağı inerken çarpışması kapatılan platform
         float dropThroughUntil;
+
+        float thermalUntil, thermalSpeed;
 
         readonly Collider2D[] probeHits = new Collider2D[8];
         readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
@@ -140,6 +144,27 @@ namespace DesertGecko.Player
             HandleJump();
             ApplyHorizontal();
             ApplyVertical();
+        }
+
+        bool InThermal => Time.time < thermalUntil;
+
+        /// <summary>Sıcak hava sütunu her fizik adımında çağırır: süzülen Gila bu hıza doğru yükselir.</summary>
+        public void RideThermal(float speed)
+        {
+            thermalSpeed = speed;
+            thermalUntil = Time.time + Time.fixedDeltaTime * 1.5f;
+        }
+
+        // Üstünde durulan hareketli platformun yatay hızı: oyuncu onunla birlikte taşınır.
+        float CarrierSpeedX
+        {
+            get
+            {
+                if (State != MoveState.Grounded || standingOneWay == null)
+                    return 0f;
+                Rigidbody2D carrier = standingOneWay.attachedRigidbody;
+                return carrier != null ? carrier.linearVelocity.x : 0f;
+            }
         }
 
         ContactFilter2D GroundFilter => new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
@@ -215,7 +240,10 @@ namespace DesertGecko.Player
         {
             MoveState previous = State;
             Vector2 move = input.Move;
-            bool grounded = groundContact && body.linearVelocity.y <= 0.01f;
+            // Yükselen platform oyuncuyu yukarı iter; bu hız zıplama sayılmasın.
+            Rigidbody2D carrier = standingOneWay != null ? standingOneWay.attachedRigidbody : null;
+            float allowedRise = carrier != null ? Mathf.Max(0f, carrier.linearVelocity.y) + CarrierRiseSlack : 0f;
+            bool grounded = groundContact && body.linearVelocity.y <= 0.01f + allowedRise;
 
             if (grounded)
             {
@@ -261,7 +289,7 @@ namespace DesertGecko.Player
                 return;
             }
 
-            bool canGlide = HasTail && input.JumpHeld && body.linearVelocity.y < 0f;
+            bool canGlide = HasTail && input.JumpHeld && (body.linearVelocity.y < 0f || InThermal);
             State = canGlide ? MoveState.Gliding : MoveState.Airborne;
         }
 
@@ -356,7 +384,7 @@ namespace DesertGecko.Player
             Vector2 v = body.linearVelocity;
             float inputX = MovementLocked ? 0f : input.Move.x;
             float maxSpeed = (State == MoveState.Gliding ? glideHorizontalSpeed : runSpeed) * SpeedMultiplier;
-            float target = inputX * maxSpeed;
+            float target = inputX * maxSpeed + CarrierSpeedX;
 
             bool onGround = State == MoveState.Grounded;
             bool speedingUp = Mathf.Abs(target) > 0.01f && (Mathf.Sign(target) == Mathf.Sign(v.x) || Mathf.Abs(v.x) < 0.01f);
@@ -383,6 +411,13 @@ namespace DesertGecko.Player
                     return;
 
                 case MoveState.Gliding:
+                    if (InThermal)
+                    {
+                        body.gravityScale = 0f;
+                        v.y = Mathf.MoveTowards(v.y, thermalSpeed, ThermalAcceleration * Time.fixedDeltaTime);
+                        body.linearVelocity = v;
+                        return;
+                    }
                     body.gravityScale = baseGravityScale * 0.5f;
                     v.y = Mathf.Max(v.y, -glideFallSpeed);
                     body.linearVelocity = v;

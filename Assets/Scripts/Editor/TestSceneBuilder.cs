@@ -239,7 +239,7 @@ namespace DesertGecko.EditorTools
         /// Görseli olan platform: sprite alt ortadan pivotlu, üst kenarı topY'de durur.
         /// Sadece üstteki tahta katı; altındaki ip, kiriş ve ayaklar içinden geçilebilir.
         /// </summary>
-        internal static void PropPlatform(Transform parent, string name, float centerX, float topY, string spriteName, Sprite fallbackTile, int layer, bool onGround = false)
+        internal static void PropPlatform(Transform parent, string name, float centerX, float topY, string spriteName, Sprite fallbackTile, int layer, bool onGround = false, bool oneWay = false, float surfaceDepth = 0f, float widthFactor = 0.94f)
         {
             Sprite sprite = Prop(spriteName);
             if (sprite == null)
@@ -252,7 +252,7 @@ namespace DesertGecko.EditorTools
             var go = new GameObject(name) { layer = layer };
             go.transform.SetParent(parent);
             // Yerdeki masa: ayakları zemine bassın, yani alt kenar topY'de.
-            float bottom = onGround ? topY : topY - size.y;
+            float bottom = onGround ? topY : topY + surfaceDepth - size.y;
             go.transform.position = new Vector3(centerX, bottom, 0f);
 
             var sr = go.AddComponent<SpriteRenderer>();
@@ -261,8 +261,19 @@ namespace DesertGecko.EditorTools
 
             const float plankThickness = 0.3f;
             var col = go.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(size.x * 0.94f, plankThickness);
-            col.offset = new Vector2(0f, size.y - plankThickness / 2f);
+            col.size = new Vector2(size.x * widthFactor, plankThickness);
+            col.offset = new Vector2(0f, size.y - surfaceDepth - plankThickness / 2f);
+
+            // Yerdeki masa tek yönlü: düşmanlar ve oyuncu altından geçer, tahtaya takılmaz.
+            if (onGround || oneWay)
+            {
+                col.usedByEffector = true;
+                var effector = go.AddComponent<PlatformEffector2D>();
+                effector.useOneWay = true;
+                effector.surfaceArc = 170f;
+                effector.useSideFriction = false;
+                effector.useSideBounce = false;
+            }
         }
 
         internal static void PropDecor(Transform parent, string spriteName, float x, float groundY, Sprite fallbackTile)

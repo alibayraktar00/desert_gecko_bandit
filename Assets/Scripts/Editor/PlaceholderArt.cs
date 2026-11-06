@@ -251,6 +251,21 @@ namespace DesertGecko.EditorTools
             }
         });
 
+        // Fener parıltısı: piksel sanat için basamaklı halkalar, ortası dolu.
+        public static Sprite Glow() => Create("parilti", 128, 128, Center, c =>
+        {
+            for (int y = 0; y < 128; y++)
+            for (int x = 0; x < 128; x++)
+            {
+                float d = Mathf.Sqrt((x - 63.5f) * (x - 63.5f) + (y - 63.5f) * (y - 63.5f)) / 64f;
+                if (d >= 1f)
+                    continue;
+                float falloff = (1f - d) * (1f - d); // kenara doğru hızla söner: halka kenarı görünmesin
+                byte alpha = (byte)(Mathf.Ceil(falloff * 48f) / 48f * 255f);
+                c.Set(x, y, new Color32(255, 255, 255, alpha));
+            }
+        });
+
         // --- Arayüz ---
 
         public static Sprite Heart(int fill) => Create($"kalp_{(fill == 2 ? "dolu" : fill == 1 ? "yarim" : "bos")}", 16, 16, Center, c =>

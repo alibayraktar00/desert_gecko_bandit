@@ -70,7 +70,9 @@ namespace DesertGecko.EditorTools
                 // Kaktüsler ve düşmanlar yere, platformlar üst kenarlarından yerleştirilir; hepsi için alt orta pivot.
                 var settings = new TextureImporterSettings();
                 importer.ReadTextureSettings(settings);
-                settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+                // tavan_ ile başlayanlar (sarkıt, kök, zincir) üst kenarından asılır.
+                bool hangs = System.IO.Path.GetFileName(assetPath).StartsWith("tavan_");
+                settings.spriteAlignment = (int)(hangs ? SpriteAlignment.TopCenter : SpriteAlignment.BottomCenter);
                 importer.SetTextureSettings(settings);
             }
             else if (isLayerArt)

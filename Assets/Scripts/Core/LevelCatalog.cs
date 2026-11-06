@@ -21,9 +21,8 @@ namespace DesertGecko.Core
 
         public static readonly LevelInfo[] Levels =
         {
-            new LevelInfo("Level_1-1", "1-1  İlk Adımlar", "Kızgın Kum Vadisi"),
-            new LevelInfo("Level_1-2", "1-2  Kanyon Duvarları", "Kızgın Kum Vadisi"),
-            new LevelInfo("Level_1-3", "1-3  Akbaba Gölgesi", "Kızgın Kum Vadisi"),
+            new LevelInfo("Level_1", "1  Kızgın Kum Vadisi", "Kızgın Kum Vadisi"),
+            new LevelInfo("Level_2", "2  Terk Edilmiş Maden", "Kızgın Kum Vadisi"),
         };
 
         public static int Count => Levels.Length;

@@ -29,7 +29,7 @@ namespace DesertGecko.Tests
     [Explicit, Category("Autoplay")]
     public class AutoplayTests
     {
-        const float TimeLimit = 240f;       // oyun saniyesi
+        const float TimeLimit = 600f;       // oyun saniyesi
         const float StuckSeconds = 6f;      // bu kadar ilerlemezse kurtulma manevrası
         const float GiveUpSeconds = 40f;    // bu kadar ilerlemezse level başarısız
 
@@ -70,7 +70,7 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
-        public IEnumerator Bot_LeveliBitirir([Values(0, 1, 2)] int level)
+        public IEnumerator Bot_LeveliBitirir([Values(0, 1)] int level)
         {
             yield return SceneManager.LoadSceneAsync(LevelCatalog.Levels[level].Scene);
             yield return null;
@@ -197,6 +197,19 @@ namespace DesertGecko.Tests
                 return !releaseForDouble;
             }
 
+            // Sıcak hava sütununda yerdeyse zıplasın: havada basılı tutunca yükselir.
+            bool InThermal(Bounds b) =>
+                Object.FindObjectsByType<Thermal>(FindObjectsInactive.Exclude).Any(t => t.GetComponent<BoxCollider2D>().bounds.Contains(b.center));
+
+            bool OnMover(Bounds b) =>
+                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>().bounds)
+                    .Any(p => b.center.x > p.min.x && b.center.x < p.max.x && Mathf.Abs(p.max.y - b.min.y) < 0.25f);
+
+            // Asansör tam üstündeyse ve zıplama menzilindeyse üstüne çıksın.
+            bool UnderLift(Bounds b) =>
+                Object.FindObjectsByType<MovingPlatform>(FindObjectsInactive.Exclude).Select(m => m.GetComponent<Collider2D>().bounds)
+                    .Any(p => b.center.x > p.min.x && b.center.x < p.max.x && p.max.y > b.min.y + 0.5f && p.max.y < b.min.y + 2.5f);
+
             /// <summary>Hedef yukarıdaysa altına gelince zıplasın (tek yönlü çıkıntılar).</summary>
             bool WantsToRiseToTarget(Bounds b)
             {
@@ -278,6 +291,9 @@ namespace DesertGecko.Tests
                     // Duvara tırmanırken x değişmez ama bu da ilerlemedir; yüksek duvarın tepesinde vazgeçmesin.
                     if (player.State == PlayerController.MoveState.WallCling && player.Velocity.y > 0.1f)
                         lastProgressTime = elapsed;
+                    // Asansörde beklemek de ilerlemedir.
+                    if (player.IsGrounded && OnMover(box.bounds))
+                        lastProgressTime = elapsed;
                     float idle = elapsed - lastProgressTime;
                     if (idle > GiveUpSeconds)
                     {
@@ -330,6 +346,11 @@ namespace DesertGecko.Tests
                     doubleUsed = false;
                     releaseForDouble = false;
                 }
+
+                // Hedef yukarıdaysa asansörde sabit dur: koşarsa kenardan düşer.
+                if (grounded && OnMover(b) && !RouteDone && route.Count > 0
+                    && route[routeIndex].y > b.min.y + 0.4f && Mathf.Abs(route[routeIndex].x - b.center.x) < 1.5f)
+                    return keys;
 
                 // Takılınca kısa bir geri çekilme
                 if (elapsed < recoverUntil)
@@ -404,7 +425,7 @@ namespace DesertGecko.Tests
                                 break;
                             }
                             waitingForTail = false;
-                            if (!groundAhead || lowStep || WantsToRiseToTarget(b))
+                            if (!groundAhead || lowStep || WantsToRiseToTarget(b) || InThermal(b) || UnderLift(b))
                                 jump = true;
                         }
                         break;

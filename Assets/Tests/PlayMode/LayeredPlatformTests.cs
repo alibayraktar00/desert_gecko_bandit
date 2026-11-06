@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using DesertGecko.Environment;
 using DesertGecko.Player;
 using NUnit.Framework;
 using UnityEngine;
@@ -93,6 +94,83 @@ namespace DesertGecko.Tests
         }
 
         float Feet => player.transform.position.y;
+
+        GameObject Mover(float x, float top, Vector2 travel, float speed)
+        {
+            GameObject go = Solid(x - 1.5f, x + 1.5f, top - 0.3f, top);
+            go.GetComponent<BoxCollider2D>().usedByEffector = true;
+            go.AddComponent<PlatformEffector2D>().useOneWay = true;
+            go.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
+            go.AddComponent<MovingPlatform>().Configure(travel, speed, 0f);
+            return go;
+        }
+
+        [UnityTest]
+        public IEnumerator HareketliPlatform_YatayTasir()
+        {
+            GameObject mover = Mover(0f, 3f, new Vector2(6f, 0f), 2.5f);
+            yield return SpawnPlayer(0f, 3.5f);
+            yield return Hold(1.2f);
+
+            Assert.IsTrue(player.IsGrounded, "platformun üstünde yerde sayılmalı");
+            Assert.AreEqual(mover.transform.position.x, player.transform.position.x, 0.4f, "platformla birlikte gitmeli");
+            Assert.Greater(mover.transform.position.x, 0.5f, "platform hareket etmiş olmalı");
+        }
+
+        [UnityTest]
+        public IEnumerator HareketliPlatform_DikeyTasir_UstundeZiplanir()
+        {
+            GameObject mover = Mover(0f, 3f, new Vector2(0f, 5f), 2f);
+            yield return SpawnPlayer(0f, 3.5f);
+            for (int i = 0; i < 4; i++)
+            {
+                yield return new WaitForSeconds(0.4f);
+                Assert.AreEqual(mover.GetComponent<Collider2D>().bounds.max.y, Feet, 0.15f, "ayaklar platformda kalmalı");
+                Assert.IsTrue(player.IsGrounded, "yükselirken de yerde sayılmalı");
+            }
+            float before = Feet;
+            yield return Hold(0.2f, Key.Space);
+            Assert.Greater(Feet, before + 0.5f, "hareketli platformdan zıplanabilmeli");
+        }
+
+        [UnityTest]
+        public IEnumerator CurukTahta_BasilincaYikilir_SonraGeriGelir()
+        {
+            OneWay(-2f, 2f, 3f);
+            GameObject plank = created[created.Count - 1];
+            plank.AddComponent<SpriteRenderer>();
+            CrumblingPlatform crumble = plank.AddComponent<CrumblingPlatform>();
+            yield return SpawnPlayer(0f, 3.5f);
+            yield return new WaitForSeconds(0.8f);
+
+            Assert.IsFalse(crumble.IsSolid, "basıldıktan sonra yıkılmalı");
+            Assert.Less(Feet, 2.9f, "oyuncu düşmeli");
+            yield return new WaitForSeconds(3.2f);
+            Assert.IsTrue(crumble.IsSolid, "bir süre sonra geri gelmeli");
+        }
+
+        [UnityTest]
+        public IEnumerator SicakHava_SuzuleniYukariTasir_SuzulmeyeniTasimaz()
+        {
+            var thermal = new GameObject("SicakHava");
+            thermal.transform.position = new Vector2(0f, 8f);
+            created.Add(thermal);
+            thermal.SetActive(false);
+            thermal.AddComponent<BoxCollider2D>();
+            var sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 4, 4), Vector2.one / 2f, 4f);
+            thermal.AddComponent<Thermal>().Configure(new Vector2(6f, 16f), 6f, sprite);
+            thermal.SetActive(true);
+            yield return SpawnPlayer(0f, 0f);
+
+            yield return Hold(0.5f);
+            Assert.Less(Feet, 0.2f, "tuşa basmayan yerde kalmalı");
+
+            yield return Hold(1.5f, Key.Space);
+            Assert.Greater(Feet, 6f, "basılı tutan yükselmeli");
+
+            yield return Hold(1.2f);
+            Assert.Less(Feet, 1f, "bırakınca düşmeli");
+        }
 
         [UnityTest]
         public IEnumerator TekYonluPlatform_AlttanGecilir_UstundeDurulur()

@@ -91,7 +91,7 @@ namespace DesertGecko.Tests
 
         [UnityTest]
         public IEnumerator HerLevel_HatasizAcilir_VeGerekenleriIcerir(
-            [Values(0, 1, 2)] int level)
+            [Values(0, 1)] int level)
         {
             // Kilitli level "son oynanan" sayılmaz; hepsini açıp son oynananı başka bir levele çek.
             for (int i = 0; i < LevelCatalog.Count; i++)
