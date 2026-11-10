@@ -1,0 +1,28 @@
+# graphify yalnızca Assets/Scripts kodunu haritalasın.
+# Çıktı repo kökündeki graphify-out/ klasörüne gider (Unity onu import etmez).
+Assets/Audio/
+Assets/Materials/
+Assets/Prefabs/
+Assets/Resources/
+Assets/Scenes/
+Assets/Settings/
+Assets/Sprites/
+Assets/Tests/
+Assets/Welcome/
+Assets/_Recovery/
+Packages/
+ProjectSettings/
+UserSettings/
+Library/
+Temp/
+Logs/
+Builds/
+Tanitim/
+docs/
+tools/
+*.meta
+*.png
+*.csproj
+*.slnx
+.claude/
+CLAUDE.md

@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 0cacd9aff03552245a16810ea3fb6f8e
+guid: e80e2fb1b56a5c64c96e6ca2cc6986c3
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4117290953659119745
-    second: gece_firtina_on_0
+      213: 1248671190468660718
+    second: gece_gayzer_akis_2_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -115,13 +115,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: gece_firtina_on_0
+      name: gece_gayzer_akis_2_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 96
-        height: 128
+        width: 49
+        height: 119
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -130,8 +130,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 188f7c9de4e832930800000000000000
-      internalID: 4117290953659119745
+      spriteID: eed062df4db245110800000000000000
+      internalID: 1248671190468660718
       vertices: []
       indices: 
       edges: []

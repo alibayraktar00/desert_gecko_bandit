@@ -13,8 +13,8 @@ namespace DesertGecko.Environment
     {
         [SerializeField] float speed = 1.5f;
         [Tooltip("Oyuncu bu kadar yukarıdaysa çamur hızlanır")]
-        [SerializeField] float farAhead = 9f;
-        [SerializeField] float catchUpFactor = 1.6f;
+        [SerializeField] float farAhead = 6f;
+        [SerializeField] float catchUpFactor = 1.9f;
         [SerializeField] float startY, topY;
         [SerializeField] Vector2 triggerX;
         [SerializeField] float triggerY;

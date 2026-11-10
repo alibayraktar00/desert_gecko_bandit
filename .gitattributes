@@ -18,3 +18,4 @@
 *.ogg binary
 *.ttf binary
 *.otf binary
+graphify-out/graph.json merge=graphify

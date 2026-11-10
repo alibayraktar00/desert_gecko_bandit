@@ -71,16 +71,113 @@ def mud_tile():
     Image.fromarray(strip, "RGBA").save(LAYER / "gece_camur_ust.png")
 
 
+FRAMES = 4
+WATER = [(26, 70, 92), (52, 128, 150), (104, 190, 208), (170, 228, 238), (226, 248, 252), (255, 255, 255)]
+
+
 def geyser_tile():
-    """Gayzer sütunu: dikey akan buhar ve su çizgileri, kenarları yırtık saydam. 64x64 (2 birim), dikeyde dikişsiz."""
+    """
+    Gayzer sütunu: kenarı koyu konturlu su, ortası köpüklü beyaz akış, yanlarından kopan damlalar.
+    64x64 (2 birim), dikeyde dikişsiz. 4 kare: desen her karede yukarı kayar, oyunda akıyor görünür.
+    """
     width, height = 64, 64
-    noise = layered_noise(width, height, 41, (6, 6))
-    streaks = wrap_noise(width, height, 14, 2, 53)
-    distance = np.abs(np.arange(width) - (width - 1) / 2) / (width / 2)
-    edge = np.tile(distance, (height, 1)) + (noise - 0.5) * 0.55
-    rgb = palette(np.clip(noise * 0.5 + streaks * 0.6 - 0.08, 0, 0.999), [(150, 205, 225), (190, 228, 240), (226, 244, 250), (255, 255, 255)])
-    alpha = np.where(edge < 0.55, 235, np.where(edge < 0.78, 150, np.where(edge < 0.95, 70, 0))).astype(np.uint8)
-    Image.fromarray(np.dstack([rgb, alpha]), "RGBA").save(LAYER / "gece_gayzer.png")
+    noise = layered_noise(width, height, 41, (4, 4))
+    streaks = wrap_noise(width, height, 16, 2, 53)
+    fine = wrap_noise(width, height, 24, 6, 61)
+    drops = np.random.default_rng(67).random((height, width))
+    center = np.abs(np.arange(width) - (width - 1) / 2) / (width / 2)
+    for frame in range(FRAMES):
+        shift = -frame * (height // FRAMES)
+        n, s, f, d = (np.roll(x, shift, axis=0) for x in (noise, streaks, fine, drops))
+        edge = np.tile(center, (height, 1)) + (n - 0.5) * 0.32 + (f - 0.5) * 0.12
+        # Ortadan kenara: beyaz köpük, açık su, koyu su, kontur.
+        light = np.clip(1.0 - edge * 0.9 + (s - 0.5) * 0.7 + (f - 0.5) * 0.25, 0, 0.999)
+        rgb = palette(light, WATER)
+        alpha = np.where(edge < 0.86, 255, 0).astype(np.uint8)
+        rim = (edge >= 0.8) & (edge < 0.86)
+        rgb[rim] = WATER[0]
+        # Kenardan kopan damlacıklar
+        spray = (edge >= 0.86) & (edge < 1.05) & (d > 0.93)
+        rgb[spray] = WATER[3]
+        alpha[spray] = 255
+        image = np.dstack([rgb, alpha])
+        Image.fromarray(image, "RGBA").save(LAYER / f"gece_gayzer_{frame}.png")
+
+
+def geyser_crown():
+    """Sütunun tepesindeki fışkırma: yay çizerek düşen damlalar ve köpük başlığı. 72x44, alt orta pivotlu, 4 kare."""
+    width, height = 72, 44
+    rng = np.random.default_rng(79)
+    jets = [(rng.uniform(-1, 1), rng.uniform(0.55, 1.0), rng.uniform(0, 1)) for _ in range(46)]
+    for frame in range(FRAMES):
+        image = np.zeros((height, width, 4), dtype=np.uint8)
+
+        def put(x, y, color):
+            x, y = int(round(x)), int(round(y))
+            if 0 <= x < width and 0 <= y < height:
+                image[y, x] = (*color, 255)
+
+        # Damlalar: merkezden çıkıp parabolle iki yana düşer; her damla kendi zamanında.
+        for side, power, offset in jets:
+            t = (offset + frame / FRAMES) % 1.0
+            x = width / 2 + side * 30 * t
+            y = height - 10 - power * 34 * t + 30 * t * t
+            size = 2 if t < 0.5 else 1
+            color = WATER[4] if t < 0.4 else WATER[3] if t < 0.75 else WATER[2]
+            for dx in range(size):
+                for dy in range(size):
+                    put(x + dx, y + dy, color)
+        # Köpük başlığı: sütunun ağzında kabaran yarım bulut.
+        for x in range(width):
+            dx = (x - width / 2) / 17
+            if abs(dx) >= 1:
+                continue
+            wobble = np.sin(x * 0.9 + frame * 1.7) * 1.2
+            top = int(height - 10 - (1 - dx * dx) ** 0.5 * 8 + wobble)
+            for y in range(max(0, top), height):
+                depth = y - top
+                color = WATER[0] if depth == 0 else WATER[5] if depth < 3 else WATER[4] if depth < 6 else WATER[3]
+                image[y, x] = (*color, 255)
+        Image.fromarray(image, "RGBA").save(PROPS / f"gece_gayzer_tepe_{frame}.png")
+
+
+def geyser_vent():
+    """Gayzer ağzı: mineral kabuklu taş halka, ortasında buharlı koyu delik. 64x20, alt orta pivotlu."""
+    width, height = 64, 20
+    rng = np.random.default_rng(83)
+    image = np.zeros((height, width, 4), dtype=np.uint8)
+    rock = [(58, 40, 36), (84, 60, 50), (112, 84, 66), (146, 114, 88)]
+    crust = [(150, 198, 196), (196, 228, 222), (236, 246, 240)]
+    noise = layered_noise(width, height, 89, (4, 2))
+    for y in range(height):
+        for x in range(width):
+            dx = (x - width / 2 + 0.5) / (width / 2)
+            hump = (1 - dx * dx) ** 0.5 if abs(dx) < 1 else 0
+            top = height - 2 - hump * 15 + (noise[y, x] - 0.5) * 4
+            if y < top:
+                continue
+            hole = abs(dx) < 0.32 and y < height - 6
+            if hole:
+                image[y, x] = (20, 26, 34, 255)
+                continue
+            depth = y - top
+            if depth < 1:
+                image[y, x] = OUTLINE
+            elif depth < 3 and noise[y, x] > 0.42:
+                image[y, x] = (*crust[min(2, int(noise[y, x] * 3))], 255)
+            else:
+                image[y, x] = (*rock[min(3, int((1 - depth / 16) * 4 * noise[y, x] + 1))], 255)
+    # Deliğin kenarına kontur
+    for y in range(height):
+        for x in range(1, width - 1):
+            if image[y, x, 3] and tuple(image[y, x, :3]) != (20, 26, 34):
+                if tuple(image[y, x - 1, :3]) == (20, 26, 34) or tuple(image[y, x + 1, :3]) == (20, 26, 34):
+                    image[y, x] = OUTLINE
+    # Dibe taşan sıcak su birikintisi
+    for x in range(8, width - 8):
+        if rng.random() < 0.8:
+            image[height - 1, x] = (*WATER[2], 255)
+    Image.fromarray(image, "RGBA").save(PROPS / "gece_gayzer_agiz.png")
 
 
 def storm_tile():
@@ -90,23 +187,39 @@ def storm_tile():
     swirl = layered_noise(size, size, 83, (9, 5))
     value = np.clip(noise * 0.7 + swirl * 0.5 - 0.1, 0, 0.999)
     # Gövde koyu ve az karşıtlıklı: tekrar eden desen göze batmasın. Parlak bulut sadece ön yüzde.
-    rgb = palette(value, [(22, 24, 48), (28, 31, 58), (34, 38, 68), (40, 46, 78), (48, 54, 88), (56, 64, 98)])
+    rgb = palette(value, [(42, 40, 90), (48, 52, 98), (54, 62, 104), (60, 71, 112), (70, 80, 120), (80, 90, 128)])  # ön yüzün renkleriyle aynı aile
     alpha = np.full((size, size), 255, dtype=np.uint8)
     Image.fromarray(np.dstack([rgb, alpha]), "RGBA").save(LAYER / "gece_firtina.png")
 
 
 def storm_front():
-    """Fırtınanın ön yüzü: sağ kenarı yırtık, sağa doğru dağılan kum ve buz bulutu. 96x128, dikeyde dikişsiz."""
+    """
+    Fırtınanın ön yüzü: koyu kum ve buzdan kıvrılan bulut, sağ kenarı açık renkli yırtık bir kenarla biter ve
+    sağa doğru dağılır. 96x128, dikeyde dikişsiz. 4 kare: bulut her karede kayar ve kenar kıpırdar.
+    """
     width, height = 96, 128
     noise = layered_noise(width, height, 97, (3, 4))
     swirl = layered_noise(width, height, 113, (6, 8))
-    value = np.clip(noise * 0.75 + swirl * 0.45 - 0.1, 0, 0.999)
-    rgb = palette(value, [(30, 34, 66), (46, 52, 90), (70, 80, 120), (104, 118, 156), (150, 168, 198), (206, 220, 236)])
-    # 0 solda (katı), 1 sağda (bitti). Gürültü kenarı yırtar.
+    grit = np.random.default_rng(127).random((height, width))
+    colors = [(26, 26, 48), (40, 38, 66), (62, 58, 86), (92, 84, 104), (128, 116, 124), (172, 160, 156), (214, 208, 206)]
     along = np.tile(np.arange(width) / (width - 1), (height, 1))
-    edge = along + (noise - 0.5) * 0.9 + (swirl - 0.5) * 0.35
-    alpha = np.where(edge < 0.5, 255, np.where(edge < 0.62, 190, np.where(edge < 0.72, 110, np.where(edge < 0.8, 50, 0)))).astype(np.uint8)
-    Image.fromarray(np.dstack([rgb, alpha]), "RGBA").save(LAYER / "gece_firtina_on.png")
+    for frame in range(FRAMES):
+        shift = -frame * (height // FRAMES)
+        n = np.roll(noise, shift, axis=0)
+        w = np.roll(swirl, shift // 2, axis=0)
+        g = np.roll(grit, shift, axis=0)
+        edge = along + (n - 0.5) * 0.85 + (w - 0.5) * 0.4
+        # Kabarık bulutun tepesi aydınlık, içi koyu: kenara yaklaştıkça açılır.
+        value = np.clip(n * 0.55 + w * 0.45 + edge * 0.35 - 0.25, 0, 0.999)
+        rgb = palette(value, colors)
+        alpha = np.where(edge < 0.55, 255, 0).astype(np.uint8)
+        rim = (edge >= 0.5) & (edge < 0.55)
+        rgb[rim] = colors[6]
+        # Kenarın ötesinde savrulan kum taneleri
+        dust = (edge >= 0.55) & (edge < 0.95) & (g > 0.9 + (edge - 0.55) * 0.2)
+        rgb[dust] = colors[5]
+        alpha[dust] = 255
+        Image.fromarray(np.dstack([rgb, alpha]), "RGBA").save(LAYER / f"gece_firtina_on_{frame}.png")
 
 
 def lantern_hook():
@@ -218,6 +331,8 @@ def main():
     telegraph_pole()
     mud_tile()
     geyser_tile()
+    geyser_crown()
+    geyser_vent()
     storm_tile()
     storm_front()
     lantern_hook()

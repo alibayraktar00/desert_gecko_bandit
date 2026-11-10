@@ -131,6 +131,99 @@ namespace DesertGecko.Tests
             return png;
         }
 
+        // Reels kaydı: dikey 9:16, 540x960. Ortografik boy 7.5 → birim başına 64 piksel: piksel sanatı tam 2 kat, bulanmaz.
+        const int ReelWidth = 540, ReelHeight = 960;
+        const float ReelOrthoSize = 7.5f, ReelFps = 30f;
+
+        /// <summary>Bölüm başına kaydedilecek anlar: x aralığı ve en fazla kaç saniye.</summary>
+        static readonly Dictionary<int, (string name, float xMin, float xMax, float seconds)[]> ReelMoments = new Dictionary<int, (string, float, float, float)[]>
+        {
+            { 0, new[] { ("kamp", 8f, 40f, 6f), ("kanyon", 165f, 215f, 7f), ("akbaba", 330f, 380f, 7f), ("son", 440f, 490f, 6f) } },
+            { 1, new[] { ("asansor", 38f, 70f, 7f), ("kaya", 135f, 165f, 6f), ("ruzgar", 240f, 270f, 7f), ("arena", 325f, 360f, 7f) } },
+            { 2, new[] { ("ates", 30f, 60f, 5f), ("kanca", 120f, 160f, 7f), ("gayzer", 262f, 295f, 7f), ("baca", 304f, 330f, 8f), ("firtina", 345f, 410f, 9f), ("safak", 458f, 505f, 7f) } },
+        };
+
+        /// <summary>
+        /// Instagram Reels için ham kareler: bot leveli oynarken belirlenen anlarda dikey kameradan kare alır.
+        /// Çıktı: Temp/Reels/L{level}_{an}/0000.png ... Kurgu tools/reels_kurgu.py ile yapılır.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Reels_Kayit([Values(0, 1, 2)] int level)
+        {
+            yield return SceneManager.LoadSceneAsync(LevelCatalog.Levels[level].Scene);
+            yield return null;
+            var hud = GameObject.Find("HUD");
+            if (hud != null)
+                hud.SetActive(false); // kalpler ve sayaçlar reklamda görünmesin
+
+            string root = Path.Combine(Application.dataPath, "..", "Temp", "Reels");
+            var moments = ReelMoments[level];
+            var done = new bool[moments.Length];
+            var saved = new int[moments.Length];
+            var started = new float[moments.Length];
+            for (int i = 0; i < started.Length; i++)
+                started[i] = -1f;
+            float nextShot = 0f;
+            var rt = new RenderTexture(ReelWidth, ReelHeight, 24);
+            var tex = new Texture2D(ReelWidth, ReelHeight, TextureFormat.RGB24, false);
+
+            var run = new BotRun(LevelManager.Current, keyboard);
+            PlayerController player = LevelManager.Current.Player;
+            var storm = Object.FindAnyObjectByType<ColdFront>();
+            run.OnFrame = t =>
+            {
+                float x = player.transform.position.x;
+                for (int i = 0; i < moments.Length; i++)
+                {
+                    var m = moments[i];
+                    if (done[i] || x < m.xMin || x > m.xMax)
+                        continue;
+                    if (started[i] < 0f)
+                    {
+                        started[i] = t;
+                        Directory.CreateDirectory(Path.Combine(root, $"L{level + 1}_{m.name}"));
+                    }
+                    if (t - started[i] > m.seconds)
+                    {
+                        done[i] = true;
+                        continue;
+                    }
+                    // Dikey kadraj dar: kovalamaca sahnesinde fırtına Gila'nın hemen arkasında dursun ki görünsün.
+                    if (m.name == "firtina" && storm != null && storm.IsRunning)
+                        storm.transform.position = new Vector3(x - 2.6f, storm.transform.position.y, 0f);
+                    if (t < nextShot)
+                        return;
+                    nextShot = t + 1f / ReelFps;
+                    File.WriteAllBytes(Path.Combine(root, $"L{level + 1}_{m.name}", $"{saved[i]++:0000}.png"), RenderPortrait(rt, tex, m.name == "firtina" ? -2.4f : 0f));
+                    return;
+                }
+            };
+            yield return run.Play();
+            Debug.Log($"[DesertGecko] Reels L{level + 1}: " + string.Join(", ", moments.Select((m, i) => $"{m.name}={saved[i]}")));
+            Object.Destroy(tex);
+            rt.Release();
+            Assert.Greater(saved.Sum(), 0, "hiç kare alınmadı");
+        }
+
+        static byte[] RenderPortrait(RenderTexture rt, Texture2D tex, float shiftX = 0f)
+        {
+            Camera cam = Camera.main;
+            cam.transform.position += Vector3.right * shiftX; // kovalayanı kadraja almak için
+            float size = cam.orthographicSize, aspect = cam.aspect;
+            cam.orthographicSize = ReelOrthoSize;
+            cam.aspect = (float)ReelWidth / ReelHeight;
+            var request = new UnityEngine.Rendering.RenderPipeline.StandardRequest { destination = rt };
+            UnityEngine.Rendering.RenderPipeline.SubmitRenderRequest(cam, request);
+            cam.orthographicSize = size;
+            cam.ResetAspect();
+            cam.transform.position -= Vector3.right * shiftX;
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, ReelWidth, ReelHeight), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            return tex.EncodeToPNG();
+        }
+
         /// <summary>Bir level oynanışı: karar verme, kayıt, rapor.</summary>
         class BotRun
         {
@@ -155,6 +248,8 @@ namespace DesertGecko.Tests
             readonly int groundMask = GameLayers.GroundMask;
 
             public bool Completed;
+            /// <summary>Her karede çağrılır (oyun saniyesiyle): Reels kaydı kare almak için kullanır.</summary>
+            public System.Action<float> OnFrame;
             public int DoubleJumps;
             float elapsed;
             readonly List<string> events = new List<string>();
@@ -173,6 +268,7 @@ namespace DesertGecko.Tests
             bool spaceWasDown;
             float groundJumpPressedAt = -1f;
             float doublePressedAt = -1f;
+            bool doubleForTarget;
             bool doubleUsed;
             bool releaseForDouble;
             bool tongueWasDown, tailWasDown, waitingForTail;
@@ -233,6 +329,8 @@ namespace DesertGecko.Tests
             /// </summary>
             bool WantsDoubleJump(Bounds b, Vector2 v)
             {
+                // Rotada yukarıdaki bir noktaya gidiyorsa zıplamayı tam yükseklikte kullan.
+                doubleForTarget = route.Count > 0 && !RouteDone && route[routeIndex].y > b.min.y + 0.2f;
                 if (doubleUsed)
                     return false;
                 bool toTarget = route.Count > 0 && !RouteDone && route[routeIndex].y > b.min.y + 0.2f
@@ -242,7 +340,10 @@ namespace DesertGecko.Tests
                     float gravity = Mathf.Abs(Physics2D.gravity.y) * body.gravityScale;
                     float remainingRise = v.y > 0f && gravity > 0f ? v.y * v.y / (2f * gravity) : 0f;
                     if (v.y < 4f && b.min.y + remainingRise < route[routeIndex].y + 0.3f)
+                    {
+                        doubleForTarget = true;
                         return true;
+                    }
                 }
                 return v.y <= 0f && player.HasTail
                     && !Physics2D.Raycast(new Vector2(b.center.x, b.min.y), Vector2.down, 2f, groundMask);
@@ -251,7 +352,13 @@ namespace DesertGecko.Tests
             /// <summary>Basılı tuş yeni basış sayılmaz: bir kare bırak, bir kare bas; zıplama gerçekleşene kadar.</summary>
             bool PressCycleForDouble()
             {
-                // Basıştan sonra kısa süre basılı kalsın: hemen bırakılırsa çift zıplama kesilir.
+                if (!doubleForTarget)
+                {
+                    // Boşluk üstünde: bir kare bırak, bir kare bas.
+                    releaseForDouble = !releaseForDouble;
+                    return !releaseForDouble;
+                }
+                // Yukarıdaki hedefe: basıştan sonra kısa süre basılı kalsın, hemen bırakılırsa zıplama kesilir.
                 if (elapsed - doublePressedAt < 0.12f)
                     return true;
                 if (spaceWasDown)
@@ -431,7 +538,7 @@ namespace DesertGecko.Tests
                     {
                         float lead = x - storm.FrontX;
                         stormClosest = Mathf.Min(stormClosest, lead);
-                        if (!stormShot && lead < 8f)
+                        if (!stormShot && lead < 9f)
                         {
                             stormShot = true;
                             File.WriteAllBytes(Path.Combine(Application.dataPath, "..", "Temp", "Screenshots", "oyun_firtina.png"), RenderCamera());
@@ -445,6 +552,7 @@ namespace DesertGecko.Tests
                             coldSeconds += Time.deltaTime;
                     }
                     Press(Decide());
+                    OnFrame?.Invoke(elapsed);
                     yield return null;
                     elapsed += Time.deltaTime;
                 }

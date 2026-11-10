@@ -155,13 +155,8 @@ namespace DesertGecko.Player
             return true;
         }
 
-        Vector2 AimDirection()
-        {
-            float y = input.Move.y;
-            if (y > 0.5f) return Vector2.up;
-            if (y < -0.5f) return Vector2.down;
-            return new Vector2(AttackSide(), 0f);
-        }
+        // Dil yalnızca yatay uzanır; yukarı/aşağı nişan yok.
+        Vector2 AimDirection() => new Vector2(AttackSide(), 0f);
 
         // Duvara yapışıkken yüz duvara dönük; dil duvardan uzağa uzansın (TailAttack ile aynı).
         int AttackSide() => controller.State == PlayerController.MoveState.WallCling
@@ -202,9 +197,8 @@ namespace DesertGecko.Player
 
         void HitTargets(Vector2 origin, Vector2 direction)
         {
-            bool vertical = Mathf.Abs(direction.y) > 0.5f;
             Vector2 center = origin + direction * (range * 0.5f);
-            Vector2 size = vertical ? new Vector2(width, range) : new Vector2(range, width);
+            Vector2 size = new Vector2(range, width);
 
             alreadyHit.Clear();
             // Böcekler trigger; global "queriesHitTriggers" ayarından bağımsız olarak bulunsun.
@@ -225,11 +219,7 @@ namespace DesertGecko.Player
                 if (target == null || target is PlayerHealth || !target.IsAlive || !alreadyHit.Add((Component)target))
                     continue;
 
-                // Yukarı/aşağı vuruşta düşman oyuncudan uzağa doğru itilsin.
-                Vector2 push = vertical
-                    ? new Vector2(Mathf.Sign(hit.transform.position.x - transform.position.x), 0f)
-                    : direction;
-                target.TakeDamage(damage, push);
+                target.TakeDamage(damage, direction);
             }
         }
 

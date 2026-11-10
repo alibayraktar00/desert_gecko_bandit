@@ -82,6 +82,10 @@ namespace DesertGecko.EditorTools
             storm.position = new Vector3(CepheX + 30f, 0f, 0f);
             foreach (SpriteRenderer sr in storm.GetComponentsInChildren<SpriteRenderer>())
                 sr.enabled = true;
+            var cam = Camera.main;
+            cam.transform.position = new Vector3(CepheX + 34f, 25f, -10f);
+            typeof(ColdFront).GetMethod("Animate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(storm.GetComponent<ColdFront>(), null); // bulutları kameraya göre diz
             SceneCapture.Capture("Temp/Screenshots/L3onizleme_firtina.png", new Vector3(CepheX + 34f, 25f, -10f));
             EditorSceneManager.OpenScene(string.IsNullOrEmpty(previous) ? $"{SceneFolder}/Level_3.unity" : previous); // değişiklikler kaydedilmeden atılır
             return "tamam";
@@ -980,7 +984,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(114f, 13.8f);
             p.Crystal(104f, 17.3f);
             p.Crystal(114f, 20.8f);
-            p.Mud(100f, 118f, 0f, doorY - 1f, 7.5f, 1.25f); // yerden 6 birim aşağıda başlar: tabana çıkana kadar kaçacak zaman var
+            p.Mud(100f, 118f, 3f, doorY - 1f, 7.5f, 2.1f); // tabanın 3 birim altından, hızlı: arkana bakmadan tırman
 
             p.RockMass(118f, 125f, GroundBottom, doorY - 0.5f);
             p.RockMass(118f, 125f, doorY + 4f, roofShaft);
@@ -1026,7 +1030,7 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(2.5f, 24f);
             p.Fire(5.5f, 24f);
             p.Sign(9f, 24f, "Ufukta ayaz fırtınası!\nDurma, büyük ateşe koş");
-            p.Storm(-14f, 12f, 122f, 3.9f);
+            p.Storm(-14f, 12f, 122f, 5.3f); // koşu hızına yakın: durmak yakalanmak demek
 
             p.Ground(26f, 40f, 22f);
             p.Scorpion(33f, 22f);
@@ -2076,14 +2080,38 @@ namespace DesertGecko.EditorTools
                 go.transform.position = new Vector2(wx, floorY);
                 go.AddComponent<BoxCollider2D>();
 
-                Sprite art = LayerArt("gece_gayzer");
-                SpriteRenderer column = TiledArt(go.transform, "Sutun", art, new Vector2(wx, floorY + reach), new Vector2(width, reach), 4);
+                Sprite[] flow = Enumerable.Range(0, 4).Select(i => LayerArt("gece_gayzer_akis_" + i)).ToArray();
+                SpriteRenderer column = TiledArt(go.transform, "Sutun", flow[0], new Vector2(wx, floorY + reach), new Vector2(flow[0].bounds.size.x, reach), 4); // görselin kendi genişliği: yan yana tekrar etmesin
                 column.sharedMaterial = Unlit;
+                Sprite[] spray = Enumerable.Range(0, 4).Select(i => TestSceneBuilder.Prop("gece_gayzer_tepe_" + i)).ToArray();
+                var crown = new GameObject("Tepe").AddComponent<SpriteRenderer>();
+                crown.transform.SetParent(go.transform, false);
+                crown.sprite = spray[0];
+                crown.sharedMaterial = Unlit;
+                crown.sortingOrder = 5;
+                crown.enabled = false;
                 Deco("mgr_su", x, floorY);
-                go.AddComponent<Geyser>().Configure(width, reach, cycle, phase, column);
+                SpriteRenderer foam = ChildSprite(go.transform, "Kopuk", TestSceneBuilder.Prop("gece_gayzer_kopuk_0"), new Vector2(wx, floorY - 0.05f), 6);
+                SpriteRenderer surge = ChildSprite(go.transform, "Kabarma", TestSceneBuilder.Prop("gece_gayzer_kabarma_0"), new Vector2(wx, floorY), 4);
+                var geyser = go.AddComponent<Geyser>();
+                geyser.Configure(width, reach, cycle, phase, column);
+                geyser.SetArt(flow, crown, spray, foam, Enumerable.Range(0, 8).Select(i => TestSceneBuilder.Prop("gece_gayzer_kopuk_" + i)).ToArray(),
+                    surge, Enumerable.Range(0, 3).Select(i => TestSceneBuilder.Prop("gece_gayzer_kabarma_" + i)).ToArray());
                 PointLight(go.transform, new Vector2(wx, floorY + reach * 0.5f), new Color(0.65f, 0.85f, 1f), reach * 0.7f + 2f, 0.55f);
                 platforms.Add((wx - 3f, wx + 3f, floorY + reach * 0.75f));
                 lifts.Add((wx - 3f, wx + 3f, floorY + reach * 0.75f));
+            }
+
+            SpriteRenderer ChildSprite(Transform parent, string name, Sprite sprite, Vector2 world, int order)
+            {
+                var sr = new GameObject(name).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(parent, false);
+                sr.transform.position = world;
+                sr.sprite = sprite;
+                sr.sharedMaterial = Unlit;
+                sr.sortingOrder = order;
+                sr.enabled = false;
+                return sr;
             }
 
             /// <summary>Yer altının sıcak bölgesi: içinde Gila hızlanır, çubuk dolu kalır. Duvarlar turuncu aydınlanır.</summary>
@@ -2105,7 +2133,7 @@ namespace DesertGecko.EditorTools
             {
                 float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
                 Pit(wx0, wx1, y - 0.05f, -35);
-                MudArt(geometry, (wx0 + wx1) / 2f, y, xMax - xMin, 2.5f, 6);
+                MudArt(geometry, (wx0 + wx1) / 2f, y, xMax - xMin, 0f, 6); // altını uçurumun karanlığı örter
                 PointLight(decor, new Vector2((wx0 + wx1) / 2f, y + 1f), SpringLight, (xMax - xMin) * 0.6f + 3f, 0.85f, 0.05f);
                 var zone = new GameObject(Name("KaynarHavuz"));
                 zone.transform.SetParent(geometry);
@@ -2114,13 +2142,46 @@ namespace DesertGecko.EditorTools
                 zone.AddComponent<PitZone>();
             }
 
+            // Kaynar yüzey: Gemini'nin lav setinden 8 karelik dalgalanan şerit; altı koyu çamur gövdesi.
+            // Kaynar yüzey: Gemini'nin lav setinden 8 karelik dalgalanan şerit. Üstü verilen y'de (komşu zeminin altında),
+            // altı sadece yükselen çamurda koyu lavla dolar; havuzda altını uçurum karanlığı örter.
             static void MudArt(Transform parent, float wx, float y, float width, float depth, int order)
             {
-                Sprite body = LayerArt("gece_camur"), crest = LayerArt("gece_camur_ust");
-                SpriteRenderer b = TiledArt(parent, "Camur", body, new Vector2(wx, y - 0.1f), new Vector2(width, depth), order);
-                b.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
-                SpriteRenderer c = TiledArt(parent, "CamurUst", crest, new Vector2(wx, y + 0.1f), new Vector2(width, crest.bounds.size.y), order + 1);
-                c.sharedMaterial = b.sharedMaterial;
+                Sprite[] surface = Enumerable.Range(0, 8).Select(i => LayerArt("gece_lav_yuzey_" + i)).ToArray();
+                float crestHeight = surface[0].bounds.size.y;
+                var material = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+                SpriteRenderer c = TiledArt(parent, "CamurUst", surface[0], new Vector2(wx, y + 0.1f), new Vector2(width, crestHeight), order + 1);
+                c.sharedMaterial = material;
+                c.gameObject.AddComponent<DesertGecko.Effects.SpriteLoop>().Configure(surface, 6f, wx * 0.37f);
+                if (depth > crestHeight)
+                {
+                    // Yüzeyin en alt rengiyle düz koyu lav: çatlaklı doku yok.
+                    var solid = new GameObject("Camur").AddComponent<SpriteRenderer>();
+                    solid.transform.SetParent(parent, false);
+                    Sprite pixel = PlaceholderArt.Solid();
+                    Vector2 unit = pixel.bounds.size;
+                    float fill = depth - crestHeight + 0.2f;
+                    solid.transform.position = new Vector2(wx, y + 0.1f - crestHeight + 0.1f - fill / 2f);
+                    solid.transform.localScale = new Vector3(width / unit.x, fill / unit.y, 1f);
+                    solid.sprite = pixel;
+                    solid.sharedMaterial = material;
+                    solid.color = new Color32(0x6E, 0x14, 0x0E, 0xFF);
+                    solid.sortingOrder = order;
+                }
+
+                // Fışkırmalar: her 5-6 birimde bir, farklı zamanlarda.
+                Sprite[] spurt = Enumerable.Range(0, 8).Select(i => TestSceneBuilder.Prop("gece_lav_fiskirma_" + i)).ToArray();
+                var random = new System.Random(Mathf.RoundToInt(wx * 10f));
+                for (float sx = wx - width / 2f + 2.5f; sx < wx + width / 2f - 1.5f; sx += 8f + (float)random.NextDouble() * 4f)
+                {
+                    var sr = new GameObject("Fiskirma").AddComponent<SpriteRenderer>();
+                    sr.transform.SetParent(parent, false);
+                    sr.transform.position = new Vector2(sx, y - 0.55f); // dibi yüzeyin arkasında kalsın: lavdan çıkıyor görünsün
+                    sr.sprite = spurt[0];
+                    sr.sharedMaterial = material;
+                    sr.sortingOrder = order; // yüzeyin arkasında
+                    sr.gameObject.AddComponent<DesertGecko.Effects.SpriteLoop>().Configure(spurt, 5f, (float)random.NextDouble() * 4f, 2.5f + (float)random.NextDouble() * 2f);
+                }
             }
 
             /// <summary>Bacada yükselen kaynar çamur. Oyuncu triggerY'yi geçince kabarır.</summary>
@@ -2140,28 +2201,46 @@ namespace DesertGecko.EditorTools
             /// <summary>Arkadan gelen ayaz fırtınası: triggerX'i geçince başlar, endX'te dağılır.</summary>
             public void Storm(float behindX, float triggerX, float endX, float speed)
             {
-                const float top = 62f, height = 110f, backWidth = 60f;
+                const float backWidth = 60f, scale = 2f;
                 float x = behindX + OriginX;
                 var go = new GameObject("AyazFirtinasi");
                 go.transform.SetParent(actors);
                 go.transform.position = new Vector2(x, 0f);
-                Sprite art = LayerArt("gece_firtina"), frontArt = LayerArt("gece_firtina_on");
                 var material = Unlit;
+                Color night = new Color(0.72f, 0.64f, 0.7f); // gecenin içinde: gündüz renkleri biraz karartılır
 
-                SpriteRenderer back = TiledArt(go.transform, "Govde", art, new Vector2(x - 5f - backWidth / 2f, top), new Vector2(backWidth, height), 40);
-                back.sharedMaterial = material;
-                back.color = Color.white;
+                // Gövde: bulutların arkasında ekranı dolduran koyu toz.
+                Sprite pixel = ctx.Solid;
+                Vector2 unit = pixel.bounds.size;
+                var body = new GameObject("Govde").AddComponent<SpriteRenderer>();
+                body.transform.SetParent(go.transform, false);
+                body.transform.localPosition = new Vector3(-4.5f - backWidth / 2f, 0f, 0f);
+                body.transform.localScale = new Vector3(backWidth / unit.x, 40f / unit.y, 1f);
+                body.sprite = pixel;
+                body.sharedMaterial = material;
+                body.color = new Color32(0x4E, 0x36, 0x2A, 0xFF);
+                body.sortingOrder = 40;
 
-                var billows = new List<SpriteRenderer>();
-                float[] alphas = { 0.75f, 0.85f, 0.95f, 1f };
-                for (int i = 0; i < alphas.Length; i++)
+                // Bulut sıraları: yerdeki en önde, yukarı çıktıkça geride; her biri kendi hızında kıvrılır.
+                string[] kinds = { "a", "b", "a", "b", "a" };
+                float[] leads = { 1.2f, 0.2f, -0.9f, -1.6f, -2.4f };
+                var rows = new List<Transform>();
+                for (int i = 0; i < kinds.Length; i++)
                 {
-                    SpriteRenderer layer = TiledArt(go.transform, "Kabarma" + i, frontArt, new Vector2(x - i * 1.6f, top), new Vector2(frontArt.bounds.size.x, height), 41 + alphas.Length - i);
-                    layer.sharedMaterial = material;
-                    layer.color = new Color(0.9f - i * 0.1f, 0.94f - i * 0.1f, 1f - i * 0.08f, alphas[i]);
-                    billows.Add(layer);
+                    Sprite[] frames = Enumerable.Range(0, 6).Select(f => TestSceneBuilder.Prop($"gece_firtina_bulut_{kinds[i]}_{f}")).ToArray();
+                    var row = new GameObject("Bulut" + i).AddComponent<SpriteRenderer>();
+                    row.transform.SetParent(go.transform, false);
+                    row.transform.localScale = new Vector3(scale, scale, 1f);
+                    row.sprite = frames[0];
+                    row.sharedMaterial = material;
+                    row.color = Color.Lerp(night, Color.white, i * 0.06f);
+                    row.sortingOrder = 46 - i; // yerdeki önde
+                    row.gameObject.AddComponent<DesertGecko.Effects.SpriteLoop>().Configure(frames, 5f + i * 0.4f, i * 0.37f);
+                    rows.Add(row.transform);
                 }
-                go.AddComponent<ColdFront>().Configure(x, triggerX + OriginX, endX + OriginX, billows.ToArray(), speed);
+                var front = go.AddComponent<ColdFront>();
+                front.Configure(x, triggerX + OriginX, endX + OriginX, speed);
+                front.SetArt(rows.ToArray(), leads, body.transform);
                 foreach (SpriteRenderer sr in go.GetComponentsInChildren<SpriteRenderer>())
                     sr.enabled = false; // başlayınca görünür
             }
