@@ -126,7 +126,7 @@ namespace DesertGecko.Player
         {
             float fps = 0f;
             Sprite[] frames;
-            Vector2 v = controller.Velocity;
+            Vector2 v = controller.LocalVelocity;
 
             switch (controller.State)
             {

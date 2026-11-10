@@ -82,6 +82,8 @@ namespace DesertGecko.Player
         public MoveState State { get; private set; } = MoveState.Airborne;
         public int FacingDirection { get; private set; } = 1;
         public Vector2 Velocity => body.linearVelocity;
+        // Altındaki hareketli platforma göre hız: platformla taşınırken oyuncu "duruyor" sayılır (animasyon için).
+        public Vector2 LocalVelocity => body.linearVelocity - new Vector2(CarrierSpeedX, 0f);
         public bool IsGrounded => State == MoveState.Grounded;
         public bool IsSwinging => State == MoveState.Swinging;
         public Transform SwingAnchor => swingAnchor;
