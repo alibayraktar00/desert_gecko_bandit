@@ -13,6 +13,7 @@ namespace DesertGecko.Player
         InputAction jump;
         InputAction tongue;
         InputAction tail;
+        InputAction fire;
         InputAction camouflage;
 
         public Vector2 Move { get; private set; }
@@ -21,6 +22,8 @@ namespace DesertGecko.Player
         public bool TonguePressed { get; private set; }
         public bool TongueHeld { get; private set; }
         public bool TailPressed { get; private set; }
+        /// <summary>Silah ateşi (K): yalnız silah eldeyken bir şey yapar.</summary>
+        public bool FirePressed { get; private set; }
         public bool CamouflagePressed { get; private set; }
 
         void Awake()
@@ -43,13 +46,18 @@ namespace DesertGecko.Player
             tongue.AddBinding("<Keyboard>/j");
             tongue.AddBinding("<Gamepad>/buttonWest");
 
+            // Silah ve kuyruk ayrı tuşlarda: silah eldeyken de kuyruk fırlatılabilir.
+            fire = new InputAction("Fire", InputActionType.Button);
+            fire.AddBinding("<Keyboard>/k");
+            fire.AddBinding("<Gamepad>/buttonEast");
+
             tail = new InputAction("Tail", InputActionType.Button);
-            tail.AddBinding("<Keyboard>/k");
-            tail.AddBinding("<Gamepad>/buttonEast");
+            tail.AddBinding("<Keyboard>/l");
+            tail.AddBinding("<Gamepad>/buttonNorth");
 
             camouflage = new InputAction("Camouflage", InputActionType.Button);
-            camouflage.AddBinding("<Keyboard>/l");
-            camouflage.AddBinding("<Gamepad>/buttonNorth");
+            camouflage.AddBinding("<Keyboard>/u");
+            camouflage.AddBinding("<Gamepad>/leftShoulder");
         }
 
         void OnEnable()
@@ -58,6 +66,7 @@ namespace DesertGecko.Player
             jump.Enable();
             tongue.Enable();
             tail.Enable();
+            fire.Enable();
             camouflage.Enable();
         }
 
@@ -67,6 +76,7 @@ namespace DesertGecko.Player
             jump.Disable();
             tongue.Disable();
             tail.Disable();
+            fire.Disable();
             camouflage.Disable();
         }
 
@@ -76,6 +86,7 @@ namespace DesertGecko.Player
             jump.Dispose();
             tongue.Dispose();
             tail.Dispose();
+            fire.Dispose();
             camouflage.Dispose();
         }
 
@@ -89,12 +100,14 @@ namespace DesertGecko.Player
             JumpPressed |= jump.WasPressedThisFrame();
             TonguePressed |= tongue.WasPressedThisFrame();
             TailPressed |= tail.WasPressedThisFrame();
+            FirePressed |= fire.WasPressedThisFrame();
             CamouflagePressed |= camouflage.WasPressedThisFrame();
         }
 
         public bool ConsumeJump() { bool v = JumpPressed; JumpPressed = false; return v; }
         public bool ConsumeTongue() { bool v = TonguePressed; TonguePressed = false; return v; }
         public bool ConsumeTail() { bool v = TailPressed; TailPressed = false; return v; }
+        public bool ConsumeFire() { bool v = FirePressed; FirePressed = false; return v; }
         public bool ConsumeCamouflage() { bool v = CamouflagePressed; CamouflagePressed = false; return v; }
     }
 }

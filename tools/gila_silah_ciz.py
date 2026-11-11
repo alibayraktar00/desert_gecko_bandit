@@ -62,6 +62,12 @@ PALETTE = {
     "G": (58, 54, 62, 255),     # diken açık kenarı
     "T": (205, 210, 218, 255),  # uç
     "S": (255, 255, 255, 255),  # uç parlaması
+    # Çalı Faresi'nin bıçağının paleti (cali_faresi_26.png): tozlu çelik ağız, koyu ahşap sap
+    "1": (214, 204, 172, 255),  # ağız parlaması / uç
+    "2": (176, 162, 124, 255),  # ağız
+    "3": (122, 104, 74, 255),   # ağız koyu, siper
+    "4": (74, 59, 41, 255),     # sap
+    "5": (114, 92, 61, 255),    # sap açık
 }
 JACKAL_OUTLINE = (42, 20, 18, 255)  # çakalın kahverengi dış çizgisi
 
@@ -158,6 +164,27 @@ PICKAXE = [
     "................EA.",
     "...............EA..",
     "..............EA...",
+]
+
+# Bıçak (Çalı Faresi'nden): kısa sap, siper ve sırtı uca doğru çentikli (testere dişli) geniş ağız.
+# Yalnız ileri saplanır; kareler saplamanın evreleri.
+KNIFE_HELD = [
+    "...........1.1..",
+    "...3.1222221212.",
+    "4H5312222222222211",
+    "...3.22222222221.",
+    ".....3333333331..",
+]
+KNIFE_HELD_TIP = (17, 2.0)  # ağzın ucu: saplama kıvılcımı buradan
+# Saplama: 0 tutuş (uç hafif yukarıda), 1 geri çekme, 2 saplama (yumruk öne uzanır), 3 takip
+KNIFE_STAB = [(0.0, 22), (3.0, 12), (-4.0, 0), (-2.0, -6)]
+KNIFE = [
+    "..............1.1.1...",
+    "......3.12222221212...",
+    "44555.3122222222222211",
+    "44555.3222222222222221",
+    "......3.22222222222211",
+    "........333333333331..",
 ]
 
 # Diken demeti (Diken Mutantı'ndan): yumrukta yelpaze gibi açılmış 3 diken; her atış 3 dikeni yelpazeyle fırlatır.
@@ -494,7 +521,24 @@ def key_hint():
     img.save(WEAPON_OUT / "tus_s.png")
 
 
+def knife():
+    """Bıçak kareleri, yerde duran bıçak ve arayüzdeki dayanıklılık çentikleri."""
+    held_frames("bicak", KNIFE_HELD, KNIFE_HELD_TIP, outline=JACKAL_OUTLINE, poses=KNIFE_STAB, aims=["ileri"])
+    item_sprite("bicak", KNIFE, JACKAL_OUTLINE)
+    tick = ["21", "12", "22", "33", "44", "55"]  # arayüz: küçük dikey bıçak (dayanıklılık)
+    for nm, empty in (("bicak_ikon", False), ("bicak_ikon_bos", True)):
+        img = Image.new("RGBA", (2, 6), (0, 0, 0, 0))
+        for y, row in enumerate(tick):
+            for x, ch in enumerate(row):
+                img.putpixel((x, y), (70, 60, 60, 200) if empty else PALETTE[ch])
+        img.save(WEAPON_OUT / f"{nm}.png")
+
+
 def main():
+    import sys
+    if "bicak" in sys.argv[1:]:
+        knife()  # yalnız bıçak: öteki silahların karelerine dokunmaz
+        return
     remove_old()
     key_hint()
     held_frames("altipatlar", REVOLVER_HELD, REVOLVER_HELD_MUZZLE)
@@ -529,6 +573,7 @@ def main():
             for x, ch in enumerate(row):
                 img.putpixel((x, y), (70, 60, 60, 200) if empty else PALETTE[ch])
         img.save(WEAPON_OUT / f"{nm}.png")
+    knife()
     shotgun_sprites()
     item_sprite("altipatlar", REVOLVER)
     small_sprites()

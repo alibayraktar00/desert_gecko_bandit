@@ -1,0 +1,169 @@
+{
+ "poses": [
+  {
+   "body": "gila_idle_0",
+   "yumruk": [
+    39,
+    35
+   ],
+   "ileri": [
+    0.682,
+    0.594
+   ]
+  },
+  {
+   "body": "gila_idle_1",
+   "yumruk": [
+    39,
+    35
+   ],
+   "ileri": [
+    0.682,
+    0.594
+   ]
+  },
+  {
+   "body": "gila_idle_2",
+   "yumruk": [
+    39,
+    36
+   ],
+   "ileri": [
+    0.682,
+    0.562
+   ]
+  },
+  {
+   "body": "gila_idle_3",
+   "yumruk": [
+    39,
+    36
+   ],
+   "ileri": [
+    0.682,
+    0.562
+   ]
+  },
+  {
+   "body": "gila_run_0",
+   "yumruk": [
+    37,
+    34
+   ],
+   "ileri": [
+    0.62,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_1",
+   "yumruk": [
+    38,
+    34
+   ],
+   "ileri": [
+    0.651,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_2",
+   "yumruk": [
+    38,
+    34
+   ],
+   "ileri": [
+    0.651,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_3",
+   "yumruk": [
+    39,
+    34
+   ],
+   "ileri": [
+    0.682,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_4",
+   "yumruk": [
+    37,
+    34
+   ],
+   "ileri": [
+    0.62,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_5",
+   "yumruk": [
+    37,
+    34
+   ],
+   "ileri": [
+    0.62,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_6",
+   "yumruk": [
+    37,
+    34
+   ],
+   "ileri": [
+    0.62,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_run_7",
+   "yumruk": [
+    38,
+    34
+   ],
+   "ileri": [
+    0.651,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_rise_0",
+   "yumruk": [
+    39,
+    34
+   ],
+   "ileri": [
+    0.682,
+    0.625
+   ]
+  },
+  {
+   "body": "gila_apex_0",
+   "yumruk": [
+    37,
+    35
+   ],
+   "ileri": [
+    0.62,
+    0.594
+   ]
+  },
+  {
+   "body": "gila_fall_0",
+   "yumruk": [
+    45,
+    32
+   ],
+   "ileri": [
+    0.87,
+    0.687
+   ]
+  }
+ ]
+}

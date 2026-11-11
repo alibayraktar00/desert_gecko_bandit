@@ -29,6 +29,7 @@ namespace DesertGecko.Enemies
         readonly Collider2D[] blastHits = new Collider2D[4];
         ContactFilter2D filter;
         Vector2 velocity;
+        public float Gravity => gravity;
         float explodeAt, nextSparkAt;
         int spinDirection = 1;
 

@@ -27,6 +27,7 @@ namespace DesertGecko.Weapons
         float travelled;
         int damage;
         int shotId;
+        int shotCap;
         bool harmless;
         bool sticks;
         float stuckAt = -1f;
@@ -41,7 +42,10 @@ namespace DesertGecko.Weapons
             PlayerBullet bullet = Create(weapon.BulletSprite, weapon.Damage, speed > 0f ? speed : weapon.BulletSpeed,
                 range > 0f ? range : weapon.BulletRange, from, muzzle, direction, order, shotId, false, weapon.SticksInGround);
             if (bullet != null)
+            {
                 bullet.ricochetSound = weapon.RicochetSound;
+                bullet.shotCap = weapon.MaxShotDamage;
+            }
             return bullet;
         }
 
@@ -162,7 +166,7 @@ namespace DesertGecko.Weapons
                 var target = other.GetComponentInParent<IDamageable>();
                 if (target == null || target is PlayerHealth || !target.IsAlive)
                     continue;
-                if (!target.TakeDamage(new DamageInfo(damage, direction, DamageKind.Bullet, shotId)))
+                if (!target.TakeDamage(new DamageInfo(damage, direction, DamageKind.Bullet, shotId, shotCap)))
                 {
                     Ricochet(hits[i].point);
                     return;

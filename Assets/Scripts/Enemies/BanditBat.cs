@@ -44,6 +44,10 @@ namespace DesertGecko.Enemies
         [SerializeField] int dynamiteCount = 3;
         [Tooltip("Yatayda Gila'ya bu kadar yaklaşınca fitili yakar")]
         [SerializeField] float aimTolerance = 0.9f;
+        [Tooltip("Gila tepesine gelemeyeceği yerde (yuva sınırının dışında) kalırsa bu kadar bekleyip dinamiti kavisle atar")]
+        [SerializeField] float lobPatience = 1f;
+        [Tooltip("Kavisli atışın en uzak yatay mesafesi")]
+        [SerializeField] float lobRange = 9f;
         [SerializeField] float firstThrowDelay = 0.8f;
         [SerializeField] float windupDuration = 0.75f;
         [SerializeField] float releaseDuration = 0.3f;
@@ -97,6 +101,7 @@ namespace DesertGecko.Enemies
 
         Vector2 home;
         float stateStartedAt, stateEndsAt, hurtUntil, nextThrowAt, nextSparkAt;
+        bool lobbing; // bu atış kavisli mi (Gila yuva sınırının dışında)
         float tiredTargetY;
         int baseContactDamage;
 
@@ -240,8 +245,19 @@ namespace DesertGecko.Enemies
             TurnTowards(DirectionToPlayer);
 
             float dx = Mathf.Abs(Player.transform.position.x - body.position.x);
-            if (Time.time >= nextThrowAt && dx <= aimTolerance && DynamitesLeft > 0)
+            if (Time.time < nextThrowAt || DynamitesLeft <= 0)
+                return;
+            if (dx <= aimTolerance)
+            {
+                lobbing = false;
                 Enter(BatState.Windup, windupDuration);
+            }
+            // Yuva sınırına dayandı, Gila'nın tepesine gidemiyor: boş boş beklemesin, dinamiti kavisle fırlatsın.
+            else if (Time.time >= nextThrowAt + lobPatience && dx <= lobRange)
+            {
+                lobbing = true;
+                Enter(BatState.Windup, windupDuration);
+            }
         }
 
         void FlyTowards(Vector2 target, float speed, bool bob = false)
@@ -270,9 +286,22 @@ namespace DesertGecko.Enemies
             if (dynamitePrefab != null)
             {
                 BatDynamite d = Instantiate(dynamitePrefab, DropPoint(), Quaternion.identity);
-                d.Launch(new Vector2(body.linearVelocity.x * 0.4f, -1f), FacingDirection);
+                d.Launch(lobbing && PlayerAlive ? LobVelocity(d.Gravity) : new Vector2(body.linearVelocity.x * 0.4f, -1f), FacingDirection);
             }
             Enter(BatState.Release, releaseDuration);
+        }
+
+        /// <summary>Hafif yukarı atılıp Gila'nın atış anındaki yerine düşecek hız (oyuncu fitil yanarken kaçabilir).</summary>
+        Vector2 LobVelocity(float gravity)
+        {
+            const float up = 3f;
+            Vector2 from = DropPoint();
+            Vector2 to = Player.transform.position;
+            float drop = Mathf.Max(0.5f, from.y - to.y);
+            float g = Mathf.Max(1f, gravity);
+            float t = (up + Mathf.Sqrt(up * up + 2f * g * drop)) / g; // y(t) = up*t - g*t²/2 = -drop
+            float vx = Mathf.Clamp((to.x - from.x) / t, -10f, 10f);
+            return new Vector2(vx, up);
         }
 
         void BeginTired()

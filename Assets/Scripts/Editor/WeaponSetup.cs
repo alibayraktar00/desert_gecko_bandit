@@ -30,6 +30,7 @@ namespace DesertGecko.EditorTools
             SetEnemyDrop("Assets/Prefabs/BanditBat.prefab", BuildDynamite());
             SetEnemyDrop("Assets/Prefabs/Armadillo.prefab", BuildPickaxe());
             SetEnemyDrop("Assets/Prefabs/SpikeMutant.prefab", BuildSpikes());
+            SetEnemyDrop("Assets/Prefabs/TumbleweedMouse.prefab", BuildKnife());
             AddPlayerWeapon(); // prefab yeniden kaydedilir: kaldırılmış eski alanlar düşer
             AssetDatabase.SaveAssets();
             return "silahlar kuruldu";
@@ -241,6 +242,37 @@ namespace DesertGecko.EditorTools
             so.FindProperty("windupTime").floatValue = 0.1f;
             so.FindProperty("strikeTime").floatValue = 0.12f;
             so.FindProperty("followTime").floatValue = 0.14f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(data);
+            return data;
+        }
+
+        /// <summary>
+        /// Bıçak (Çalı Faresi'nden): hızlı, kısa menzilli yakın dövüş. Önüne saplar: önündeki düşmana 2 hasar.
+        /// 6 saplamalık dayanıklılık, yalnız isabette azalır. Taşa işlemez. Fare her ölüşünde bırakır.
+        /// </summary>
+        static WeaponData BuildKnife()
+        {
+            WeaponData data = LoadOrCreate("Bicak");
+            var so = Begin(data, "Bıçak", "bicak", "bicak", "bicak_ikon");
+            so.FindProperty("muzzleFlashFrames").arraySize = 0;
+            Set(so, "bulletSprite", null);
+            Set(so, "fireSound", Clip("bocek_slap"));
+            so.FindProperty("fireVolume").floatValue = 0.6f;
+            so.FindProperty("fireMode").enumValueIndex = (int)WeaponData.FireMode.Melee;
+            so.FindProperty("consumable").boolValue = true;
+            so.FindProperty("ammo").intValue = 6;
+            so.FindProperty("shake").floatValue = 0.1f;
+            Set(so, "swingSound", Clip("savurma"));
+            so.FindProperty("hitStop").floatValue = 0.04f;
+            so.FindProperty("damage").intValue = 2;
+            so.FindProperty("fireInterval").floatValue = 0.3f;
+            so.FindProperty("meleeArea").vector2Value = new Vector2(1.3f, 1.1f);
+            so.FindProperty("windupTime").floatValue = 0.05f;
+            so.FindProperty("strikeTime").floatValue = 0.08f;
+            so.FindProperty("followTime").floatValue = 0.1f;
+            so.FindProperty("breaksRocks").boolValue = false;
+            so.FindProperty("alwaysDrops").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(data);
             return data;

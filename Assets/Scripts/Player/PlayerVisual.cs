@@ -29,7 +29,8 @@ namespace DesertGecko.Player
         [SerializeField] Sprite fallFrame;
         [Tooltip("Boşsa düşme karesi kullanılır")]
         [SerializeField] Sprite[] glideFrames;
-        [SerializeField] float glideFps = 8f;
+        [Tooltip("Süzülme: kuyruk ucu helikopter pervanesi gibi döner (8 kare bir tur)")]
+        [SerializeField] float glideFps = 60f;
         [Tooltip("Boşsa idle kareleri kullanılır (yan görünümde duvara bakan dik duruş)")]
         [SerializeField] Sprite[] wallFrames;
         [SerializeField] float wallFps = 8f;
@@ -175,8 +176,10 @@ namespace DesertGecko.Player
 
             animTime += Time.deltaTime * fps;
             int index = (int)Mathf.Repeat(Mathf.Floor(animTime), frames.Length);
-            BaseFrame = frames[index];
-            spriteRenderer.sprite = WithTailState(BaseFrame);
+            Sprite shown = frames[index];
+            // Süzülme kareleri düşüş karesinin pervaneli hali: el aynı yerde, silah düşüş pozunu kullanır.
+            BaseFrame = frames == glideFrames && fallFrame != null ? fallFrame : shown;
+            spriteRenderer.sprite = WithTailState(shown);
         }
 
         Sprite[] Single(Sprite sprite)

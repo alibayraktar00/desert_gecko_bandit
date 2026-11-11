@@ -2,9 +2,11 @@ using System;
 using DesertGecko.Collectibles;
 using DesertGecko.Core;
 using DesertGecko.Effects;
+using DesertGecko.Environment;
 using DesertGecko.Player;
 using DesertGecko.Weapons;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace DesertGecko.Enemies
 {
@@ -61,6 +63,11 @@ namespace DesertGecko.Enemies
         [SerializeField] WeaponData weaponDrop;
         [Tooltip("Ölümden silahın görünmesine kadar geçen süre (ölüm animasyonu bitsin)")]
         [SerializeField] float weaponDropDelay = 0.8f;
+        [Tooltip("Son düşen silahtan (hangi düşmandan olursa olsun) en az bu kadar uzakta ölürse silah bırakır. " +
+                 "Kalabalık bölgeye tek silah düşer, geleni geçeni biçip silah toplama zinciri kurulmaz")]
+        [SerializeField] float weaponDropSpacing = 25f;
+        [Tooltip("Kaya kırabilen silah (kazma, dinamit), bu yarıçapta kırılmamış kaya varsa aralığa bakmadan her zaman düşer")]
+        [SerializeField] float rockToolRadius = 40f;
 
         [Header("Görsel")]
         [SerializeField] protected SpriteRenderer spriteRenderer;
@@ -107,6 +114,26 @@ namespace DesertGecko.Enemies
         float hitGuardUntil;      // dil, kuyruk, yakın dövüş
         float rapidHitGuardUntil; // mermi, patlama, fırlatma
         int lastShotId;           // son vuran atış: aynı saçmanın taneleri korumaya takılmaz
+        int shotDamage;           // son atışın bu düşmana verdiği toplam hasar (atış tavanı için)
+        bool weaponEarned;        // bu ölümde silah bırakılacak mı (DropWeapon da buna bakar)
+
+        /// <summary>Bölümde son silahın düştüğü yer: düşme zara değil mesafeye bağlı.</summary>
+        static Vector2 lastWeaponDropAt;
+        static bool weaponDroppedHere;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void InitWeaponDrops()
+        {
+            ResetWeaponDrops();
+            // Yeniden doğunca yerdeki silahlar silinir (WeaponPickup): diriltilen düşmanlar yine silah verebilsin.
+            PlayerHealth.PlayerRespawned -= ResetWeaponDrops;
+            PlayerHealth.PlayerRespawned += ResetWeaponDrops;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        static void OnSceneLoaded(Scene scene, LoadSceneMode mode) => ResetWeaponDrops();
+        static void ResetWeaponDrops() => weaponDroppedHere = false;
         float perchedSince = -1f;
         bool lootDropped;
         Color baseColor = Color.white;
@@ -335,9 +362,19 @@ namespace DesertGecko.Enemies
                 return false;
             }
 
+            // Atış tavanı: aynı saçmanın fazladan taneleri isabet eder ama can götürmez.
+            int dealtThisShot = sameShot ? shotDamage : 0;
+            if (hit.ShotCap > 0)
+            {
+                amount = Mathf.Min(amount, hit.ShotCap - dealtThisShot);
+                if (amount <= 0)
+                    return true;
+            }
+
             health = Mathf.Max(0, health - amount);
             rapidHitGuardUntil = Time.time + rapidHitGuardDuration;
             lastShotId = hit.ShotId;
+            shotDamage = dealtThisShot + amount;
             if (!hit.IsRapid)
                 hitGuardUntil = Time.time + hitGuardDuration;
             flashUntil = Time.time + flashDuration;
@@ -381,7 +418,7 @@ namespace DesertGecko.Enemies
         /// <summary>Ölüm animasyonunun bittiği yerde silahı bırakır (DropsWeaponAfterDefeat).</summary>
         protected void DropWeapon(Vector2 position)
         {
-            if (weaponDrop != null)
+            if (weaponDrop != null && weaponEarned)
                 WeaponPickup.Spawn(weaponDrop, weaponDrop.Ammo, position + Vector2.up * 0.3f, new Vector2(0f, 3.5f));
         }
 
@@ -407,11 +444,35 @@ namespace DesertGecko.Enemies
                 lootDropped = true;
             }
             // Silah, ölüm animasyonu bitince cesedin yerinden küçük bir sekmeyle çıkar.
-            if (weaponDrop != null && !DropsWeaponAfterDefeat)
+            weaponEarned = EarnsWeapon();
+            if (weaponEarned && !DropsWeaponAfterDefeat)
                 WeaponPickup.Spawn(weaponDrop, weaponDrop.Ammo, box.bounds.center, new Vector2(FacingDirection * -0.8f, 4f), WeaponDropDelay);
             OnDied();
             Died?.Invoke(this);
             gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Silah düşmesi zar değil kural: nasıl öldürülürse öldürülsün, son düşen silahtan weaponDropSpacing kadar
+        /// uzaktaysa bırakır. Dağınık düşmanlar silah verir; birbirine yakın kalabalıkta yalnız ilk ölen bırakır.
+        /// İstisnalar: AlwaysDrops silahlar (bıçak) her zaman, yakında kırılmamış kaya varken kazma ve dinamit
+        /// her zaman düşer.
+        /// Bölüm yüklenince ve oyuncu yeniden doğunca sıfırlanır.
+        /// </summary>
+        bool EarnsWeapon()
+        {
+            if (weaponDrop == null)
+                return false;
+            if (weaponDrop.AlwaysDrops)
+                return true; // farenin bıçağı: hemen alınabilsin, öteki silahların sırasını da bozmaz
+            Vector2 here = box.bounds.center;
+            // Yol açan alet: yakında kırılacak kaya varsa kazma/dinamit her zaman düşer, oyuncu takılı kalmasın.
+            bool neededForRock = weaponDrop.BreaksRocks && BreakableRock.AnyIntactNear(here, rockToolRadius);
+            if (!neededForRock && weaponDroppedHere && Vector2.Distance(here, lastWeaponDropAt) < weaponDropSpacing)
+                return false;
+            weaponDroppedHere = true;
+            lastWeaponDropAt = here;
+            return true;
         }
 
         /// <summary>Başlangıç noktasına, tam cana ve devriyeye döner (ölüyse yeniden görünür).</summary>
@@ -429,6 +490,8 @@ namespace DesertGecko.Enemies
             flashUntil = 0f;
             hitGuardUntil = 0f;
             rapidHitGuardUntil = 0f;
+            lastShotId = 0;
+            shotDamage = 0;
             perchedSince = -1f;
         }
 

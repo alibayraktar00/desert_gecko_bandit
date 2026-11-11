@@ -142,8 +142,10 @@ MonoBehaviour:
   guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
-  weaponDrop: {fileID: 0}
+  weaponDrop: {fileID: 11400000, guid: 3a63bd26150f43279e982dc238884f16, type: 2}
   weaponDropDelay: 0.8
+  weaponDropSpacing: 25
+  rockToolRadius: 40
   spriteRenderer: {fileID: 5761996545158208728}
   spriteFacesLeft: 0
   groundMask:
@@ -160,6 +162,9 @@ MonoBehaviour:
   twigColor: {r: 0.72156864, g: 0.5803922, b: 0.3372549, a: 1}
   chaseRunSpeed: 6
   stopDistance: 1
+  giveUpDelay: 0.6
+  wanderDuration: 1.2
+  wanderSpeed: 2.5
   stabDuration: 0.65
   stabInterval: 0.2
   stabReach: 1.5

@@ -74,6 +74,12 @@ namespace DesertGecko.Weapons
         [SerializeField] float recoverTime = 0.14f;
         [Tooltip("Mermisi bitince fırlatılan silahın hasarı")]
         [SerializeField] int thrownDamage = 1;
+        [Tooltip("Bir atışın (saçmanın bütün tanelerinin) tek düşmana verebileceği en fazla hasar. 0 = sınırsız")]
+        [SerializeField] int maxShotDamage = 0;
+        [Tooltip("Yakın dövüş ya da patlayan silah kaya kırar mı (kazma, dinamit evet; bıçak hayır)")]
+        [SerializeField] bool breaksRocks = true;
+        [Tooltip("Taşıyan düşman bunu her öldürülüşte bırakır: silahlar arası mesafe kuralına bakmaz (farenin bıçağı)")]
+        [SerializeField] bool alwaysDrops;
 
         [Header("Atılan (dinamit)")]
         [Tooltip("İleri atış hızı (baktığı yöne, yukarı); çapraz ve yukarı atış bundan türetilir")]
@@ -126,6 +132,10 @@ namespace DesertGecko.Weapons
         public float BulletSpeed => bulletSpeed;
         public float BulletRange => bulletRange;
         public int ThrownDamage => thrownDamage;
+        public int MaxShotDamage => maxShotDamage;
+        /// <summary>Kaya kırabilir: yakın dövüş (kazma) ve patlayan atılan silah (dinamit); bıçak kırmaz.</summary>
+        public bool BreaksRocks => breaksRocks && (fireMode == FireMode.Melee || fireMode == FireMode.Thrown);
+        public bool AlwaysDrops => alwaysDrops;
         public FireMode Mode => fireMode;
         public Vector2 MeleeArea => meleeArea;
         public float WindupTime => windupTime;

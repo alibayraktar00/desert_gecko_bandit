@@ -5,7 +5,7 @@ using UnityEngine;
 namespace DesertGecko.Player
 {
     /// <summary>
-    /// Uzak mesafe kuyruk fırlatma (K). Kuyruk fırlatılınca karakterden kopar, kısa süre sonra kalçadan ince
+    /// Uzak mesafe kuyruk fırlatma (L). Silah eldeyken de çalışır: silahın ateş tuşu ayrı (K). Kuyruk fırlatılınca karakterden kopar, kısa süre sonra kalçadan ince
     /// çıkar ve bekleme boyunca yavaş yavaş büyür. Tamamen çıkana kadar HasTail false: çift zıplama zayıflar, süzülme kapanır.
     /// </summary>
     [RequireComponent(typeof(PlayerController), typeof(PlayerInputReader), typeof(PlayerHealth))]
@@ -51,9 +51,8 @@ namespace DesertGecko.Player
 
         void Update()
         {
-            // Silah varken K ateş tuşudur: tuşu PlayerWeapon tüketir.
-            bool armed = weapon != null && weapon.IsArmed;
-            if (!armed && input.ConsumeTail())
+            // Kuyruk kendi tuşunda (L): silah eldeyken de fırlatılır.
+            if (input.ConsumeTail())
                 TryThrow();
 
             if (!controller.HasTail && Time.time >= readyAt)

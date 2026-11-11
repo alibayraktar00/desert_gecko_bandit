@@ -304,7 +304,7 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(105f, 10f);
 
             // Kuyruk
-            p.Sign(111f, 10f, "K: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
+            p.Sign(111f, 10f, "L: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
             p.Bug(115f, 11.3f);
             p.Scorpion(121f, 10f);
             p.Scorpion(126f, 10f);
@@ -2746,9 +2746,12 @@ namespace DesertGecko.EditorTools
                 TestSceneBuilder.SetField(rock, "intactSprite", intact);
                 TestSceneBuilder.SetField(rock, "crackedSprite", TestSceneBuilder.Prop("kaya_damar_1"));
                 TestSceneBuilder.SetField(rock, "breakSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kazma.wav"));
+                TestSceneBuilder.SetField(rock, "rewardWeapon", AssetDatabase.LoadAssetAtPath<WeaponData>("Assets/Data/Weapons/Pompali.asset"));
                 var drop = go.AddComponent<DesertGecko.Collectibles.CrystalDrop>();
                 var so = new SerializedObject(drop);
-                so.FindProperty("crystalPrefab").objectReferenceValue = ctx.Combat.Crystal;
+                so.FindProperty("crystalPrefab").objectReferenceValue = ctx.Combat.Crystal != null
+                    ? ctx.Combat.Crystal
+                    : AssetDatabase.LoadAssetAtPath<DesertGecko.Collectibles.Crystal>("Assets/Prefabs/Crystal.prefab");
                 so.FindProperty("minCount").intValue = 4;
                 so.FindProperty("maxCount").intValue = 5;
                 so.FindProperty("spawnOffset").vector2Value = new Vector2(0f, 0.8f);

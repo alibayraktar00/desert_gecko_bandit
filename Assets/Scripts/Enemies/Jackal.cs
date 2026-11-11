@@ -10,6 +10,8 @@ namespace DesertGecko.Enemies
     /// Çakal Eşkıya: yavaş ve sinsi devriye gezer. Gila menzile girince irkilir, sonra oyuncudan hızlı
     /// koşarak üstüne atılır. Yakına gelince fren yapar, çiftesini doğrultur ve kısa menzilli, geniş açılı
     /// bir saçma atar; geri tepmeyle yarım adım kayar ve tüfeğini doldururken savunmasız kalır.
+    /// Havada süzülen Gila'ya da namlusunu kaldırır: doğrulttuğu anda Gila'nın olduğu yere nişan kilitlenir,
+    /// oyuncu doğrultma süresinde koniden çıkarak kaçabilir.
     /// Kareler sağa bakar; sola bakarken EnemyBase sprite'ı aynalar.
     /// </summary>
     public class Jackal : EnemyBase
@@ -23,6 +25,12 @@ namespace DesertGecko.Enemies
         [SerializeField] float attackRange = 2.6f;
         [Tooltip("Bundan daha yukarıda/aşağıdaki oyuncuya nişan almaz")]
         [SerializeField] float attackHeight = 1.2f;
+        [Tooltip("Havadaki Gila'ya namlu kaldırabileceği en büyük açı (derece)")]
+        [SerializeField] float maxAimAngle = 60f;
+        [Tooltip("Havadaki Gila'ya ateş menzili (namlu hizasından)")]
+        [SerializeField] float airAttackRange = 3f;
+        [Tooltip("Hedef nokta: Gila'nın ayağından gövde ortasına")]
+        [SerializeField] float targetHeight = 0.45f;
         [Tooltip("Gövdeye göre namlu ucu, sağa bakarken")]
         [SerializeField] Vector2 muzzleOffset = new Vector2(1f, 0.8f);
         [Tooltip("Doğrultma süresi: oyuncunun zıplayıp kaçma penceresi")]
@@ -71,6 +79,7 @@ namespace DesertGecko.Enemies
         float nextAttackAt;
         float hurtUntil;
         float reloadStartedAt;
+        Vector2 aimDirection = Vector2.right;
 
         int lifeId; // dirilince artar: önceki ölümün yenilgi animasyonu silah bırakmasın
 
@@ -97,7 +106,9 @@ namespace DesertGecko.Enemies
             if (!isActiveAndEnabled || State != JackalState.None || Time.time < hurtUntil || !IsGrounded())
                 return;
 
-            if (!IsChasing)
+            // Tepesinde süzülen Gila'yı kovalamaz (EnemyBase bırakır) ama menzildeyse yine ateş eder.
+            bool inRange = Time.time >= nextAttackAt && PlayerInAttackRange();
+            if (!IsChasing && !inRange)
             {
                 alerted = false; // gözden kaybetti: yeniden görünce yine irkilir
                 return;
@@ -107,7 +118,7 @@ namespace DesertGecko.Enemies
                 alerted = true;
                 routine = StartCoroutine(AlertRoutine());
             }
-            else if (Time.time >= nextAttackAt && PlayerInAttackRange())
+            else if (inRange)
             {
                 routine = StartCoroutine(AttackRoutine());
             }
@@ -118,8 +129,16 @@ namespace DesertGecko.Enemies
             if (Player == null || !Player.IsAlive)
                 return false;
             Vector2 toPlayer = Player.transform.position - transform.position;
-            return Mathf.Abs(toPlayer.x) <= attackRange && Mathf.Abs(toPlayer.y) <= attackHeight;
+            bool ground = Mathf.Abs(toPlayer.x) <= attackRange && Mathf.Abs(toPlayer.y) <= attackHeight;
+            Vector2 toTarget = PlayerTarget - Eye;
+            bool air = toTarget.magnitude <= airAttackRange
+                && Mathf.Atan2(Mathf.Abs(toTarget.y), Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg <= maxAimAngle;
+            return (ground || air) && !SolidBetween(Eye, PlayerTarget);
         }
+
+        Vector2 Eye => (Vector2)transform.position + Vector2.up * muzzleOffset.y;
+        Vector2 Muzzle => (Vector2)transform.position + new Vector2(muzzleOffset.x * FacingDirection, muzzleOffset.y);
+        Vector2 PlayerTarget => (Vector2)Player.transform.position + Vector2.up * targetHeight;
 
         int DirectionToPlayer => Player.transform.position.x >= transform.position.x ? 1 : -1;
 
@@ -136,6 +155,10 @@ namespace DesertGecko.Enemies
         {
             State = JackalState.Aim;
             TurnTowards(DirectionToPlayer);
+            // Doğrulttuğu anda nişan kilitlenir: Gila doğrultma süresinde yer değiştirip koniden çıkabilir.
+            aimDirection = Player != null && Player.IsAlive
+                ? EnemyBullet.AimDirection(Eye, Muzzle, PlayerTarget, FacingDirection, maxAimAngle)
+                : Vector2.right * FacingDirection;
             yield return new WaitForSeconds(aimDuration);
 
             State = JackalState.Fire;
@@ -158,7 +181,9 @@ namespace DesertGecko.Enemies
                 audioSource.PlayOneShot(shotClip);
 
             int dir = FacingDirection;
-            Vector2 muzzle = (Vector2)transform.position + new Vector2(muzzleOffset.x * dir, muzzleOffset.y);
+            Vector2 muzzle = Muzzle;
+            Vector2 aim = aimDirection.x * dir > 0f ? aimDirection : Vector2.right * dir; // geri dönmüşse düz atar
+            float aimAngle = Mathf.Atan2(aim.y, aim.x);
             if (pelletSprite != null)
             {
                 // Saçma görseli: koninin içinde dağılan taneler, menzilin sonunda söner.
@@ -166,8 +191,8 @@ namespace DesertGecko.Enemies
                 int order = spriteRenderer != null ? spriteRenderer.sortingOrder + 1 : 9;
                 for (int i = 0; i < visiblePellets; i++)
                 {
-                    float angle = Random.Range(-blastSpreadAngle, blastSpreadAngle) * 0.85f * Mathf.Deg2Rad;
-                    Vector2 direction = new Vector2(Mathf.Cos(angle) * dir, Mathf.Sin(angle));
+                    float angle = aimAngle + Random.Range(-blastSpreadAngle, blastSpreadAngle) * 0.85f * Mathf.Deg2Rad;
+                    Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
                     PlayerBullet.SpawnHarmless(pelletSprite, Random.Range(15f, 19f), blastRange * Random.Range(0.85f, 1.05f),
                         transform.position + Vector3.up * muzzleOffset.y, muzzle, direction, order);
                 }
@@ -176,25 +201,27 @@ namespace DesertGecko.Enemies
             {
                 // Saçma görseli: namludan uzaklaştıkça genişleyen üç kıvılcım öbeği.
                 for (int i = 1; i <= 3; i++)
-                    PixelBurst.Spawn(muzzle + Vector2.right * (dir * blastRange * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
+                    PixelBurst.Spawn(muzzle + aim * (blastRange * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
             }
 
             if (Player == null || !Player.IsAlive)
                 return;
-            Vector2 target = (Vector2)Player.transform.position + Vector2.up * 0.45f;
-            if (InBlastCone(muzzle, target, dir) && !SolidBetween(transform.position + Vector3.up * muzzleOffset.y, target))
+            Vector2 target = PlayerTarget;
+            if (InBlastCone(muzzle, target, aim) && !SolidBetween(Eye, target))
                 Player.TakeDamage(blastDamage, new Vector2(dir, 0f));
         }
 
-        bool InBlastCone(Vector2 muzzle, Vector2 target, int dir)
+        /// <summary>Nişan yönü ekseninde koni: ileri mesafe ve eksene dik sapma.</summary>
+        bool InBlastCone(Vector2 muzzle, Vector2 target, Vector2 aim)
         {
             Vector2 toTarget = target - muzzle;
-            float forward = toTarget.x * dir;
+            float forward = Vector2.Dot(toTarget, aim);
             // Namlu oyuncunun içinden geçebilir: gövdeye kadar olan yakın mesafe de vurulmuş sayılır.
             if (forward < -muzzleOffset.x || forward > blastRange)
                 return false;
+            float lateral = Mathf.Abs(toTarget.x * aim.y - toTarget.y * aim.x);
             float halfWidth = 0.6f + Mathf.Max(0f, forward) * Mathf.Tan(blastSpreadAngle * Mathf.Deg2Rad);
-            return Mathf.Abs(toTarget.y) <= halfWidth;
+            return lateral <= halfWidth;
         }
 
         bool SolidBetween(Vector2 from, Vector2 to)
@@ -321,8 +348,9 @@ namespace DesertGecko.Enemies
         {
             base.OnDrawGizmosSelected();
             Gizmos.color = new Color(1f, 0.8f, 0.2f);
-            Vector2 muzzle = (Vector2)transform.position + new Vector2(muzzleOffset.x * FacingDirection, muzzleOffset.y);
-            Gizmos.DrawRay(muzzle, Vector2.right * FacingDirection * blastRange);
+            Gizmos.DrawRay(Muzzle, Vector2.right * FacingDirection * blastRange);
+            float a = maxAimAngle * Mathf.Deg2Rad;
+            Gizmos.DrawRay(Eye, new Vector2(Mathf.Cos(a) * FacingDirection, Mathf.Sin(a)) * airAttackRange);
         }
     }
 }

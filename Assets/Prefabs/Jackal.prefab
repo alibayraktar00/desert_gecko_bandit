@@ -242,6 +242,8 @@ MonoBehaviour:
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   weaponDrop: {fileID: 11400000, guid: 51b5e59fd83f91c4d9a73e5afc92c7c7, type: 2}
   weaponDropDelay: 0.8
+  weaponDropSpacing: 25
+  rockToolRadius: 40
   spriteRenderer: {fileID: 3155567913141401598}
   spriteFacesLeft: 0
   groundMask:
@@ -251,6 +253,9 @@ MonoBehaviour:
   alertDuration: 0.45
   attackRange: 2.6
   attackHeight: 1.2
+  maxAimAngle: 60
+  airAttackRange: 3
+  targetHeight: 0.45
   muzzleOffset: {x: 1, y: 0.8}
   aimDuration: 0.35
   firePoseDuration: 0.15

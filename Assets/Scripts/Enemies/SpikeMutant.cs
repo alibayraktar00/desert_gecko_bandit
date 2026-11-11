@@ -7,7 +7,8 @@ namespace DesertGecko.Enemies
     /// <summary>
     /// Diken Mutantı: sırtı yüzlerce dikenle kaplı, iri ve hantal bir çöl kirpisi.
     /// Ağır adımlarla devriye gezer. Gila'yı görünce çömelir, diken yığını dikilip titrer (uyarı + gerilme sesi),
-    /// sonra düz bir hat üzerinde yaylım ateşi açar. Atış ilerledikçe sırtı dolu -> yarı -> kel olur:
+    /// sonra yaylım ateşi açar. Her salvo, başladığı anda Gila'nın bulunduğu noktaya (havada süzülse de) nişanlanır;
+    /// dikenler takip etmez, salvolar arasında yer değiştiren oyuncu kaçar. Atış ilerledikçe sırtı dolu -> yarı -> kel olur:
     /// cephanesi bir bar olmadan karakterin kendisinden okunur. İlk yaylımdan sonra yarı dikenle kısa bir nefes alır.
     /// Dikenleri bitince tükenir: dili dışarıda soluklanır. Tek savunmasız anı budur; dikenliyken her darbe seker.
     /// Süre bitince "Fııışş" ile dikenler yeniden çıkar.
@@ -20,7 +21,10 @@ namespace DesertGecko.Enemies
 
         [Header("Algılama")]
         [SerializeField] float sightRange = 8f;
-        [SerializeField] float sightHeight = 2f;
+        [Tooltip("Nişan alınabilen en büyük açı (yatayın üstü/altı, derece)")]
+        [SerializeField] float maxAimAngle = 60f;
+        [Tooltip("Hedef nokta: Gila'nın ayağından gövde ortasına")]
+        [SerializeField] float targetHeight = 0.45f;
         [Tooltip("Dikenler yeniden çıktıktan sonra yeni yaylıma kadar bekleme")]
         [SerializeField] float attackCooldown = 1.5f;
 
@@ -123,6 +127,7 @@ namespace DesertGecko.Enemies
         Vector3 visualHome;
         int spikyContactDamage;
         int firedThisVolley;
+        Vector2 salvoTarget;
         float stateStartedAt, stateEndsAt, nextAttackAt, nextShotAt, hurtUntil, nextSweatAt, recoilUntil;
 
         protected override void Awake()
@@ -148,6 +153,8 @@ namespace DesertGecko.Enemies
             // Kelken dikeni yok: çarpmak can yakmaz, yanına gidip vurulabilsin.
             contactDamage = state == SpikeState.Exhausted ? 0 : spikyContactDamage;
         }
+
+        Vector2 PlayerTarget => (Vector2)Player.transform.position + Vector2.up * targetHeight;
 
         int DirectionToPlayer => Player != null && Player.transform.position.x >= transform.position.x ? 1 : -1;
 
@@ -208,11 +215,12 @@ namespace DesertGecko.Enemies
         {
             if (Time.time < nextAttackAt || !IsGrounded() || Player == null || !Player.IsAlive)
                 return false;
-            Vector2 toPlayer = Player.transform.position - transform.position;
-            if (Mathf.Abs(toPlayer.x) > sightRange || Mathf.Abs(toPlayer.y) > sightHeight)
+            Vector2 eye = (Vector2)transform.position + Vector2.up * muzzleOffset.y;
+            Vector2 toPlayer = PlayerTarget - eye;
+            // Yerdeki ya da havada süzülen Gila: menzilde ve nişan konisinin içindeyse görülür.
+            if (toPlayer.magnitude > sightRange || Mathf.Atan2(Mathf.Abs(toPlayer.y), Mathf.Abs(toPlayer.x)) * Mathf.Rad2Deg > maxAimAngle)
                 return false;
-            Vector2 eye = (Vector2)transform.position + Vector2.up * 0.6f;
-            int count = Physics2D.Raycast(eye, Vector2.right * Mathf.Sign(toPlayer.x), solidFilter, sightHits, Mathf.Abs(toPlayer.x));
+            int count = Physics2D.Raycast(eye, toPlayer.normalized, solidFilter, sightHits, toPlayer.magnitude);
             for (int i = 0; i < count; i++)
                 if (!sightHits[i].collider.usedByEffector) // tek yönlü platformlar görüşü kesmez
                     return false;
@@ -236,6 +244,11 @@ namespace DesertGecko.Enemies
 
             if (Time.time < nextShotAt)
                 return;
+            // Salvonun ilk dikeninde hedef alınır: aynı salvodakiler o noktaya gider.
+            if (firedThisVolley % spikesPerSalvo == 0)
+                salvoTarget = Player != null && Player.IsAlive
+                    ? PlayerTarget
+                    : (Vector2)transform.position + new Vector2(FacingDirection * sightRange, muzzleOffset.y);
             Fire();
             firedThisVolley++;
             bool salvoDone = firedThisVolley % spikesPerSalvo == 0;
@@ -257,8 +270,11 @@ namespace DesertGecko.Enemies
             Vector2 muzzle = origin + new Vector2(muzzleOffset.x * FacingDirection, muzzleOffset.y + Random.Range(-muzzleJitter, muzzleJitter));
             if (spikePrefab != null)
             {
+                Vector2 body = new Vector2(origin.x, muzzle.y);
+                Vector2 dir = EnemyBullet.AimDirection(body, muzzle, salvoTarget, FacingDirection, maxAimAngle);
                 EnemyBullet spike = Instantiate(spikePrefab, muzzle, Quaternion.identity);
-                spike.Launch(FacingDirection, new Vector2(origin.x, muzzle.y));
+                spike.Owner = this;
+                spike.Launch(dir, body);
             }
             PixelBurst.Spawn(muzzle, sparkColor, 2, 2f, 0.15f);
             recoilUntil = Time.time + spikeInterval * 0.6f;
@@ -389,7 +405,13 @@ namespace DesertGecko.Enemies
         {
             base.OnDrawGizmosSelected();
             Gizmos.color = new Color(0.3f, 0.3f, 0.35f, 0.7f);
-            Gizmos.DrawWireCube(transform.position + Vector3.up * sightHeight * 0.5f, new Vector3(sightRange * 2f, sightHeight));
+            Vector3 eye = transform.position + Vector3.up * muzzleOffset.y;
+            float a = maxAimAngle * Mathf.Deg2Rad;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Gizmos.DrawRay(eye, new Vector3(Mathf.Cos(a) * side, Mathf.Sin(a)) * sightRange);
+                Gizmos.DrawRay(eye, new Vector3(Mathf.Cos(a) * side, -Mathf.Sin(a)) * sightRange);
+            }
         }
     }
 }

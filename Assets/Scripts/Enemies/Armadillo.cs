@@ -71,8 +71,12 @@ namespace DesertGecko.Enemies
 
         public ArmadilloState State { get; private set; } = ArmadilloState.Patrol;
 
-        /// <summary>Kapanmışken ve yuvarlanırken zırhı her saldırıyı boşa çıkarır.</summary>
-        protected override bool Invulnerable => State == ArmadilloState.Curl || State == ArmadilloState.Roll;
+        /// <summary>
+        /// Kapanmışken ve yuvarlanırken zırhı her saldırıyı boşa çıkarır. Vurulup kapanırken ilk an (sarsılma)
+        /// henüz açıktır: aynı saçmanın öteki taneleri ilk tanenin tetiklediği zırha takılmasın.
+        /// </summary>
+        protected override bool Invulnerable =>
+            (State == ArmadilloState.Curl && Time.time >= flinchUntil) || State == ArmadilloState.Roll;
         /// <summary>Zırh mermiyi, saçmayı, kazmayı, dili sektirir; yalnız patlama kabuğu çatlatır.</summary>
         protected override bool Deflects(in DamageInfo hit) => Invulnerable && hit.Kind != DamageKind.Explosion;
         protected override bool CanChase => false;
@@ -82,7 +86,7 @@ namespace DesertGecko.Enemies
         ContactFilter2D solidFilter;
         int walkingContactDamage;
         int rollDirection;
-        float stateStartedAt, stateEndsAt, nextAttackAt, hurtUntil, nextDustAt, nextPauseAt, rollStartX;
+        float stateStartedAt, stateEndsAt, nextAttackAt, hurtUntil, nextDustAt, nextPauseAt, rollStartX, flinchUntil;
         bool swingLanded;
 
         protected override void Awake()
@@ -310,8 +314,12 @@ namespace DesertGecko.Enemies
                 PixelBurst.Spawn(b.center, dustColor, 10, 3.5f, 0.5f);
                 return;
             }
-            // Her darbeden sonra hemen kapanıp vurana doğru yuvarlanır: vur, kaç, yine vur.
             hurtUntil = Time.time + hurtDuration;
+            // Sersemken vurulunca kapanmaz: sersemlik onu vurmanın asıl fırsatı, mermi ve saçma da işler.
+            if (State == ArmadilloState.Daze || State == ArmadilloState.Recover)
+                return;
+            // Öteki durumlarda darbeden sonra kapanıp vurana doğru yuvarlanır: vur, kaç, yine vur.
+            flinchUntil = Time.time + hurtDuration;
             rollDirection = Player != null
                 ? (Player.transform.position.x >= transform.position.x ? 1 : -1)
                 : FacingDirection;
@@ -334,6 +342,7 @@ namespace DesertGecko.Enemies
             Enter(ArmadilloState.Patrol);
             nextAttackAt = 0f;
             hurtUntil = 0f;
+            flinchUntil = 0f;
             nextPauseAt = Time.time + walkTime;
         }
 

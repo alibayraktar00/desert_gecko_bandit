@@ -1,3 +1,4 @@
+using System.Linq;
 using DesertGecko.Collectibles;
 using DesertGecko.Core;
 using DesertGecko.Enemies;
@@ -75,9 +76,23 @@ namespace DesertGecko.EditorTools
             col.isTrigger = true;
             col.radius = 0.22f;
 
-            Transform visual = AddSprite(root.transform, "Visual", sprite, 12).transform;
+            // Gergin, dalgalanan kuyruk kareleri (tools/kuyruk_mermi_ciz.py); yoksa yer tutucu.
+            var frames = Enumerable.Range(0, 16)
+                .Select(i => AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Sprites/Player/kuyruk_mermi_{i}.png"))
+                .TakeWhile(s => s != null)
+                .ToArray();
+            Transform visual = AddSprite(root.transform, "Visual", frames.Length > 0 ? frames[0] : sprite, 12).transform;
             var projectile = root.AddComponent<TailProjectile>();
             SetField(projectile, "visual", visual);
+            if (frames.Length > 0)
+            {
+                var so = new SerializedObject(projectile);
+                var list = so.FindProperty("frames");
+                list.arraySize = frames.Length;
+                for (int i = 0; i < frames.Length; i++)
+                    list.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
             return Save<TailProjectile>(root, "TailProjectile");
         }
 

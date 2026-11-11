@@ -292,6 +292,7 @@ MonoBehaviour:
   shake: 0.32
   recoverTime: 0.35
   thrownDamage: 1
+  maxShotDamage: 3
   throwVelocity: {x: 8, y: 6}
   fuseTime: 1.3
   blastRadius: 1.7

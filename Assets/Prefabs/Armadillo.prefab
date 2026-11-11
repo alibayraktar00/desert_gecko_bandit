@@ -236,6 +236,8 @@ MonoBehaviour:
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   weaponDrop: {fileID: 11400000, guid: 960305eaf8d07694db723d2cf94ec61d, type: 2}
   weaponDropDelay: 0.8
+  weaponDropSpacing: 25
+  rockToolRadius: 40
   spriteRenderer: {fileID: 3973182267119427980}
   spriteFacesLeft: 0
   groundMask:

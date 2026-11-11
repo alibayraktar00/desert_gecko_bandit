@@ -66,6 +66,8 @@ namespace DesertGecko.Player
         [Header("Tek yönlü platform")]
         [Tooltip("Aşağı + zıplama ile tek yönlü platformdan inerken çarpışmanın kapalı kaldığı süre")]
         [SerializeField] float dropThroughTime = 0.3f;
+        [Tooltip("Platformdan inerken verilen aşağı hız: süzülmeyle platformun içinde asılı kalınmasın")]
+        [SerializeField] float dropThroughKick = 3f;
 
         /// <summary>Sıcaklık sistemi bunu ayarlar (sıcakta &gt; 1, soğukta &lt; 1).</summary>
         public float SpeedMultiplier { get; set; } = 1f;
@@ -358,6 +360,8 @@ namespace DesertGecko.Player
             droppedThrough = standingOneWay;
             dropThroughUntil = Time.time + dropThroughTime;
             Physics2D.IgnoreCollision(box, droppedThrough, true);
+            // Hafif aşağı itiş: süzülme hemen başlasa da platformun içinde asılı kalmasın.
+            body.linearVelocity = new Vector2(body.linearVelocity.x, Mathf.Min(body.linearVelocity.y, -dropThroughKick));
             State = MoveState.Airborne;
             lastGroundedTime = float.NegativeInfinity; // coyote ile geri zıplamasın
             lastJumpPressTime = float.NegativeInfinity;
@@ -366,6 +370,10 @@ namespace DesertGecko.Player
         void EndDropThrough()
         {
             if (droppedThrough == null || Time.time < dropThroughUntil)
+                return;
+            // Gövde hâlâ platformun içindeyse çarpışma açılmaz: süzülürken yavaş inen Gila'yı fizik platformun
+            // üstüne geri fırlatırdı. Tamamen altına (ya da yanına) çıkınca açılır.
+            if (droppedThrough.enabled && box.bounds.Intersects(droppedThrough.bounds))
                 return;
             Physics2D.IgnoreCollision(box, droppedThrough, false);
             droppedThrough = null;

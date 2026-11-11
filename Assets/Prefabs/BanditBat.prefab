@@ -142,7 +142,7 @@ MonoBehaviour:
   m_Light2DProvider:
     rid: -2
   m_SelectionSources:
-    rid: 4993203620114858422
+    rid: 4993203625613328463
   m_FalloffIntensity: 0.5
   m_Color: {r: 0.82, g: 0.78, b: 1, a: 1}
   m_Intensity: 0
@@ -188,7 +188,7 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 4993203620114858422
+    - rid: 4993203625613328463
       type: {class: Light2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
       data:
         m_SelectedHashCode: 3
@@ -434,6 +434,8 @@ MonoBehaviour:
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   weaponDrop: {fileID: 11400000, guid: 41cec8b34c9679d449d6aaf5f69e9f66, type: 2}
   weaponDropDelay: 0.8
+  weaponDropSpacing: 25
+  rockToolRadius: 40
   spriteRenderer: {fileID: 5087787443650601294}
   spriteFacesLeft: 0
   groundMask:
@@ -454,6 +456,8 @@ MonoBehaviour:
   dynamitePrefab: {fileID: 2586680791358700231, guid: 06ea86a41f7d32147ae9711a58e5bfa3, type: 3}
   dynamiteCount: 3
   aimTolerance: 0.9
+  lobPatience: 1
+  lobRange: 9
   firstThrowDelay: 0.8
   windupDuration: 0.75
   releaseDuration: 0.3

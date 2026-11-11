@@ -218,8 +218,16 @@ MonoBehaviour:
   riseFrame: {fileID: 21300000, guid: 4f192b667cdd8fe4596a646b111586e7, type: 3}
   apexFrame: {fileID: 21300000, guid: 8586a0d7337d38d44a201df7126d68b6, type: 3}
   fallFrame: {fileID: 21300000, guid: 856bebe70ad2daf45a0183511219b6cd, type: 3}
-  glideFrames: []
-  glideFps: 8
+  glideFrames:
+  - {fileID: 21300000, guid: 8481eb776d174f56904f8284f5c44a45, type: 3}
+  - {fileID: 21300000, guid: 06bacb5650274cdc84da0b4c85c964df, type: 3}
+  - {fileID: 21300000, guid: 4f9279d570884b2e8eea114cbadf2d81, type: 3}
+  - {fileID: 21300000, guid: c648f5e8d1e446bc82bb0c06c1f21e33, type: 3}
+  - {fileID: 21300000, guid: 53b92ff2a27a4472a1398f6dd9e00f8f, type: 3}
+  - {fileID: 21300000, guid: a49ec8989c3e4fb9b7be79935fa098f1, type: 3}
+  - {fileID: 21300000, guid: 430e3769ef5140c4b26e02850b3af905, type: 3}
+  - {fileID: 21300000, guid: 1b28f6359c3142f1a072fe2584eff0ca, type: 3}
+  glideFps: 60
   wallFrames:
   - {fileID: 21300000, guid: 6a30d22823059ee4ea5acd7890ab04e8, type: 3}
   - {fileID: 21300000, guid: 9c4ba7711d7d5bd4bbddd786cb9071fb, type: 3}
@@ -700,6 +708,7 @@ MonoBehaviour:
     m_Bits: 64
   probeDepth: 0.06
   dropThroughTime: 0.3
+  dropThroughKick: 3
 --- !u!114 &85021552135620570
 MonoBehaviour:
   m_ObjectHideFlags: 0

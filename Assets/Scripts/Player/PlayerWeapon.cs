@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using DesertGecko.Core;
 using DesertGecko.Effects;
+using DesertGecko.Environment;
 using DesertGecko.UI;
 using DesertGecko.Weapons;
 using UnityEngine;
@@ -10,8 +11,8 @@ namespace DesertGecko.Player
 {
     /// <summary>
     /// Düşmandan alınan silah. Silah varken K ateş eder (W ile yukarı, W + yön ile çapraz); mermi bitince K boş
-    /// silahı fırlatır. Yerdeyken S + K silahı mermisiyle birlikte bırakır. Silah yokken K kuyruğu fırlatır (TailAttack).
-    /// Ölünce silah kaybolur. Silah, Gila'nın öndeki yumruğuna oturan ayrı bir sprite'tır: kabza yumruğun içinde
+    /// silahı fırlatır. Yerdeyken S + K silahı mermisiyle birlikte bırakır. Kuyruk ayrı tuştadır (L, TailAttack):
+    /// silah eldeyken de fırlatılır. Ölünce Gila son checkpoint'ten geçerkenki silahla doğar. Silah, Gila'nın öndeki yumruğuna oturan ayrı bir sprite'tır: kabza yumruğun içinde
     /// kalır, namlu önden çıkar. Gila'nın kendi koşusu ve kolları değişmez; kolu göğsünde duran karelerde (duruş)
     /// koşudaki öne uzanmış ön kol da bu sprite'ta çizilidir, silah dururken de elde görünür.
     /// </summary>
@@ -32,6 +33,10 @@ namespace DesertGecko.Player
         public WeaponData.Aim CurrentAim { get; private set; }
         /// <summary>Yerdeki silahı alabilir mi (ölüyken alamaz).</summary>
         public bool CanPickUp => health.IsAlive;
+
+        // Son checkpoint'ten geçerkenki silah ve mermi: ölünce Gila bununla doğar (bölüm başında silahsız).
+        WeaponData checkpointWeapon;
+        int checkpointAmmo;
 
         /// <summary>Silah ya da mermi sayısı değişti (arayüz).</summary>
         public event Action Changed;
@@ -75,13 +80,15 @@ namespace DesertGecko.Player
         void OnEnable()
         {
             health.Died += LoseWeapon;
-            health.Respawned += LoseWeapon;
+            health.Respawned += RestoreCheckpointWeapon;
+            health.CheckpointSet += SaveCheckpointWeapon;
         }
 
         void OnDisable()
         {
             health.Died -= LoseWeapon;
-            health.Respawned -= LoseWeapon;
+            health.Respawned -= RestoreCheckpointWeapon;
+            health.CheckpointSet -= SaveCheckpointWeapon;
         }
 
         void CreateOverlay()
@@ -106,10 +113,12 @@ namespace DesertGecko.Player
         void Update()
         {
             if (!IsArmed)
+            {
+                input.ConsumeFire(); // silahsızken basılan K, silah alınınca kendiliğinden ateşlenmesin
                 return;
+            }
             CurrentAim = ReadAim();
-            // Kuyruk tuşu silah varken ateş tuşudur; TailAttack silah varken bu tuşa dokunmaz.
-            if (input.ConsumeTail())
+            if (input.ConsumeFire())
                 Use();
             if (IsArmed && Current.Mode == WeaponData.FireMode.Melee)
                 UpdateSwing();
@@ -215,7 +224,8 @@ namespace DesertGecko.Player
 
         /// <summary>
         /// Vuruş: Gila'nın önündeki kutuda kalan her düşmana bir kez yakın dövüş hasarı. Bir şeye değerse kıvılcım,
-        /// boşa inerse önündeki yerden toz kalkar. Her sallama bir dayanıklılık harcar.
+        /// boşa inerse önündeki yerden toz kalkar. Dayanıklılık yalnız gerçekten bir düşmana ya da kayaya inince
+        /// harcanır: havaya sallamak hak yemez.
         /// </summary>
         void Strike()
         {
@@ -234,7 +244,15 @@ namespace DesertGecko.Player
             for (int i = 0; i < count; i++)
             {
                 var target = meleeHits[i].GetComponentInParent<IDamageable>();
-                if (target == null || target is PlayerHealth || !target.IsAlive || !meleeDamaged.Add(target))
+                if (target == null || target is PlayerHealth || !target.IsAlive)
+                    continue;
+                if (!Current.BreaksRocks && target is BreakableRock)
+                {
+                    // Bıçak taşa işlemez: kıvılcım saçıp seker, hak da yemez.
+                    PixelBurst.Spawn(meleeHits[i].ClosestPoint(center), Color.white, 3, 2.5f, 0.15f);
+                    continue;
+                }
+                if (!meleeDamaged.Add(target))
                     continue;
                 target.TakeDamage(new DamageInfo(Current.Damage, new Vector2(side, 0f), DamageKind.Melee, strike));
                 PixelBurst.Spawn(meleeHits[i].ClosestPoint(center), SparkColor, 7, 3.5f, 0.25f);
@@ -258,7 +276,8 @@ namespace DesertGecko.Player
                 HitStop.Request(Current.HitStop); // kazma ete ve zırha oturur
             CameraShake.Add(hit ? Current.Shake : Current.Shake * 0.6f); // kazma bir şeye ya da yere iner
 
-            Ammo--;
+            if (hit)
+                Ammo--;
             firedAt = Time.time;
             Fired?.Invoke();
             Changed?.Invoke();
@@ -447,6 +466,24 @@ namespace DesertGecko.Player
         }
 
         void LoseWeapon() => Clear();
+
+        void SaveCheckpointWeapon()
+        {
+            checkpointWeapon = Current;
+            checkpointAmmo = Ammo;
+        }
+
+        /// <summary>Ölünce eldeki silah düşer; yeniden doğarken checkpoint'ten geçerkenki silah ve mermi geri gelir.</summary>
+        void RestoreCheckpointWeapon()
+        {
+            if (checkpointWeapon == null)
+            {
+                Clear();
+                return;
+            }
+            Equip(checkpointWeapon, checkpointAmmo);
+            PickedUp?.Invoke(); // arayüz ikonu sıçrasın: silahın geri geldiği görülsün
+        }
 
         void Clear()
         {

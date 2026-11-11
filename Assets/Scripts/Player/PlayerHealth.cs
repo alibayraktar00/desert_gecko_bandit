@@ -52,6 +52,9 @@ namespace DesertGecko.Player
         /// <summary>Oyuncu öldükten sonra yeniden doğunca. Düşmanlar buna bakıp kendini sıfırlar.</summary>
         public static event Action PlayerRespawned;
 
+        /// <summary>Yeni checkpoint yakıldı: silah gibi durumlar o anki hâlini kaydeder, ölünce ona döner.</summary>
+        public event Action CheckpointSet;
+
         PlayerController controller;
         float invincibleUntil;
         Coroutine blinkRoutine;
@@ -94,7 +97,11 @@ namespace DesertGecko.Player
             CheckpointPosition = transform.position;
         }
 
-        public void SetCheckpoint(Vector2 position) => CheckpointPosition = position;
+        public void SetCheckpoint(Vector2 position)
+        {
+            CheckpointPosition = position;
+            CheckpointSet?.Invoke();
+        }
 
         public bool TakeDamage(DamageInfo info)
         {

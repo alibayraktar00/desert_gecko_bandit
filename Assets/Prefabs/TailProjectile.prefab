@@ -112,7 +112,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Player.TailProjectile
   damage: 3
   lifetime: 3
-  spinSpeed: 900
+  frames:
+  - {fileID: 21300000, guid: cde18edb0dec4f218c963a750fd39200, type: 3}
+  - {fileID: 21300000, guid: 50717d6edb6743199e8b7a412054523f, type: 3}
+  - {fileID: 21300000, guid: 9691115e17504991b79d16eadfce6f94, type: 3}
+  - {fileID: 21300000, guid: 0f918fc00b754d7ba07c50b298266d2e, type: 3}
+  - {fileID: 21300000, guid: 585c6a74c5a04d9fbc726987d41e1b92, type: 3}
+  - {fileID: 21300000, guid: 0006b1def51248e09d3a44c7950fb822, type: 3}
+  fps: 16
   visual: {fileID: 8306957939442886029}
   burstColor: {r: 0.9098039, g: 0.627451, b: 0.2901961, a: 1}
 --- !u!1 &7040082145455352677
@@ -196,7 +203,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 12
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 35890f193b69dc140a4a6ba618a60092, type: 3}
+  m_Sprite: {fileID: 21300000, guid: cde18edb0dec4f218c963a750fd39200, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

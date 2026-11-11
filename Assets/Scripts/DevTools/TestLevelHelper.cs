@@ -71,7 +71,7 @@ namespace DesertGecko.DevTools
             string text =
                 "A/D: koş   Space: zıpla (havada tekrar: çift zıplama, basılı tut: süzül)\n" +
                 "Duvara doğru bas: yapış   W/S: tırman   Space: duvar zıplaması\n" +
-                "J: dil (W/S ile yukarı/aşağı)   K: kuyruk fırlat\n" +
+                "J: dil (W/S ile yukarı/aşağı)   K: silahla ateş   L: kuyruk fırlat\n" +
                 $"Durum: {player.State}   Hız: {player.Velocity.x:0.0}, {player.Velocity.y:0.0}";
             GUI.Box(new Rect(10, Screen.height - 92, 560, 82), text, style);
         }

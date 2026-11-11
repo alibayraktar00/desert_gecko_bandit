@@ -35,13 +35,16 @@ namespace DesertGecko.Core
         /// takılmaz. Yakından bütün taneler isabet eder, uzaktan dağılıp birkaçı. 0 = tek parça.
         /// </summary>
         public readonly int ShotId;
+        /// <summary>Aynı atışın tek hedefe verebileceği toplam hasar (pompalı herkesi tek atmasın). 0 = sınırsız.</summary>
+        public readonly int ShotCap;
 
-        public DamageInfo(int amount, Vector2 direction, DamageKind kind, int shotId = 0)
+        public DamageInfo(int amount, Vector2 direction, DamageKind kind, int shotId = 0, int shotCap = 0)
         {
             Amount = amount;
             Direction = direction;
             Kind = kind;
             ShotId = shotId;
+            ShotCap = shotCap;
         }
 
         /// <summary>

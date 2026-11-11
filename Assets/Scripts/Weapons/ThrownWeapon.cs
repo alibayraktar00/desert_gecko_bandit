@@ -6,12 +6,17 @@ using UnityEngine;
 namespace DesertGecko.Weapons
 {
     /// <summary>
-    /// Mermisi biten, fırlatılan silah: dönerek kavis çizer. İlk çarptığı düşmana küçük bir hasar verip
-    /// geri seker; yere düşünce biraz yatar ve söner. Bir daha alınamaz.
+    /// Mermisi biten, fırlatılan silah: atıldığı anda atış yönündeki en uygun düşmana kilitlenir ve dönerek
+    /// ona doğru uçar. Kilitlenecek düşman yoksa (ya da hedef ölürse) kavis çizip düşer. İlk çarptığı düşmana
+    /// küçük bir hasar verip geri seker; yere düşünce biraz yatar ve söner. Bir daha alınamaz.
     /// </summary>
     public class ThrownWeapon : MonoBehaviour
     {
         const float Gravity = 28f, SpinSpeed = 1080f, Lifetime = 3f, LieTime = 0.5f, FadeTime = 0.35f;
+        /// <summary>Kilitlenme: menzil, atış yönünden en fazla sapma (derece) ve hedefe uçuş hızı.</summary>
+        const float LockRange = 9f, LockAngle = 75f, HomingSpeed = 15f;
+        static readonly Collider2D[] candidates = new Collider2D[16];
+        static readonly RaycastHit2D[] sightHits = new RaycastHit2D[4];
         static readonly Color DustColor = new Color32(0xC8, 0x9A, 0x60, 0xFF);
 
         readonly RaycastHit2D[] hits = new RaycastHit2D[6];
@@ -21,6 +26,8 @@ namespace DesertGecko.Weapons
         float age, landedAt = -1f;
         int damage;
         bool spent; // düşmana çarptı: artık hasar vermez
+        Collider2D target;
+        IDamageable targetHealth;
 
         public static ThrownWeapon Spawn(Sprite sprite, Vector2 position, Vector2 velocity, int damage, int order)
         {
@@ -32,8 +39,58 @@ namespace DesertGecko.Weapons
             thrown.sr.sortingOrder = order;
             thrown.velocity = velocity;
             thrown.damage = damage;
+            thrown.LockOn(position, velocity);
             return thrown;
         }
+
+        /// <summary>
+        /// Atış yönüne en yakın açıda ve en yakın mesafedeki, arada duvar olmayan canlı düşmanı seçer.
+        /// Ateşten sonra çok hareket eden düşman da kaçamaz: silah her karede ona döner.
+        /// </summary>
+        void LockOn(Vector2 from, Vector2 throwVelocity)
+        {
+            Vector2 aim = throwVelocity.sqrMagnitude > 0.01f ? throwVelocity.normalized : Vector2.right;
+            int count = Physics2D.OverlapCircleNonAlloc(from, LockRange, candidates, GameLayers.EnemyMask);
+            float best = float.MaxValue;
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D c = candidates[i];
+                if (c.isTrigger)
+                    continue;
+                var health = c.GetComponentInParent<IDamageable>();
+                if (health == null || health is PlayerHealth || !health.IsAlive)
+                    continue;
+                Vector2 to = (Vector2)c.bounds.center - from;
+                float angle = Vector2.Angle(aim, to);
+                if (angle > LockAngle || Blocked(from, c.bounds.center))
+                    continue;
+                // Açıca sapan hedef uzak sayılır: önündeki düşman, yandaki yakın düşmandan önce gelir.
+                float score = to.magnitude * (1f + angle / 45f);
+                if (score < best)
+                {
+                    best = score;
+                    target = c;
+                    targetHealth = health;
+                }
+            }
+        }
+
+        static bool Blocked(Vector2 from, Vector2 to)
+        {
+            Vector2 path = to - from;
+            int count = Physics2D.Raycast(from, path.normalized, new ContactFilter2D
+            {
+                useLayerMask = true,
+                layerMask = GameLayers.GroundMask,
+                useTriggers = false,
+            }, sightHits, path.magnitude);
+            for (int i = 0; i < count; i++)
+                if (!sightHits[i].collider.usedByEffector) // tek yönlü platformlar kilidi bozmaz
+                    return true;
+            return false;
+        }
+
+        bool Homing => !spent && target != null && target.isActiveAndEnabled && targetHealth != null && targetHealth.IsAlive;
 
         void Awake()
         {
@@ -60,8 +117,17 @@ namespace DesertGecko.Weapons
                 return;
             }
 
-            velocity.y -= Gravity * dt;
             Vector2 from = transform.position;
+            if (Homing)
+            {
+                // Hedefe kilitli: yerçekimsiz, her karede ona döner.
+                Vector2 toTarget = (Vector2)target.bounds.center - from;
+                velocity = toTarget.normalized * Mathf.Max(HomingSpeed, velocity.magnitude);
+            }
+            else
+            {
+                velocity.y -= Gravity * dt;
+            }
             Vector2 to = from + velocity * dt;
             transform.Rotate(0f, 0f, -SpinSpeed * Mathf.Sign(velocity.x + 0.0001f) * dt);
 
@@ -71,6 +137,8 @@ namespace DesertGecko.Weapons
                 Collider2D other = hits[i].collider;
                 if (((1 << other.gameObject.layer) & GameLayers.GroundMask) != 0)
                 {
+                    if (other.usedByEffector && Homing)
+                        continue; // hedefe giderken tek yönlü platformdan geçer
                     transform.position = hits[i].point + hits[i].normal * 0.15f;
                     if (hits[i].normal.y > 0.5f)
                     {

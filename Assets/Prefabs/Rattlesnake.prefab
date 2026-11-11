@@ -334,6 +334,8 @@ MonoBehaviour:
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
   weaponDrop: {fileID: 11400000, guid: 6a0db4b3a2fc16548b1a1a36f1a2536a, type: 2}
   weaponDropDelay: 0.8
+  weaponDropSpacing: 25
+  rockToolRadius: 40
   spriteRenderer: {fileID: 2563158231322058685}
   spriteFacesLeft: 0
   groundMask:
@@ -341,16 +343,17 @@ MonoBehaviour:
     m_Bits: 64
   killY: -12
   sightRange: 9
+  maxAimAngle: 65
+  targetHeight: 0.45
   bulletPrefab: {fileID: 5440253099904932930, guid: 038cf3d99e0dd6d4aade731a9dcbebd7, type: 3}
   muzzleOffset: {x: 0.66, y: 0.54}
-  telegraphDuration: 0.8
+  telegraphDuration: 0.6
   aimDuration: 0.15
   shootPoseDuration: 0.12
-  recoverDuration: 0.4
-  attackCooldown: 1.5
+  recoverDuration: 0.25
+  attackCooldown: 0.5
   hurtDuration: 0.3
-  interruptedCooldown: 0.8
-  counterCooldown: 2.5
+  counterTelegraph: 0.4
   audioSource: {fileID: 216163692455443263}
   rattleClip: {fileID: 8300000, guid: 843bb6a5a97716f4a9905164600d3842, type: 3}
   shotClip: {fileID: 8300000, guid: 9e82c2d734b160c468ecb384ffb3a470, type: 3}

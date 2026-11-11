@@ -651,7 +651,7 @@ namespace DesertGecko.Tests
                 // Tuş basışı olarak algılansın: bir kare bas, bir kare bırak.
                 if (tongue) { if (!tongueWasDown) keys.Add(Key.J); tongueWasDown = !tongueWasDown; }
                 else tongueWasDown = false;
-                if (throwTail) { if (!tailWasDown) keys.Add(Key.K); tailWasDown = !tailWasDown; }
+                if (throwTail) { if (!tailWasDown) keys.Add(Key.L); tailWasDown = !tailWasDown; }
                 else tailWasDown = false;
 
                 if (goRight)

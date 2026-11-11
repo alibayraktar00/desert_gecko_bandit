@@ -8,13 +8,14 @@ namespace DesertGecko.Enemies
     /// <summary>
     /// Kamuflajlı Çalı Faresi: sıradan, hareketsiz bir çalı topu gibi durur. Gila üstüne gelince onu geri
     /// fırlatır, çalıyı patlatıp çıkar ve peşine düşer; bir daha çalıya giremez. Yetişince bıçaklar, sonra
-    /// kısa süre soluklanır. Dil darbelerini iki kez bıçağıyla savuşturup karşı saldırır, üçüncüde ölür.
+    /// kısa süre soluklanır. Gila'ya ulaşamazsa (uçurumun altında, duvarda, üst katta) kenarda dikilip kalmaz:
+    /// geri çekilip olduğu yerin çevresinde gidip gelerek devriye gezer, Gila aynı zemine inince yeniden saldırır. Dil darbelerini iki kez bıçağıyla savuşturup karşı saldırır, üçüncüde ölür.
     /// Kuyruk savuşturulamaz. Atılırken oyuncunun önünde durur, içinden geçmez.
     /// Kareler sağa bakar; sola bakarken EnemyBase sprite'ı aynalar.
     /// </summary>
     public class TumbleweedMouse : EnemyBase
     {
-        public enum MouseState { Disguised, Reveal, Chase, Stab, Fatigue }
+        public enum MouseState { Disguised, Reveal, Chase, Stab, Fatigue, Wander }
 
         [Header("Gizlenme")]
         [Tooltip("Oyuncu çalının bu kadar içine girince tetiklenir")]
@@ -34,6 +35,15 @@ namespace DesertGecko.Enemies
         [SerializeField] float chaseRunSpeed = 6f;
         [Tooltip("Oyuncuya bu kadar kala durur: üst üste binmesin")]
         [SerializeField] float stopDistance = 1f;
+        [Tooltip("Gila'ya bu kadar süre ulaşamazsa kenardan geri çekilir")]
+        [SerializeField] float giveUpDelay = 0.6f;
+        [Tooltip("Devriyede bir yöne yürüme süresi (ilk ayak Gila'dan uzaklaşır)")]
+        [SerializeField] float wanderDuration = 1.2f;
+        [SerializeField] float wanderSpeed = 2.5f;
+        [Tooltip("Devriyede dönüşlerde soluklanma: durup Gila'ya bakar")]
+        [SerializeField] float wanderPause = 0.5f;
+        [Tooltip("Devriyede çekildiği noktadan en fazla bu kadar uzaklaşır")]
+        [SerializeField] float wanderRadius = 3f;
 
         [Header("Bıçak")]
         [SerializeField] float stabDuration = 0.65f;
@@ -73,7 +83,9 @@ namespace DesertGecko.Enemies
         protected override bool CanChase => false;
         protected override bool HoldPosition => true; // kendi hareketini aşağıda yapar
 
-        float stateStartedAt, stateEndsAt, nextStabAt, parryPoseUntil;
+        float stateStartedAt, stateEndsAt, nextStabAt, parryPoseUntil, unreachableSince = -1f;
+        int wanderDirection;
+        float wanderOriginX, wanderPauseUntil;
         float visualBaseY;
         bool isRevealed;
 
@@ -133,6 +145,9 @@ namespace DesertGecko.Enemies
                     if (timeUp)
                         Enter(MouseState.Chase, 0f);
                     break;
+                case MouseState.Wander:
+                    Wander(timeUp);
+                    break;
             }
         }
 
@@ -169,10 +184,74 @@ namespace DesertGecko.Enemies
                 BeginStab();
                 return;
             }
-            // Kenarda ya da duvarda bekler: uçuruma atlamaz.
-            bool canRun = IsGrounded() && !IsBlocked(direction) && !PlayerStandsAbove
+            // Kenarda ya da duvarda durur: uçuruma atlamaz.
+            bool blocked = IsBlocked(direction) || PlayerStandsAbove;
+            bool canRun = IsGrounded() && !blocked
                 && Mathf.Abs(Player.transform.position.x - transform.position.x) > stopDistance;
             body.linearVelocity = new Vector2(canRun ? direction * chaseRunSpeed : 0f, body.linearVelocity.y);
+
+            // Ulaşamıyorsa (kenar, duvar, başka kat) bir süre sonra geri çekilir: kenarda dikilip Gila'yı kilitlemesin.
+            if (IsGrounded() && (blocked || !PlayerOnMyLevel))
+            {
+                if (unreachableSince < 0f)
+                    unreachableSince = Time.time;
+                else if (Time.time - unreachableSince >= giveUpDelay)
+                    BeginWander(-direction);
+            }
+            else
+            {
+                unreachableSince = -1f;
+            }
+        }
+
+        /// <summary>Gila aynı zeminde mi: ne çok yukarıda ne çok aşağıda.</summary>
+        bool PlayerOnMyLevel =>
+            Player != null && Player.IsAlive && !PlayerStandsAbove
+            && Mathf.Abs(Player.transform.position.y - transform.position.y) <= stabHeight;
+
+        void BeginWander(int direction)
+        {
+            unreachableSince = -1f;
+            wanderDirection = direction;
+            // Devriyenin merkezi: geri çekileceği yer, kenarın biraz gerisi.
+            wanderOriginX = transform.position.x + direction * wanderRadius * 0.5f;
+            wanderPauseUntil = 0f;
+            Enter(MouseState.Wander, wanderDuration);
+        }
+
+        /// <summary>
+        /// Ulaşamadığı Gila'yı beklerken devriye: bir yöne yürür, durup bakar, döner. Uçurum, duvar ya da devriye
+        /// yarıçapı onu çevirir. Gila aynı zemine gelip yolu açıksa yeniden kovalar.
+        /// </summary>
+        void Wander(bool timeUp)
+        {
+            bool canReach = PlayerOnMyLevel && !IsBlocked(DirectionToPlayer);
+            if (canReach && Time.time - stateStartedAt >= 0.3f)
+            {
+                Enter(MouseState.Chase, 0f);
+                return;
+            }
+
+            if (Time.time < wanderPauseUntil)
+            {
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                if (Player != null && Player.IsAlive)
+                    TurnTowards(DirectionToPlayer);
+                return;
+            }
+
+            float fromOrigin = (transform.position.x - wanderOriginX) * wanderDirection;
+            bool turn = timeUp || IsBlocked(wanderDirection) || fromOrigin >= wanderRadius;
+            if (turn && IsGrounded())
+            {
+                wanderDirection = -wanderDirection;
+                wanderPauseUntil = Time.time + wanderPause;
+                Enter(MouseState.Wander, wanderDuration + wanderPause);
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                return;
+            }
+            body.linearVelocity = new Vector2(IsGrounded() ? wanderDirection * wanderSpeed : 0f, body.linearVelocity.y);
+            TurnTowards(wanderDirection);
         }
 
         void BeginStab()
@@ -244,6 +323,7 @@ namespace DesertGecko.Enemies
             isRevealed = false;
             ParriesLeft = parryCount;
             parryPoseUntil = 0f;
+            unreachableSince = -1f;
             Enter(MouseState.Disguised, 0f);
         }
 
@@ -279,6 +359,8 @@ namespace DesertGecko.Enemies
                     return Mathf.Abs(body.linearVelocity.x) > 0.1f ? Loop(runFrames, runFps) : parryFrame;
                 case MouseState.Stab: return Loop(stabFrames, stabFps);
                 case MouseState.Fatigue: return Loop(fatigueFrames, fatigueFps);
+                case MouseState.Wander:
+                    return Mathf.Abs(body.linearVelocity.x) > 0.1f ? Loop(runFrames, runFps * 0.6f) : parryFrame;
                 default: return null;
             }
         }
