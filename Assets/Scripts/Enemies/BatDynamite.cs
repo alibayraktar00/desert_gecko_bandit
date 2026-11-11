@@ -93,6 +93,8 @@ namespace DesertGecko.Enemies
             PixelBurst.Spawn(at, flashColor, 10, 6f, 0.25f);
             PixelBurst.Spawn(at, fireColor, 18, 4.5f, 0.45f);
             PixelBurst.Spawn(at + Vector2.up * 0.2f, smokeColor, 12, 2.2f, 0.8f);
+            ExplosionFx.Spawn(at, blastRadius * 0.8f, 10, 5); // şok halkası, ışık, uçuşan toprak
+            CameraShake.AddAt(at, 0.5f);
 
             var blastFilter = new ContactFilter2D { useLayerMask = true, layerMask = GameLayers.PlayerMask, useTriggers = false };
             int count = Physics2D.OverlapCircle(at, blastRadius, blastFilter, blastHits);

@@ -292,15 +292,27 @@ namespace DesertGecko.Enemies
                 Wake();
         }
 
+        int lifeId; // dirilince artar: önceki ölümün yenilgi animasyonu silah bırakmasın
+
+        /// <summary>Yere çakılıp toza karışınca dinamit demeti yattığı yerde kalır.</summary>
+        protected override bool DropsWeaponAfterDefeat => true;
+
         protected override void OnDied()
         {
-            BatDefeat.Spawn(transform.position, body.linearVelocity, defeatFrames,
+            BatDefeat defeat = BatDefeat.Spawn(transform.position, body.linearVelocity, defeatFrames,
                 spriteRenderer != null && spriteRenderer.flipX,
                 spriteRenderer != null ? spriteRenderer.sortingOrder : 8, dustColor);
+            int life = lifeId;
+            defeat.Finished += position =>
+            {
+                if (life == lifeId)
+                    DropWeapon(position);
+            };
         }
 
         public override void ResetEnemy()
         {
+            lifeId++;
             base.ResetEnemy();
             body.position = home;
             transform.position = home;

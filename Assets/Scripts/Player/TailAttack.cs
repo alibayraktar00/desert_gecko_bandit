@@ -35,6 +35,7 @@ namespace DesertGecko.Player
         PlayerController controller;
         PlayerInputReader input;
         PlayerHealth health;
+        PlayerWeapon weapon;
         float readyAt;
 
         void Awake()
@@ -42,6 +43,7 @@ namespace DesertGecko.Player
             controller = GetComponent<PlayerController>();
             input = GetComponent<PlayerInputReader>();
             health = GetComponent<PlayerHealth>();
+            weapon = GetComponent<PlayerWeapon>();
         }
 
         void OnEnable() => health.Respawned += RegrowTail;
@@ -49,7 +51,9 @@ namespace DesertGecko.Player
 
         void Update()
         {
-            if (input.ConsumeTail())
+            // Silah varken K ateş tuşudur: tuşu PlayerWeapon tüketir.
+            bool armed = weapon != null && weapon.IsArmed;
+            if (!armed && input.ConsumeTail())
                 TryThrow();
 
             if (!controller.HasTail && Time.time >= readyAt)

@@ -370,7 +370,7 @@ namespace DesertGecko.Player
                     float away = Mathf.Sign(transform.position.x - ((Component)target).transform.position.x);
                     health.TakeDamage(prickly.PrickDamage, new Vector2(away == 0f ? -AttackSide() : away, 0f));
                 }
-                target.TakeDamage(damage, direction);
+                target.TakeDamage(new DamageInfo(damage, direction, DamageKind.Tongue));
             }
         }
 

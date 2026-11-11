@@ -693,6 +693,9 @@ namespace DesertGecko.EditorTools
 
             var tail = root.AddComponent<TailAttack>();
             SetField(tail, "projectilePrefab", Fresh(a.TailProjectile));
+
+            // Düşmandan alınan silah; silah verileri WeaponSetup ile kurulur.
+            root.AddComponent<PlayerWeapon>();
         }
 
         // --- Seviye ---

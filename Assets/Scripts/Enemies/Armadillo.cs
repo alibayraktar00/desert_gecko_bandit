@@ -308,6 +308,9 @@ namespace DesertGecko.Enemies
             Enter(ArmadilloState.Curl, hurtDuration + curlDuration);
         }
 
+        /// <summary>Kazma, armadillo kapaklanıp maden tozuna karışınca yattığı yerde kalır.</summary>
+        protected override float WeaponDropDelay => (defeatFrames != null ? defeatFrames.Length : 0) * 0.09f + 1.0f;
+
         protected override void OnDied()
         {
             ArmadilloDefeat.Spawn(transform.position, defeatFrames, spriteRenderer != null && spriteRenderer.flipX,

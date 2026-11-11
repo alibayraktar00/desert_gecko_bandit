@@ -17,6 +17,9 @@ namespace DesertGecko.Enemies
         float hatVelocityY, hatStartX, age, landedAt = -1f;
         bool bodyLanded, hatLanded;
 
+        /// <summary>Gövde yere oturup yenilgi bittiğinde, gövdenin yattığı yer. Uçuruma düşerse çağrılmaz.</summary>
+        public event System.Action<Vector2> Finished;
+
         public static JackalDefeat Spawn(Vector2 position, Sprite defeat, Sprite hat, bool flipX, int order, int knockDirection)
         {
             var effect = new GameObject("CakalYenilgi").AddComponent<JackalDefeat>();
@@ -49,7 +52,11 @@ namespace DesertGecko.Enemies
             if (bodyLanded && hatLanded && landedAt < 0f)
                 landedAt = age;
             if ((landedAt >= 0f && age - landedAt > LingerAfterLanding) || age > MaxLifetime)
+            {
+                if (bodyLanded)
+                    Finished?.Invoke(bodyPart.position);
                 Destroy(gameObject);
+            }
         }
 
         void MoveBody(float dt)

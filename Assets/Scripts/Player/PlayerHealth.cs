@@ -96,6 +96,8 @@ namespace DesertGecko.Player
 
         public void SetCheckpoint(Vector2 position) => CheckpointPosition = position;
 
+        public void TakeDamage(DamageInfo info) => TakeDamage(info.Amount, info.Direction);
+
         public void TakeDamage(int amount, Vector2 knockbackDirection)
         {
             if (!IsAlive || IsInvincible || amount <= 0)

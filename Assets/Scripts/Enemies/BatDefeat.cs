@@ -24,6 +24,9 @@ namespace DesertGecko.Enemies
         bool dusted;
 
         /// <param name="center">Yarasanın ortası (EnemyBase transform'u).</param>
+        /// <summary>Yere çakılıp yatış bitince, yattığı yer. Uçuruma düşerse çağrılmaz.</summary>
+        public event System.Action<Vector2> Finished;
+
         public static BatDefeat Spawn(Vector2 center, Vector2 velocity, Sprite[] defeatFrames, bool flipX, int order, Color dustColor)
         {
             var effect = new GameObject("YarasaYenilgi").AddComponent<BatDefeat>();
@@ -93,7 +96,10 @@ namespace DesertGecko.Enemies
             c.a = 1f - fadeAge / FadeTime;
             sr.color = c;
             if (fadeAge >= FadeTime)
+            {
+                Finished?.Invoke(transform.position);
                 Destroy(gameObject);
+            }
         }
     }
 }

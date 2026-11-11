@@ -7,8 +7,7 @@ namespace DesertGecko.Core
     {
         bool IsAlive { get; }
 
-        /// <param name="amount">Yarım kalp = 1 birim.</param>
-        /// <param name="knockbackDirection">Hasarın geldiği yönün tersi; sadece işareti/yönü kullanılır.</param>
-        void TakeDamage(int amount, Vector2 knockbackDirection);
+        /// <summary>Darbenin miktarı, yönü ve türü. Düşmanlar zırh, savuşturma ve darbe korumasını türe göre işler.</summary>
+        void TakeDamage(DamageInfo info);
     }
 }

@@ -56,7 +56,7 @@ namespace DesertGecko.Player
             if (target == null || target is PlayerHealth || !target.IsAlive)
                 return;
 
-            target.TakeDamage(damage, body.linearVelocity.normalized);
+            target.TakeDamage(new DamageInfo(damage, body.linearVelocity.normalized, DamageKind.Tail));
             Break();
         }
 

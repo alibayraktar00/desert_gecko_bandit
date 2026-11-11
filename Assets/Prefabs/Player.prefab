@@ -545,6 +545,7 @@ GameObject:
   - component: {fileID: 204484799695116507}
   - component: {fileID: 8566178243617444267}
   - component: {fileID: 3194893899143709635}
+  - component: {fileID: 165095271441487033}
   m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
@@ -779,3 +780,18 @@ MonoBehaviour:
   regrowDuration: 9.7
   launchVelocity: {x: 13, y: 0.8}
   spawnOffset: {x: 0.4, y: 0.4}
+--- !u!114 &165095271441487033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8004541842516015441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d1b9101e18387a418d4861f75e2cd3d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Player.PlayerWeapon
+  throwVelocity: {x: 12, y: 4}
+  dropPickupDelay: 0.6
+  sortingOrder: 12

@@ -9,6 +9,8 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/bocek_slap.wav     dil böceği kapar: ıslak "şlap"
   Assets/Audio/bocek_yutma.wav    yutkunma ve ardından cızırdayan enerji
   Assets/Audio/altin_toplama.wav  altın toplanır: iki hızlı parlak nota, madeni şıngırtı
+  Assets/Audio/patlama.wav        dinamit patlaması: sert darbe, derin gümbürtü, toz hışırtısı
+  Assets/Audio/kazma.wav          kazma vuruşu: madeni çınlama, tok taş darbesi
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -129,6 +131,27 @@ def coin_chime(rng, seconds=0.45):
     return (bell(987.8, 0.0) * 0.4 + bell(1318.5, 0.06) * 0.5 + shards * 0.3) * 0.9
 
 
+def explosion(rng, seconds=1.1):
+    """Dinamit patlaması: sert gürültü darbesi, altında derin bir gümbürtü, sonra dağılan toz hışırtısı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.normal(0.0, 1.0, t.size)
+    boom = np.convolve(noise, np.ones(40) / 40, mode="same") * 6.0 * np.exp(-t * 4.5)  # boğuk gövde
+    crack = noise * np.exp(-t * 30.0)                                                  # ilk sert vuruş
+    rumble = np.sin(2 * np.pi * (55.0 * t - 18.0 * t ** 2)) * np.exp(-t * 3.5)          # derin gümbürtü
+    hiss = np.convolve(noise, np.ones(6) / 6, mode="same") * np.exp(-t * 6.0) * 0.4     # dağılan toz
+    attack = np.minimum(t / 0.004, 1.0)
+    return (crack * 0.6 + boom * 0.7 + rumble * 0.8 + hiss) * attack * 0.8
+
+
+def pick_clank(rng, seconds=0.4):
+    """Kazma vuruşu: madeni çınlama (uyumsuz tınılar) ve altında tok bir taş darbesi."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    ring = sum(np.sin(2 * np.pi * f * t) * a for f, a in ((1180.0, 0.5), (1730.0, 0.35), (2610.0, 0.25))) * np.exp(-t * 14.0)
+    thud = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(30) / 30, mode="same") * 5.0 * np.exp(-t * 35.0)
+    click = rng.normal(0.0, 1.0, t.size) * np.exp(-t * 90.0) * 0.6
+    return (ring * 0.6 + thud * 0.8 + click) * 0.8
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -140,6 +163,9 @@ def main():
     save("bocek_slap.wav", tongue_slap(rng))
     save("bocek_yutma.wav", gulp_sizzle(rng))
     save("altin_toplama.wav", coin_chime(rng))
+    # Yeni sesler kendi tohumuyla: öncekilerin rastgele dizisi bozulmasın.
+    save("patlama.wav", explosion(np.random.default_rng(11)))
+    save("kazma.wav", pick_clank(np.random.default_rng(12)))
 
 
 if __name__ == "__main__":

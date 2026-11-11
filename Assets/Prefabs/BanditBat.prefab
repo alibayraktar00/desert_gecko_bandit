@@ -427,9 +427,12 @@ MonoBehaviour:
   stunDuration: 0.3
   flashDuration: 0.12
   hitGuardDuration: 0.7
+  rapidHitGuardDuration: 0.05
   guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  weaponDrop: {fileID: 11400000, guid: 41cec8b34c9679d449d6aaf5f69e9f66, type: 2}
+  weaponDropDelay: 0.8
   spriteRenderer: {fileID: 5087787443650601294}
   spriteFacesLeft: 0
   groundMask:

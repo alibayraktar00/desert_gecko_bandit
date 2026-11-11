@@ -235,9 +235,12 @@ MonoBehaviour:
   stunDuration: 0.3
   flashDuration: 0.12
   hitGuardDuration: 0.7
+  rapidHitGuardDuration: 0.05
   guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  weaponDrop: {fileID: 11400000, guid: 51b5e59fd83f91c4d9a73e5afc92c7c7, type: 2}
+  weaponDropDelay: 0.8
   spriteRenderer: {fileID: 3155567913141401598}
   spriteFacesLeft: 0
   groundMask:
@@ -257,6 +260,8 @@ MonoBehaviour:
   blastSpreadAngle: 30
   recoilDistance: 0.4
   pelletColor: {r: 1, g: 0.8156863, b: 0.3137255, a: 1}
+  pelletSprite: {fileID: 21300000, guid: ed139a9ddbf39cb4d9b2b3a568ec544d, type: 3}
+  visiblePellets: 7
   hurtDuration: 0.3
   audioSource: {fileID: 7301557096351660155}
   shotClip: {fileID: 8300000, guid: 9e82c2d734b160c468ecb384ffb3a470, type: 3}

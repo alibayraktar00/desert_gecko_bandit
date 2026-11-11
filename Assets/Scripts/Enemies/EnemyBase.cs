@@ -3,6 +3,7 @@ using DesertGecko.Collectibles;
 using DesertGecko.Core;
 using DesertGecko.Effects;
 using DesertGecko.Player;
+using DesertGecko.Weapons;
 using UnityEngine;
 
 namespace DesertGecko.Enemies
@@ -47,9 +48,17 @@ namespace DesertGecko.Enemies
         [SerializeField] float flashDuration = 0.12f;
         [Tooltip("Darbe aldıktan sonra bu kadar süre yeni darbe işlemez: peş peşe vurup kilitlenemesin, düşman karşılık verebilsin")]
         [SerializeField] float hitGuardDuration = 0.7f;
+        [Tooltip("Mermi, patlama ve fırlatma gibi hızlı darbelerden sonraki kısa koruma: aynı saçmanın taneleri tek darbe sayılır, seri atış boşa gitmez")]
+        [SerializeField] float rapidHitGuardDuration = 0.05f;
         [SerializeField] float guardBlinkRate = 14f;
         [SerializeField] Color flashColor = new Color(1f, 0.35f, 0.35f);
         [SerializeField] Color deathBurstColor = new Color32(0xB5, 0x45, 0x2B, 0xFF);
+
+        [Header("Silah")]
+        [Tooltip("Ölüm animasyonu bitince yerde kalan silah; boşsa silah düşürmez. Düşman her dirilişte yeniden düşürür")]
+        [SerializeField] WeaponData weaponDrop;
+        [Tooltip("Ölümden silahın görünmesine kadar geçen süre (ölüm animasyonu bitsin)")]
+        [SerializeField] float weaponDropDelay = 0.8f;
 
         [Header("Görsel")]
         [SerializeField] protected SpriteRenderer spriteRenderer;
@@ -70,11 +79,19 @@ namespace DesertGecko.Enemies
         protected virtual bool HoldPosition => false;
         /// <summary>true iken saldırılar işlemez (zırh, kabuk).</summary>
         protected virtual bool Invulnerable => false;
-        /// <summary>Bu güçteki darbe boşa çıkar mı (zırh, savuşturma).</summary>
-        protected virtual bool Deflects(int amount) => Invulnerable;
+        /// <summary>Bu darbe boşa çıkar mı (zırh, savuşturma). Tür, miktar ve yön <paramref name="hit"/> içinde.</summary>
+        protected virtual bool Deflects(in DamageInfo hit) => Invulnerable;
         /// <summary>true ise darbe onu uçurumdan aşağı itmez (iri, ağır düşmanlar): kenardaysa yerinde sendeler.</summary>
         protected virtual bool KeepsFooting => false;
         protected PlayerHealth Player => player;
+        /// <summary>Silah, ölüm animasyonu bu kadar sürdükten sonra görünür.</summary>
+        protected virtual float WeaponDropDelay => weaponDropDelay;
+        /// <summary>
+        /// true ise silahı Die değil, ölüm animasyonu bitince alt sınıf bırakır (DropWeapon): ceset savrulup
+        /// uzağa düşüyorsa silah cesedin yattığı yerden çıksın.
+        /// </summary>
+        protected virtual bool DropsWeaponAfterDefeat => false;
+        public WeaponData WeaponDrop => weaponDrop;
 
         public event Action<EnemyBase> Died;
 
@@ -85,7 +102,9 @@ namespace DesertGecko.Enemies
         int health;
         float stunnedUntil;
         float flashUntil;
-        float hitGuardUntil;
+        float hitGuardUntil;      // dil, kuyruk, yakın dövüş
+        float rapidHitGuardUntil; // mermi, patlama, fırlatma
+        int lastShotId;           // son vuran atış: aynı saçmanın taneleri korumaya takılmaz
         float perchedSince = -1f;
         bool lootDropped;
         Color baseColor = Color.white;
@@ -291,18 +310,30 @@ namespace DesertGecko.Enemies
             body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
         }
 
-        public void TakeDamage(int amount, Vector2 knockbackDirection)
+        /// <summary>Türü belirtilmemiş darbe (eski çağrılar, testler): dil darbesi gibi işlenir.</summary>
+        public void TakeDamage(int amount, Vector2 knockbackDirection) =>
+            TakeDamage(new DamageInfo(amount, knockbackDirection, DamageKind.Tongue));
+
+        public void TakeDamage(DamageInfo hit)
         {
+            int amount = hit.Amount;
+            Vector2 knockbackDirection = hit.Direction;
             if (!IsAlive || amount <= 0)
                 return;
-            if (Deflects(amount) || Time.time < hitGuardUntil)
+            // Hızlı darbeler yalnız kısa korumaya bakar: dil darbesinden hemen sonra gelen mermi boşa gitmez.
+            bool sameShot = hit.ShotId != 0 && hit.ShotId == lastShotId;
+            bool guarded = hit.IsRapid ? Time.time < rapidHitGuardUntil && !sameShot : Time.time < hitGuardUntil;
+            if (Deflects(hit) || guarded)
             {
                 OnBlocked();
                 return;
             }
 
             health = Mathf.Max(0, health - amount);
-            hitGuardUntil = Time.time + hitGuardDuration;
+            rapidHitGuardUntil = Time.time + rapidHitGuardDuration;
+            lastShotId = hit.ShotId;
+            if (!hit.IsRapid)
+                hitGuardUntil = Time.time + hitGuardDuration;
             flashUntil = Time.time + flashDuration;
             if (CanChase && player != null && player.IsAlive)
                 IsChasing = true; // vurulan düşman saldırganı takip eder
@@ -321,6 +352,27 @@ namespace DesertGecko.Enemies
             body.linearVelocity = new Vector2(pushX, knockbackVelocity.y);
             stunnedUntil = Time.time + stunDuration;
             OnDamaged();
+        }
+
+        /// <summary>
+        /// Patlamanın şok dalgası: düşman bu hızla savrulur ve kısa süre sersemler (havadayken yürümeye çalışmaz).
+        /// İri, ağır düşmanlar (KeepsFooting) daha az kıpırdar.
+        /// </summary>
+        public void ApplyBlast(Vector2 velocity, float stun)
+        {
+            if (!IsAlive || velocity.sqrMagnitude < 0.01f)
+                return;
+            if (KeepsFooting)
+                velocity *= 0.4f;
+            body.linearVelocity = velocity;
+            stunnedUntil = Mathf.Max(stunnedUntil, Time.time + stun);
+        }
+
+        /// <summary>Ölüm animasyonunun bittiği yerde silahı bırakır (DropsWeaponAfterDefeat).</summary>
+        protected void DropWeapon(Vector2 position)
+        {
+            if (weaponDrop != null)
+                WeaponPickup.Spawn(weaponDrop, weaponDrop.Ammo, position + Vector2.up * 0.3f, new Vector2(0f, 3.5f));
         }
 
         protected virtual void OnDamaged() { }
@@ -344,6 +396,9 @@ namespace DesertGecko.Enemies
                 drop.Drop();
                 lootDropped = true;
             }
+            // Silah, ölüm animasyonu bitince cesedin yerinden küçük bir sekmeyle çıkar.
+            if (weaponDrop != null && !DropsWeaponAfterDefeat)
+                WeaponPickup.Spawn(weaponDrop, weaponDrop.Ammo, box.bounds.center, new Vector2(FacingDirection * -0.8f, 4f), WeaponDropDelay);
             OnDied();
             Died?.Invoke(this);
             gameObject.SetActive(false);
@@ -363,6 +418,7 @@ namespace DesertGecko.Enemies
             stunnedUntil = 0f;
             flashUntil = 0f;
             hitGuardUntil = 0f;
+            rapidHitGuardUntil = 0f;
             perchedSince = -1f;
         }
 

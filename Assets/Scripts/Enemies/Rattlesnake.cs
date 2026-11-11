@@ -179,6 +179,9 @@ namespace DesertGecko.Enemies
             }
         }
 
+        /// <summary>Altıpatlar, ceset karesi kaybolunca görünür.</summary>
+        protected override float WeaponDropDelay => deathFrame != null ? corpseDuration : base.WeaponDropDelay;
+
         protected override void OnDied()
         {
             CancelAttack();

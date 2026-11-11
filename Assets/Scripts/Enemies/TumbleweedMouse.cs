@@ -197,8 +197,8 @@ namespace DesertGecko.Enemies
         }
 
         // Gizliyken darbe işlemez; açıkken dil darbelerini sayısı bitene kadar savuşturur. Kuyruk delip geçer.
-        protected override bool Deflects(int amount) =>
-            IsDisguised || (amount <= maxParriedDamage && ParriesLeft > 0);
+        protected override bool Deflects(in DamageInfo hit) =>
+            IsDisguised || (hit.Amount <= maxParriedDamage && ParriesLeft > 0);
 
         protected override void OnBlocked()
         {

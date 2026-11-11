@@ -51,6 +51,9 @@ namespace DesertGecko.Player
         [SerializeField] Color wallColor = new Color(0.6f, 1f, 0.6f);
         [SerializeField] Color glideColor = new Color(0.6f, 0.85f, 1f);
 
+        /// <summary>Şu an gösterilen gövde karesi (kuyruk haline çevrilmeden önce). Silah kolu buna göre seçilir.</summary>
+        public Sprite BaseFrame { get; private set; }
+
         Vector2 squash = Vector2.one;
         Sprite[] currentFrames;
         float animTime;
@@ -172,7 +175,8 @@ namespace DesertGecko.Player
 
             animTime += Time.deltaTime * fps;
             int index = (int)Mathf.Repeat(Mathf.Floor(animTime), frames.Length);
-            spriteRenderer.sprite = WithTailState(frames[index]);
+            BaseFrame = frames[index];
+            spriteRenderer.sprite = WithTailState(BaseFrame);
         }
 
         Sprite[] Single(Sprite sprite)

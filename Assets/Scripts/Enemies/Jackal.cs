@@ -1,6 +1,7 @@
 using System.Collections;
 using DesertGecko.Core;
 using DesertGecko.Effects;
+using DesertGecko.Weapons;
 using UnityEngine;
 
 namespace DesertGecko.Enemies
@@ -35,6 +36,9 @@ namespace DesertGecko.Enemies
         [SerializeField] float blastSpreadAngle = 30f;
         [SerializeField] float recoilDistance = 0.4f;
         [SerializeField] Color pelletColor = new Color32(0xFF, 0xD0, 0x50, 0xFF);
+        [Tooltip("Görünen saçma taneleri (yalnız görsel; hasarı koni hesabı verir). Boşsa kıvılcım öbekleri")]
+        [SerializeField] Sprite pelletSprite;
+        [SerializeField] int visiblePellets = 7;
 
         [Header("Hasar")]
         [SerializeField] float hurtDuration = 0.3f;
@@ -68,7 +72,11 @@ namespace DesertGecko.Enemies
         float hurtUntil;
         float reloadStartedAt;
 
+        int lifeId; // dirilince artar: önceki ölümün yenilgi animasyonu silah bırakmasın
+
         bool PlayerDown => Player != null && !Player.IsAlive;
+        /// <summary>Ceset savrulup uzağa düşer: pompalı, ceset yere oturunca orada çıkar.</summary>
+        protected override bool DropsWeaponAfterDefeat => true;
 
         protected override bool HoldPosition => State != JackalState.None || PlayerDown;
 
@@ -151,9 +159,25 @@ namespace DesertGecko.Enemies
 
             int dir = FacingDirection;
             Vector2 muzzle = (Vector2)transform.position + new Vector2(muzzleOffset.x * dir, muzzleOffset.y);
-            // Saçma görseli: namludan uzaklaştıkça genişleyen üç kıvılcım öbeği.
-            for (int i = 1; i <= 3; i++)
-                PixelBurst.Spawn(muzzle + Vector2.right * (dir * blastRange * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
+            if (pelletSprite != null)
+            {
+                // Saçma görseli: koninin içinde dağılan taneler, menzilin sonunda söner.
+                PixelBurst.Spawn(muzzle, pelletColor, 5, 2.5f, 0.15f);
+                int order = spriteRenderer != null ? spriteRenderer.sortingOrder + 1 : 9;
+                for (int i = 0; i < visiblePellets; i++)
+                {
+                    float angle = Random.Range(-blastSpreadAngle, blastSpreadAngle) * 0.85f * Mathf.Deg2Rad;
+                    Vector2 direction = new Vector2(Mathf.Cos(angle) * dir, Mathf.Sin(angle));
+                    PlayerBullet.SpawnHarmless(pelletSprite, Random.Range(15f, 19f), blastRange * Random.Range(0.85f, 1.05f),
+                        transform.position + Vector3.up * muzzleOffset.y, muzzle, direction, order);
+                }
+            }
+            else
+            {
+                // Saçma görseli: namludan uzaklaştıkça genişleyen üç kıvılcım öbeği.
+                for (int i = 1; i <= 3; i++)
+                    PixelBurst.Spawn(muzzle + Vector2.right * (dir * blastRange * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
+            }
 
             if (Player == null || !Player.IsAlive)
                 return;
@@ -230,13 +254,20 @@ namespace DesertGecko.Enemies
         {
             CancelRoutine();
             int knock = Player != null ? -DirectionToPlayer : -FacingDirection;
-            JackalDefeat.Spawn(transform.position, defeatFrame, hatFrame, spriteRenderer != null && spriteRenderer.flipX,
+            JackalDefeat defeat = JackalDefeat.Spawn(transform.position, defeatFrame, hatFrame, spriteRenderer != null && spriteRenderer.flipX,
                 spriteRenderer != null ? spriteRenderer.sortingOrder : 8, knock);
+            int life = lifeId;
+            defeat.Finished += position =>
+            {
+                if (life == lifeId) // bu arada oyuncu ölüp çakal dirildiyse eski ceset silah bırakmaz
+                    DropWeapon(position);
+            };
         }
 
         public override void ResetEnemy()
         {
             CancelRoutine();
+            lifeId++;
             base.ResetEnemy();
             alerted = false;
             nextAttackAt = 0f;
