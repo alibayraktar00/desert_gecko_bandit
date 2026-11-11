@@ -67,6 +67,7 @@ namespace DesertGecko.EditorTools
             ctx.Combat = CombatSetupBuilder.BuildPrefabs();
             BuildPlayerPrefab(gila, noFriction, ctx.Combat);
             GilaSpriteBinder.Bind(); // gerçek Gila kareleri varsa placeholder'ın yerine geçer
+            WeaponSetup.Build();     // düşmanların bıraktığı silahlar: prefablar yeniden üretildi, bağlantıları yeniden kur
             // Bind prefab'ı yeniden kaydettiği için eldeki referans eskir; dosyadan taze yükle.
             ctx.PlayerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
             return ctx;

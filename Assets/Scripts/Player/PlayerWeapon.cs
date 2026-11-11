@@ -47,6 +47,7 @@ namespace DesertGecko.Player
         float nextFireAt;
         float firedAt = -10f;
         static int nextShotId; // saçma taneleri aynı atış numarasını taşır
+        float cycleAt = -1f;         // pompa gibi mekanizmanın çalışacağı an
         float swingStartedAt = -10f; // yakın dövüş: sallamanın başladığı an
         bool swingStruck;            // bu sallamada vuruş yapıldı mı
         readonly Collider2D[] meleeHits = new Collider2D[16];
@@ -112,6 +113,22 @@ namespace DesertGecko.Player
                 Use();
             if (IsArmed && Current.Mode == WeaponData.FireMode.Melee)
                 UpdateSwing();
+            if (IsArmed && cycleAt >= 0f && Time.time >= cycleAt)
+                Cycle();
+        }
+
+        /// <summary>Atıştan sonra mekanizma: pompa sesi, boş kovan arkaya fırlar.</summary>
+        void Cycle()
+        {
+            cycleAt = -1f;
+            if (Current.CycleSound != null)
+                OneShotSound.Play(Current.CycleSound, 0.6f);
+            if (Current.EjectsShell)
+            {
+                int side = controller.FacingDirection;
+                ShellCasing.Spawn(Chest + new Vector2(side * 0.3f, 0.1f),
+                    new Vector2(-side * UnityEngine.Random.Range(1.5f, 3f), UnityEngine.Random.Range(3.5f, 5f)), Current.ShellColor);
+            }
         }
 
         void LateUpdate() => UpdateOverlay();
@@ -178,6 +195,8 @@ namespace DesertGecko.Player
                 return;
             swingStartedAt = Time.time;
             swingStruck = false;
+            if (Current.SwingSound != null)
+                OneShotSound.Play(Current.SwingSound, 0.5f);
             nextFireAt = Time.time + Current.FireInterval;
         }
 
@@ -235,6 +254,8 @@ namespace DesertGecko.Player
             }
             if (Current.FireSound != null)
                 OneShotSound.Play(Current.FireSound, hit ? Current.FireVolume : Current.FireVolume * 0.6f);
+            if (hit)
+                HitStop.Request(Current.HitStop); // kazma ete ve zırha oturur
             CameraShake.Add(hit ? Current.Shake : Current.Shake * 0.6f); // kazma bir şeye ya da yere iner
 
             Ammo--;
@@ -269,7 +290,11 @@ namespace DesertGecko.Player
             Vector2 direction = AimDirection(CurrentAim, side);
             Vector2 muzzle = MuzzlePosition(CurrentAim, side);
             if (Current.Mode == WeaponData.FireMode.Thrown)
+            {
                 PlayerDynamite.Spawn(Current, Chest, muzzle, ThrowVelocityFor(CurrentAim, side), sortingOrder);
+                if (Current.SwingSound != null)
+                    OneShotSound.Play(Current.SwingSound, 0.5f);
+            }
             else
                 FireProjectiles(muzzle, direction);
             MuzzleFlash.Spawn(Current.MuzzleFlashFrames, muzzle, direction, sortingOrder + 1);
@@ -284,6 +309,8 @@ namespace DesertGecko.Player
             Ammo--;
             nextFireAt = Time.time + Current.FireInterval;
             firedAt = Time.time;
+            if (Current.CycleSound != null || Current.EjectsShell)
+                cycleAt = Time.time + Current.CycleDelay;
             Fired?.Invoke();
             if (Current.Consumable && Ammo <= 0)
             {
@@ -376,6 +403,7 @@ namespace DesertGecko.Player
             if (!IsArmed)
             {
                 Equip(weapon, ammo);
+                PlayPickup(weapon);
                 return true;
             }
             if (weapon == Current)
@@ -384,6 +412,7 @@ namespace DesertGecko.Player
                     return false;
                 Ammo = Mathf.Min(Current.Ammo, Ammo + ammo);
                 Changed?.Invoke();
+                PlayPickup(weapon);
                 return true;
             }
             if (!swap)
@@ -391,8 +420,22 @@ namespace DesertGecko.Player
             int side = controller.FacingDirection;
             WeaponPickup.Spawn(Current, Ammo, Chest, new Vector2(-side * 2f, 3f), 0f, dropPickupDelay);
             Equip(weapon, ammo);
+            PlayPickup(weapon);
             return true;
         }
+
+        /// <summary>Silah ele geçti: kavrama sesi, arayüz ikonu sıçrar.</summary>
+        public event Action PickedUp;
+
+        void PlayPickup(WeaponData weapon)
+        {
+            if (weapon.PickupSound != null)
+                OneShotSound.Play(weapon.PickupSound, 0.6f);
+            PickedUp?.Invoke();
+        }
+
+        /// <summary>Yerdeki bu silahı almak için S gerekiyor mu (elde başka bir silah var).</summary>
+        public bool NeedsSwapFor(WeaponData weapon) => IsArmed && weapon != Current && health.IsAlive;
 
         public void Equip(WeaponData weapon, int ammo)
         {
@@ -407,6 +450,7 @@ namespace DesertGecko.Player
 
         void Clear()
         {
+            cycleAt = -1f;
             if (Current == null)
                 return;
             Current = null;

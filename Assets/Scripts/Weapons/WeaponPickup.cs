@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DesertGecko.Core;
 using DesertGecko.Effects;
 using DesertGecko.Player;
@@ -23,8 +24,17 @@ namespace DesertGecko.Weapons
         public WeaponData Weapon { get; private set; }
         public int Ammo { get; private set; }
 
+        /// <summary>Sahnedeki yerdeki silahlar (dilin hedef araması için).</summary>
+        public static IReadOnlyList<WeaponPickup> Active => active;
+        static readonly List<WeaponPickup> active = new List<WeaponPickup>();
+
+        /// <summary>Dil yakalayabilir mi: görünür ve şu an çekilmiyor.</summary>
+        public bool CanBePulled => shown && !pulled;
+        bool pulled;
+
         SpriteRenderer sr;
         Transform visual;
+        SpriteRenderer hint;
         Vector2 velocity;
         float appearAt;
         float pickableAt;
@@ -58,21 +68,76 @@ namespace DesertGecko.Weapons
             pickup.sr.sprite = weapon.Icon;
             pickup.sr.sortingOrder = 9;
             pickup.sr.enabled = false;
+
+            if (weapon.SwapHintSprite != null)
+            {
+                pickup.hint = new GameObject("Ipucu").AddComponent<SpriteRenderer>();
+                pickup.hint.transform.SetParent(go.transform, false);
+                pickup.hint.sprite = weapon.SwapHintSprite;
+                pickup.hint.sortingOrder = 30;
+                pickup.hint.enabled = false;
+            }
             return pickup;
         }
 
-        void Awake() => PlayerHealth.PlayerRespawned += Remove;
-        void OnDestroy() => PlayerHealth.PlayerRespawned -= Remove;
+        void Awake()
+        {
+            PlayerHealth.PlayerRespawned += Remove;
+            active.Add(this);
+        }
+
+        void OnDestroy()
+        {
+            PlayerHealth.PlayerRespawned -= Remove;
+            active.Remove(this);
+        }
+
+        /// <summary>Dil yapıştı: silah kendi düşmesini ve alınmasını bırakır, dilin ucunu izler.</summary>
+        public void BeginPull()
+        {
+            pulled = true;
+            visual.localPosition = Vector3.zero;
+        }
+
+        /// <summary>Dil silahı ağza getirdi: ele geçer (elde başka silah varsa değiştirilir). Alınamazsa ayağın dibine düşer.</summary>
+        public void FinishPull(PlayerWeapon player)
+        {
+            pulled = false;
+            if (player != null && player.TryTake(Weapon, Ammo, true))
+            {
+                PixelBurst.Spawn(transform.position, SparkleColor, 8, 2.5f, 0.35f);
+                Destroy(gameObject);
+                return;
+            }
+            landed = false;
+            velocity = Vector2.zero;
+            pickableAt = Time.time + 0.6f;
+        }
+
+        /// <summary>
+        /// Level'a yerleştirilmiş silah (WeaponSpawner): süresi dolmaz, oyuncu doğunca silinmez. Alınırsa yeniden
+        /// koymak WeaponSpawner'ın işi.
+        /// </summary>
+        public void MakePermanent()
+        {
+            permanent = true;
+            lifetime = float.PositiveInfinity;
+            vanishAt = float.PositiveInfinity;
+        }
+
+        bool permanent;
 
         void Remove()
         {
+            if (permanent)
+                return;
             if (this != null)
                 Destroy(gameObject);
         }
 
         void Update()
         {
-            if (Time.time < appearAt)
+            if (Time.time < appearAt || pulled)
                 return;
             if (!shown)
                 Show();
@@ -101,6 +166,15 @@ namespace DesertGecko.Weapons
             velocity = push;
             landed = false;
             visual.localPosition = Vector3.zero;
+        }
+
+        void ShowHint(bool show)
+        {
+            if (hint == null)
+                return;
+            hint.enabled = show && !pulled;
+            if (show)
+                hint.transform.localPosition = new Vector3(0f, 0.75f + 0.06f * Mathf.Sin(Time.time * 6f), 0f);
         }
 
         void Show()
@@ -164,11 +238,17 @@ namespace DesertGecko.Weapons
                 playerCollider = player.GetComponent<Collider2D>();
             }
             if (!player.CanPickUp)
+            {
+                ShowHint(false);
                 return;
+            }
 
             Bounds mine = new Bounds(transform.position, PickupSize);
             Bounds theirs = playerCollider != null ? playerCollider.bounds : new Bounds(player.transform.position, Vector3.one);
-            if (!mine.Intersects(theirs))
+            bool touching = mine.Intersects(theirs);
+            // Elde başka silah varken üstünde durunca: "S ile değiştir" ipucu.
+            ShowHint(touching && player.NeedsSwapFor(Weapon));
+            if (!touching)
                 return;
 
             bool swapPressed = playerInput != null && playerInput.Move.y < -0.5f;

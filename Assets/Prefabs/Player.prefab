@@ -761,6 +761,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 257
   tongueRenderer: {fileID: 1520626191703333835}
+  pullRange: 5
+  pullRadius: 0.7
   hookRange: 7
   hookRopeLength: 3.6
 --- !u!114 &3194893899143709635

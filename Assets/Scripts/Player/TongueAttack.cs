@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using DesertGecko.Collectibles;
 using DesertGecko.Core;
 using DesertGecko.Environment;
+using DesertGecko.Weapons;
 using UnityEngine;
 
 namespace DesertGecko.Player
@@ -27,6 +28,12 @@ namespace DesertGecko.Player
         [SerializeField] LayerMask hitMask;
         [Tooltip("Pivotu sol kenarda, 1 birim genişliğinde dil sprite'ı")]
         [SerializeField] SpriteRenderer tongueRenderer;
+
+        [Header("Silah çekme")]
+        [Tooltip("Dil yerdeki silahı bu uzaklıktan yakalayıp ağza çeker")]
+        [SerializeField] float pullRange = 5f;
+        [Tooltip("Dilin yolu silaha bu kadar yaklaşırsa yakalar")]
+        [SerializeField] float pullRadius = 0.7f;
 
         [Header("Kancaya yapışma")]
         [SerializeField] float hookRange = 7f;
@@ -204,8 +211,16 @@ namespace DesertGecko.Player
             if (IsAttacking || Time.time < readyAt || controller.MovementLocked || !health.IsAlive)
                 return false;
             Vector2 aim = AimDirection();
-            Bug bug = FindBugTarget(MouthPosition(), aim);
-            StartCoroutine(bug != null ? CatchRoutine(bug, aim) : AttackRoutine(aim));
+            Vector2 mouth = MouthPosition();
+            Bug bug = FindBugTarget(mouth, aim);
+            if (bug != null)
+            {
+                StartCoroutine(CatchRoutine(bug, aim));
+                return true;
+            }
+            // Dilin önünde düşman yoksa yerdeki silaha uzanır: uzaktaki silahı almak için.
+            WeaponPickup pickup = EnemyInTongueReach(mouth, aim) ? null : FindPickupTarget(mouth, aim);
+            StartCoroutine(pickup != null ? PullRoutine(pickup) : AttackRoutine(aim));
             return true;
         }
 
@@ -233,6 +248,86 @@ namespace DesertGecko.Player
                 }
             }
             return best;
+        }
+
+        bool EnemyInTongueReach(Vector2 mouth, Vector2 direction)
+        {
+            int count = OverlapTongue(mouth, direction);
+            for (int i = 0; i < count; i++)
+            {
+                var target = hits[i].GetComponentInParent<IDamageable>();
+                if (target != null && !(target is PlayerHealth) && target.IsAlive && !WallBetween(mouth, hits[i].ClosestPoint(mouth)))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Dilin uzun yolunun (pullRange) yakınındaki, arada duvar olmayan en yakın yerdeki silah.</summary>
+        WeaponPickup FindPickupTarget(Vector2 mouth, Vector2 direction)
+        {
+            WeaponPickup best = null;
+            float bestDistance = float.MaxValue;
+            Vector2 tip = mouth + direction * pullRange;
+            IReadOnlyList<WeaponPickup> pickups = WeaponPickup.Active;
+            for (int i = 0; i < pickups.Count; i++)
+            {
+                WeaponPickup pickup = pickups[i];
+                if (!pickup.CanBePulled)
+                    continue;
+                Vector2 center = pickup.transform.position;
+                if (DistanceToSegment(center, mouth, tip) > pullRadius || WallBetween(mouth, center))
+                    continue;
+                float distance = Vector2.Distance(mouth, center);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = pickup;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Silah çekme: dil yerdeki silaha uzanıp yapışır, silahla birlikte ağza sarılır; silah ele geçer
+        /// (elde başka silah varsa o bırakılır). Böcek yakalamayla aynı ritim.
+        /// </summary>
+        IEnumerator PullRoutine(WeaponPickup pickup)
+        {
+            IsAttacking = true;
+            readyAt = Time.time + cooldown;
+            controller.MovementLocked = true;
+            Attacked?.Invoke();
+            pickup.BeginPull();
+
+            Vector2 grab = pickup.transform.position;
+            float extend = extendTime * Mathf.Max(1f, Vector2.Distance(MouthPosition(), grab) / range);
+            float t = 0f;
+            while (t < extend && pickup != null)
+            {
+                t += Time.deltaTime;
+                Vector2 mouth = MouthPosition();
+                ShowTongue(mouth, (grab - mouth).normalized, Vector2.Distance(mouth, grab) * Mathf.Clamp01(t / extend));
+                yield return null;
+            }
+
+            t = 0f;
+            while (t < BugSwallow.PullTime && pickup != null)
+            {
+                t += Time.deltaTime;
+                Vector2 mouth = MouthPosition();
+                Vector2 tip = Vector2.Lerp(grab, mouth, BugSwallow.PullCurve(Mathf.Clamp01(t / BugSwallow.PullTime)));
+                pickup.transform.position = tip;
+                ShowTongue(mouth, (tip - mouth).normalized, Vector2.Distance(mouth, tip));
+                yield return null;
+            }
+            if (pickup != null)
+                pickup.FinishPull(GetComponent<PlayerWeapon>());
+
+            if (tongueRenderer != null)
+                tongueRenderer.enabled = false;
+            if (health.IsAlive) // ölüm sırasında kilidi PlayerHealth yönetir
+                controller.MovementLocked = false;
+            IsAttacking = false;
         }
 
         static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)

@@ -107,6 +107,12 @@ namespace DesertGecko.Enemies
 
         /// <summary>Dikenleri varken (ya da yeniden çıkarken) her darbe seker.</summary>
         protected override bool Invulnerable => State != SpikeState.Exhausted;
+        /// <summary>
+        /// Dikenler dili, mermiyi, saçmayı ve dikeni sektirir. Patlama ve kazma dikenlerin arasından geçer:
+        /// hem vurur hem dikenleri kırıp mutantı kel bırakır.
+        /// </summary>
+        protected override bool Deflects(in DamageInfo hit) =>
+            Invulnerable && hit.Kind != DamageKind.Explosion && hit.Kind != DamageKind.Melee;
         protected override bool CanChase => false;
         /// <summary>İri ve ağır: dil darbeleri onu uçurumdan itemez.</summary>
         protected override bool KeepsFooting => true;
@@ -282,6 +288,24 @@ namespace DesertGecko.Enemies
         {
             // Acıyla öne sendeler; soluklanma süresi uzamaz, Gila hızlı davranmalı.
             hurtUntil = Time.time + hurtDuration;
+            if (State != SpikeState.Exhausted && (LastHit.Kind == DamageKind.Explosion || LastHit.Kind == DamageKind.Melee))
+            {
+                // Dikenler kırılıp saçılır: yaylım yarıda kalır, mutant kel ve savunmasız kalır.
+                SpikesLeft = 0;
+                PixelBurst.Spawn(box.bounds.center + Vector3.up * 0.4f, sparkColor, 14, 4.5f, 0.4f);
+                PixelBurst.Spawn(box.bounds.center + Vector3.up * 0.4f, dustColor, 8, 3f, 0.4f);
+                Enter(SpikeState.Exhausted, exhaustedDuration);
+            }
+        }
+
+        /// <summary>Diken demeti, mutant kapaklanıp toza karışınca yattığı yerde kalır.</summary>
+        protected override float WeaponDropDelay
+        {
+            get
+            {
+                Sprite[] frames = Phase == SpikePhase.Full ? fullDefeatFrames : Phase == SpikePhase.Half ? halfDefeatFrames : baldDefeatFrames;
+                return (frames != null ? frames.Length : 0) * 0.09f + 1.0f;
+            }
         }
 
         protected override void OnDied()

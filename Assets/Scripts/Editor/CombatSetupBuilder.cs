@@ -218,6 +218,10 @@ namespace DesertGecko.EditorTools
             SetField(scorpion, "spriteRenderer", sr);
             SetField(scorpion, "visual", sr.transform);
             SetMask(scorpion, "groundMask", GameLayers.GroundMask);
+            // Dört can: dille dört darbe, silahla çabuk.
+            var health = new SerializedObject(scorpion);
+            health.FindProperty("maxHealth").intValue = 4;
+            health.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
@@ -272,6 +276,7 @@ namespace DesertGecko.EditorTools
             var so = new SerializedObject(snake);
             so.FindProperty("spriteFacesLeft").boolValue = false;
             so.FindProperty("patrolSpeed").floatValue = 1.5f;
+            so.FindProperty("maxHealth").intValue = 5;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -324,6 +329,7 @@ namespace DesertGecko.EditorTools
             so.FindProperty("chaseSpeed").floatValue = 6.5f;
             so.FindProperty("detectRange").floatValue = 7f;
             so.FindProperty("loseRange").floatValue = 10f;
+            so.FindProperty("maxHealth").intValue = 6;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -367,11 +373,11 @@ namespace DesertGecko.EditorTools
             SetField(armadillo, "hurtFrame", f[41]);
             SetArray(armadillo, "defeatFrames", Range(49, 56));
 
-            // Kareler sağa bakar. Hantal yürür, dört darbede ölür (sadece sersemken vurulabilir).
+            // Kareler sağa bakar. Hantal yürür, sekiz can (sadece sersemken vurulabilir; dinamit zırhını kırar).
             var so = new SerializedObject(armadillo);
             so.FindProperty("spriteFacesLeft").boolValue = false;
             so.FindProperty("patrolSpeed").floatValue = 1.1f;
-            so.FindProperty("maxHealth").intValue = 4;
+            so.FindProperty("maxHealth").intValue = 8;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -414,10 +420,10 @@ namespace DesertGecko.EditorTools
             SetField(mouse, "parryFrame", f[18]);
             SetArray(mouse, "defeatFrames", Range(43, 47));
 
-            // Kareler sağa bakar. Sıska: savuşturmaları bitince tek darbede ölür.
+            // Kareler sağa bakar. Sıska: savuşturmaları bitince iki darbede ölür.
             var so = new SerializedObject(mouse);
             so.FindProperty("spriteFacesLeft").boolValue = false;
-            so.FindProperty("maxHealth").intValue = 1;
+            so.FindProperty("maxHealth").intValue = 2;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -488,10 +494,10 @@ namespace DesertGecko.EditorTools
             SetArray(bat, "recoverFrames", Range(56, 63));
             SetArray(bat, "defeatFrames", Range(64, 71));
 
-            // Kareler sağa bakar. İki darbe: biri havada çapraz dille, biri yorgunken.
+            // Kareler sağa bakar. Üç can: havada çapraz dille ya da yukarı ateşle, yorgunken yakından.
             var so = new SerializedObject(bat);
             so.FindProperty("spriteFacesLeft").boolValue = false;
-            so.FindProperty("maxHealth").intValue = 2;
+            so.FindProperty("maxHealth").intValue = 3;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -575,11 +581,11 @@ namespace DesertGecko.EditorTools
             SetArray(mutant, "halfDefeatFrames", Range(104, 111));
             SetArray(mutant, "baldDefeatFrames", Range(64, 71));
 
-            // Kareler sağa bakar. Ağır yürür; sadece kelken vurulur, dört darbede ölür.
+            // Kareler sağa bakar. Ağır yürür; sadece kelken vurulur (patlama ve kazma dikenleri kırar), sekiz can.
             var so = new SerializedObject(mutant);
             so.FindProperty("spriteFacesLeft").boolValue = false;
             so.FindProperty("patrolSpeed").floatValue = 0.9f;
-            so.FindProperty("maxHealth").intValue = 4;
+            so.FindProperty("maxHealth").intValue = 8;
             // Ağır gövde: darbe onu az savurur (çakal gibi hafif düşmanlar 4 birim geri uçar).
             so.FindProperty("knockbackVelocity").vector2Value = new Vector2(1.5f, 1.5f);
             so.ApplyModifiedPropertiesWithoutUndo();

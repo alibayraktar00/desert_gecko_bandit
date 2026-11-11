@@ -57,6 +57,11 @@ PALETTE = {
     "E": (101, 74, 59, 255),    # demir koyu / sap açık
     "A": (76, 56, 47, 255),     # sap
     "z": (68, 42, 35, 255),     # sap gölgesi
+    # Diken Mutantı'nın dikeninin paleti (diken_mermi.png): koyu gövde, açık uç
+    "Q": (24, 22, 28, 255),     # diken gövdesi
+    "G": (58, 54, 62, 255),     # diken açık kenarı
+    "T": (205, 210, 218, 255),  # uç
+    "S": (255, 255, 255, 255),  # uç parlaması
 }
 JACKAL_OUTLINE = (42, 20, 18, 255)  # çakalın kahverengi dış çizgisi
 
@@ -155,6 +160,28 @@ PICKAXE = [
     "..............EA...",
 ]
 
+# Diken demeti (Diken Mutantı'ndan): yumrukta yelpaze gibi açılmış 3 diken; her atış 3 dikeni yelpazeyle fırlatır.
+SPIKES_HELD = [
+    ".......GGTS",
+    "....GGQ....",
+    "QHQQQQGGGTS",
+    "....GGQ....",
+    ".......GGTS",
+]
+SPIKES_HELD_MUZZLE = (11, 2.0)
+SPIKES = [
+    "QGGoGGGGGGTS.",
+    "...o.........",
+    "QGGoGGGGGGGTS",
+    "...o.........",
+    "QGGoGGGGGGTS.",
+]
+SPIKE = [
+    "..GGGGG..",
+    "QQQQQQTTS",
+    "..QQQQG..",
+]
+
 # Nişan yönleri: silah açısı (derece, saat yönünün tersi = yukarı)
 AIMS = {"ileri": 0, "capraz": 45, "yukari": 90}
 
@@ -203,7 +230,7 @@ def stamp_gun(layer, gun, hand_local, hand_at, deg):
 
 
 def render(layer, size=(64, 64), outline=OUTLINE):
-    """Dış çizgi: dolu piksele 4 komşu boş pikseller."""
+    """Dış çizgi: dolu piksele 4 komşu boş pikseller (outline None ise çizgi yok: ince dikenler gibi)."""
     img = Image.new("RGBA", size, (0, 0, 0, 0))
     kinds = {}
     for (x, y), (c, kind) in layer.items():
@@ -214,6 +241,8 @@ def render(layer, size=(64, 64), outline=OUTLINE):
     for y in range(size[1]):
         for x in range(size[0]):
             if img.getpixel((x, y))[3]:
+                continue
+            if outline is None:
                 continue
             near = [kinds[n] for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if n in kinds]
             if not near:
@@ -443,14 +472,54 @@ def shotgun_sprites():
         img.save(WEAPON_OUT / f"{name}.png")
 
 
+def key_hint():
+    """Silah değiştirme ipucu: küçük bir tuş başlığı, üstünde S harfi."""
+    rows = [
+        ".ooooooo.",
+        "oWWWWWWWo",
+        "oWWdddWWo",
+        "oWdWWWWWo",
+        "oWWddWWWo",
+        "oWWWWdWWo",
+        "oWdddWWWo",
+        "ommmmmmmo",
+        ".ooooooo.",
+    ]
+    pal = {"o": OUTLINE, "W": (240, 226, 196, 255), "d": (60, 40, 30, 255), "m": (170, 150, 120, 255)}
+    img = Image.new("RGBA", (9, 9), (0, 0, 0, 0))
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                img.putpixel((x, y), pal[ch])
+    img.save(WEAPON_OUT / "tus_s.png")
+
+
 def main():
     remove_old()
+    key_hint()
     held_frames("altipatlar", REVOLVER_HELD, REVOLVER_HELD_MUZZLE)
     held_frames("pompali", SHOTGUN_HELD, SHOTGUN_HELD_MUZZLE, SHOTGUN_HELD_PUMPED, JACKAL_OUTLINE)
     item_sprite("pompali", SHOTGUN, JACKAL_OUTLINE)
     held_frames("dinamit", DYNAMITE_HELD, DYNAMITE_HELD_MUZZLE)
     item_sprite("dinamit", DYNAMITE)
     dynamite_sprites()
+    held_frames("diken", SPIKES_HELD, SPIKES_HELD_MUZZLE, outline=None)
+    item_sprite("diken", SPIKES, None)
+    # Uçan diken: çizgisiz (mutantınki gibi); arayüzde dik diken
+    img = Image.new("RGBA", (len(SPIKE[0]), len(SPIKE)), (0, 0, 0, 0))
+    for y, row in enumerate(SPIKE):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                img.putpixel((x, y), PALETTE[ch])
+    img.save(WEAPON_OUT / "diken_tek.png")
+    quill = [".S.", ".T.", ".Q.", "GQG", ".Q.", ".Q."]
+    for nm, empty in (("diken_ikon", False), ("diken_ikon_bos", True)):
+        img = Image.new("RGBA", (3, 6), (0, 0, 0, 0))
+        for y, row in enumerate(quill):
+            for x, ch in enumerate(row):
+                if ch != ".":
+                    img.putpixel((x, y), (70, 60, 60, 200) if empty else PALETTE[ch])
+        img.save(WEAPON_OUT / f"{nm}.png")
     held_frames("kazma", PICKAXE_HELD, PICKAXE_HELD_HEAD, outline=JACKAL_OUTLINE, poses=PICKAXE_SWING, aims=["ileri"])
     item_sprite("kazma", PICKAXE, JACKAL_OUTLINE)
     tick = ["nn", "PE", "nE", "nE", "EA", "AA"]  # arayüz: küçük demir parçası (dayanıklılık)

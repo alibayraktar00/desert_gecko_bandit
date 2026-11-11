@@ -637,13 +637,14 @@ namespace DesertGecko.Tests
             Track(scorpion.gameObject);
             yield return null;
 
+            int start = scorpion.Health;
             scorpion.TakeDamage(1, Vector2.right);
             scorpion.TakeDamage(1, Vector2.right);
-            Assert.AreEqual(2, scorpion.Health, "koruma süresinde ikinci darbe işlememeli");
+            Assert.AreEqual(start - 1, scorpion.Health, "koruma süresinde ikinci darbe işlememeli");
 
             yield return new WaitForSeconds(0.75f);
             scorpion.TakeDamage(1, Vector2.right);
-            Assert.AreEqual(1, scorpion.Health, "koruma bitince vurulabilmeli");
+            Assert.AreEqual(start - 2, scorpion.Health, "koruma bitince vurulabilmeli");
         }
 
         [UnityTest]
@@ -755,7 +756,7 @@ namespace DesertGecko.Tests
         }
 
         [UnityTest]
-        public IEnumerator Fare_DiliIkiKezSavusturur_UcuncudeOlur()
+        public IEnumerator Fare_DiliIkiKezSavusturur_SonraIkiDildeOlur()
         {
             Ground(-20f, 20f);
             Player(new Vector2(-3f, 0.05f));
@@ -774,7 +775,11 @@ namespace DesertGecko.Tests
             Assert.IsTrue(mouse.IsAlive, "ikinci dili savuşturmalı");
             Assert.AreEqual(0, mouse.ParriesLeft);
             mouse.TakeDamage(1, Vector2.right);
-            Assert.IsFalse(mouse.IsAlive, "üçüncü dilde ölmeli");
+            Assert.IsTrue(mouse.IsAlive, "savuşturmalar bitince ilk dil yaralar (iki can)");
+            Assert.AreEqual(1, mouse.Health);
+            yield return new WaitForSeconds(0.75f); // dil darbesinin koruma süresi
+            mouse.TakeDamage(1, Vector2.right);
+            Assert.IsFalse(mouse.IsAlive, "ikinci yarada ölmeli");
         }
 
         [UnityTest]

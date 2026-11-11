@@ -29,6 +29,7 @@ namespace DesertGecko.EditorTools
                 so.FindProperty("pelletSprite").objectReferenceValue = Sprite(ItemFolder + "sacma.png"));
             SetEnemyDrop("Assets/Prefabs/BanditBat.prefab", BuildDynamite());
             SetEnemyDrop("Assets/Prefabs/Armadillo.prefab", BuildPickaxe());
+            SetEnemyDrop("Assets/Prefabs/SpikeMutant.prefab", BuildSpikes());
             AddPlayerWeapon(); // prefab yeniden kaydedilir: kaldırılmış eski alanlar düşer
             AssetDatabase.SaveAssets();
             return "silahlar kuruldu";
@@ -48,9 +49,20 @@ namespace DesertGecko.EditorTools
             flash.arraySize = 3;
             for (int i = 0; i < 3; i++)
                 flash.GetArrayElementAtIndex(i).objectReferenceValue = Sprite(ItemFolder + $"namlu_{i}.png");
-            Set(so, "fireSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/silah.wav"));
+            Set(so, "fireSound", Clip("silah"));
+            // Hepsinde ortak cila: alma ve sekme sesi, değiştirme ipucu. Silaha özgü olanlar aşağıda.
+            Set(so, "pickupSound", Clip("silah_al"));
+            Set(so, "ricochetSound", Clip("sekme"));
+            Set(so, "swapHintSprite", Sprite(ItemFolder + "tus_s.png"));
+            Set(so, "cycleSound", null);
+            so.FindProperty("ejectsShell").boolValue = false;
+            Set(so, "swingSound", null);
+            Set(so, "fuseSound", null);
+            so.FindProperty("hitStop").floatValue = 0.03f;
             return so;
         }
+
+        static AudioClip Clip(string name) => AssetDatabase.LoadAssetAtPath<AudioClip>($"Assets/Audio/{name}.wav");
 
         static WeaponData BuildRevolver()
         {
@@ -79,6 +91,11 @@ namespace DesertGecko.EditorTools
             var so = Begin(data, "Pompalı", "pompali", "sacma", "fisek_ikon");
             so.FindProperty("ammo").intValue = 4;
             so.FindProperty("shake").floatValue = 0.32f;
+            Set(so, "fireSound", Clip("pompali"));
+            Set(so, "cycleSound", Clip("pompa"));
+            so.FindProperty("cycleDelay").floatValue = 0.12f; // pompanın geri çekildiği kareyle birlikte
+            so.FindProperty("ejectsShell").boolValue = true;
+            so.FindProperty("hitStop").floatValue = 0.05f;
             so.FindProperty("damage").intValue = 1;
             so.FindProperty("pellets").intValue = 7;
             so.FindProperty("spreadAngle").floatValue = 9f;
@@ -185,6 +202,8 @@ namespace DesertGecko.EditorTools
             so.FindProperty("consumable").boolValue = true;
             so.FindProperty("ammo").intValue = 3;
             so.FindProperty("shake").floatValue = 0f; // atış sarsmaz, patlama sarsar (Blast)
+            Set(so, "swingSound", Clip("savurma"));
+            Set(so, "fuseSound", Clip("fitil"));
             so.FindProperty("damage").intValue = 4;
             so.FindProperty("fireInterval").floatValue = 0.45f;
             so.FindProperty("recoverTime").floatValue = 0.2f;
@@ -214,12 +233,41 @@ namespace DesertGecko.EditorTools
             so.FindProperty("consumable").boolValue = true;
             so.FindProperty("ammo").intValue = 5;
             so.FindProperty("shake").floatValue = 0.22f;
+            Set(so, "swingSound", Clip("savurma"));
+            so.FindProperty("hitStop").floatValue = 0.06f;
             so.FindProperty("damage").intValue = 4;
             so.FindProperty("fireInterval").floatValue = 0.5f;
             so.FindProperty("meleeArea").vector2Value = new Vector2(1.5f, 1.4f);
             so.FindProperty("windupTime").floatValue = 0.1f;
             so.FindProperty("strikeTime").floatValue = 0.12f;
             so.FindProperty("followTime").floatValue = 0.14f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(data);
+            return data;
+        }
+
+        /// <summary>
+        /// Diken demeti (Diken Mutantı'ndan): 4 atış, her atış 3 dikeni dar bir yelpazeyle fırlatır (diken başı 1 hasar,
+        /// yakından üçü de isabet eder). Uzun menzilli; zemine/duvara saplanıp bir süre kalır.
+        /// </summary>
+        static WeaponData BuildSpikes()
+        {
+            WeaponData data = LoadOrCreate("Diken");
+            var so = Begin(data, "Diken demeti", "diken", "diken_tek", "diken_ikon");
+            so.FindProperty("muzzleFlashFrames").arraySize = 0;
+            Set(so, "fireSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/diken_atis.wav"));
+            so.FindProperty("fireVolume").floatValue = 0.8f;
+            so.FindProperty("ammo").intValue = 4;
+            so.FindProperty("damage").intValue = 1;
+            so.FindProperty("pellets").intValue = 3;
+            so.FindProperty("spreadAngle").floatValue = 7f;
+            so.FindProperty("pelletJitter").floatValue = 0.15f;
+            so.FindProperty("fireInterval").floatValue = 0.35f;
+            so.FindProperty("bulletSpeed").floatValue = 17f;
+            so.FindProperty("bulletRange").floatValue = 9f;
+            so.FindProperty("sticksInGround").boolValue = true;
+            so.FindProperty("shake").floatValue = 0.06f;
+            so.FindProperty("thrownDamage").intValue = 1;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(data);
             return data;

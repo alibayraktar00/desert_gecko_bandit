@@ -121,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 909a98919045d3448b1874e238167fba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.TumbleweedMouse
-  maxHealth: 1
+  maxHealth: 2
   contactDamage: 1
   patrolSpeed: 2
   chaseSpeed: 4
@@ -135,11 +135,15 @@ MonoBehaviour:
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
+  tongueStunDuration: 0.6
   flashDuration: 0.12
   hitGuardDuration: 0.7
+  rapidHitGuardDuration: 0.05
   guardBlinkRate: 14
   flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  weaponDrop: {fileID: 0}
+  weaponDropDelay: 0.8
   spriteRenderer: {fileID: 5761996545158208728}
   spriteFacesLeft: 0
   groundMask:

@@ -219,7 +219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bac834e1f3d1d847abb7efe74b5a128, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.Jackal
-  maxHealth: 3
+  maxHealth: 6
   contactDamage: 1
   patrolSpeed: 1.2
   chaseSpeed: 6.5
@@ -233,6 +233,7 @@ MonoBehaviour:
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
+  tongueStunDuration: 0.6
   flashDuration: 0.12
   hitGuardDuration: 0.7
   rapidHitGuardDuration: 0.05

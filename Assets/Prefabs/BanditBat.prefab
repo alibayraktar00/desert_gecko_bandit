@@ -142,7 +142,7 @@ MonoBehaviour:
   m_Light2DProvider:
     rid: -2
   m_SelectionSources:
-    rid: 4993203620114858336
+    rid: 4993203620114858422
   m_FalloffIntensity: 0.5
   m_Color: {r: 0.82, g: 0.78, b: 1, a: 1}
   m_Intensity: 0
@@ -188,7 +188,7 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
-    - rid: 4993203620114858336
+    - rid: 4993203620114858422
       type: {class: Light2DProviderSources, ns: UnityEngine.Rendering.Universal, asm: Unity.RenderPipelines.Universal.2D.Runtime}
       data:
         m_SelectedHashCode: 3
@@ -411,7 +411,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bff2df22bbe60674c83286048f6264c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.BanditBat
-  maxHealth: 2
+  maxHealth: 3
   contactDamage: 1
   patrolSpeed: 2
   chaseSpeed: 4
@@ -425,6 +425,7 @@ MonoBehaviour:
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
+  tongueStunDuration: 0.6
   flashDuration: 0.12
   hitGuardDuration: 0.7
   rapidHitGuardDuration: 0.05

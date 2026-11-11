@@ -37,6 +37,15 @@ namespace DesertGecko.Weapons
             dynamite.sr = go.AddComponent<SpriteRenderer>();
             dynamite.sr.sprite = weapon.BulletSprite;
             dynamite.sr.sortingOrder = order;
+            if (weapon.FuseSound != null)
+            {
+                var fuse = go.AddComponent<AudioSource>();
+                fuse.clip = weapon.FuseSound;
+                fuse.loop = true;
+                fuse.volume = 0.35f;
+                fuse.spatialBlend = 0f;
+                fuse.Play();
+            }
             dynamite.filter = new ContactFilter2D
             {
                 useLayerMask = true,

@@ -15,10 +15,15 @@ namespace DesertGecko.UI
         static readonly Vector2 Anchor = new Vector2(8f, -48f);
         const float PipGap = 1f, IconGap = 4f;
 
+        const float PopTime = 0.18f, BlinkRate = 5f;
+
         PlayerWeapon weapon;
         RectTransform root;
         Image icon;
         readonly List<Image> pips = new List<Image>();
+        float pickedAt = -10f;
+        float firedAt = -10f;
+        int spentPip = -1; // son harcanan mermi: bir an beyaz parlar
 
         /// <summary>Sahnedeki HUD tuvalini bulur ve silah göstergesini ekler. HUD yoksa (test sahnesi) bir şey yapmaz.</summary>
         public static void Attach(PlayerWeapon weapon)
@@ -44,13 +49,53 @@ namespace DesertGecko.UI
         {
             icon = NewImage("Ikon");
             weapon.Changed += Refresh;
+            weapon.Fired += OnFired;
+            weapon.PickedUp += OnPickedUp;
             Refresh();
         }
 
         void OnDestroy()
         {
             if (weapon != null)
+            {
                 weapon.Changed -= Refresh;
+                weapon.Fired -= OnFired;
+                weapon.PickedUp -= OnPickedUp;
+            }
+        }
+
+        void OnFired()
+        {
+            firedAt = Time.unscaledTime;
+            spentPip = weapon.Ammo; // Fired, mermi düştükten sonra gelir: harcanan bu sıradaki kovan
+        }
+
+        void OnPickedUp() => pickedAt = Time.unscaledTime;
+
+        /// <summary>
+        /// Silah alınınca ikon sıçrar; harcanan kovan bir an beyaz parlar; son mermi kalınca o kovan yanıp söner
+        /// (mermi bitmek üzere).
+        /// </summary>
+        void Update()
+        {
+            if (weapon == null || weapon.Current == null || icon == null)
+                return;
+            float pop = 1f - Mathf.Clamp01((Time.unscaledTime - pickedAt) / PopTime);
+            icon.rectTransform.localScale = Vector3.one * (1f + 0.35f * pop);
+
+            bool flashing = Time.unscaledTime - firedAt < 0.1f;
+            bool lowAmmo = weapon.Ammo == 1 && weapon.Current.Ammo > 2;
+            bool blinkOn = Mathf.Repeat(Time.unscaledTime * BlinkRate, 1f) < 0.5f;
+            for (int i = 0; i < pips.Count && i < weapon.Current.Ammo; i++)
+            {
+                Color c = Color.white;
+                if (i == spentPip && flashing)
+                    c = new Color(1f, 1f, 1f, 1f);
+                else if (lowAmmo && i == 0 && !blinkOn)
+                    c = new Color(1f, 0.55f, 0.45f, 1f);
+                pips[i].color = c;
+                pips[i].rectTransform.localScale = Vector3.one * (i == spentPip && flashing ? 1.4f : 1f);
+            }
         }
 
         Image NewImage(string name)

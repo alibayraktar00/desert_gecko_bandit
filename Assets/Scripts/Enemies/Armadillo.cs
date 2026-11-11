@@ -73,6 +73,8 @@ namespace DesertGecko.Enemies
 
         /// <summary>Kapanmışken ve yuvarlanırken zırhı her saldırıyı boşa çıkarır.</summary>
         protected override bool Invulnerable => State == ArmadilloState.Curl || State == ArmadilloState.Roll;
+        /// <summary>Zırh mermiyi, saçmayı, kazmayı, dili sektirir; yalnız patlama kabuğu çatlatır.</summary>
+        protected override bool Deflects(in DamageInfo hit) => Invulnerable && hit.Kind != DamageKind.Explosion;
         protected override bool CanChase => false;
         protected override bool HoldPosition => State != ArmadilloState.Patrol;
 
@@ -299,6 +301,15 @@ namespace DesertGecko.Enemies
 
         protected override void OnDamaged()
         {
+            if (LastHit.Kind == DamageKind.Explosion)
+            {
+                // Patlama kabuğu çatlattı: yuvarlanamaz, sersemleyip açık kalır (kazmayla bitirme fırsatı).
+                Enter(ArmadilloState.Daze, dazeDuration);
+                Bounds b = box.bounds;
+                PixelBurst.Spawn(b.center, sparkColor, 12, 5f, 0.45f);
+                PixelBurst.Spawn(b.center, dustColor, 10, 3.5f, 0.5f);
+                return;
+            }
             // Her darbeden sonra hemen kapanıp vurana doğru yuvarlanır: vur, kaç, yine vur.
             hurtUntil = Time.time + hurtDuration;
             rollDirection = Player != null

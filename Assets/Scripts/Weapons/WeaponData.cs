@@ -66,6 +66,8 @@ namespace DesertGecko.Weapons
         [SerializeField] float pelletJitter = 0f;
         [Tooltip("Atışta Gila'yı geri iten hız (0 = itmez)")]
         [SerializeField] float recoil = 0f;
+        [Tooltip("Mermi zemine/duvara çarpınca saplı kalır, bir süre sonra söner (diken)")]
+        [SerializeField] bool sticksInGround;
         [Tooltip("Atışta ekran sarsıntısı (0-1): altıpatlar hafif, pompalı belirgin")]
         [SerializeField] float shake = 0.1f;
         [Tooltip("Ateşten sonra toparlanma karesinin (örneğin pompanın geri çekilmesi) ekranda kalma süresi")]
@@ -92,6 +94,25 @@ namespace DesertGecko.Weapons
         [Header("Ses")]
         [SerializeField] AudioClip fireSound;
         [SerializeField] float fireVolume = 0.55f;
+        [Tooltip("Atıştan sonra mekanizma sesi (pompa: çak-çak); boşsa yok")]
+        [SerializeField] AudioClip cycleSound;
+        [SerializeField] float cycleDelay = 0.1f;
+        [Tooltip("Mekanizma çalışınca boş kovan fırlar (pompalı)")]
+        [SerializeField] bool ejectsShell;
+        [SerializeField] Color shellColor = new Color32(0xE2, 0x4E, 0x38, 0xFF);
+        [Tooltip("Atma ve sallama sesi (dinamit, kazma)")]
+        [SerializeField] AudioClip swingSound;
+        [Tooltip("Mermi zırhtan/dikenden sekince")]
+        [SerializeField] AudioClip ricochetSound;
+        [Tooltip("Atılan dinamitin fitil cızırtısı")]
+        [SerializeField] AudioClip fuseSound;
+        [SerializeField] AudioClip pickupSound;
+
+        [Header("Cila")]
+        [Tooltip("Bu silahla vuruş/öldürme anında oyunun bir an durması (sn, 0 = yok)")]
+        [SerializeField] float hitStop = 0.03f;
+        [Tooltip("Elde silah varken yerdekiyle değiştirme ipucu (S tuşu)")]
+        [SerializeField] Sprite swapHintSprite;
 
         public string DisplayName => displayName;
         public Sprite Icon => icon;
@@ -121,8 +142,19 @@ namespace DesertGecko.Weapons
         public float PelletJitter => pelletJitter;
         public float Recoil => recoil;
         public float Shake => shake;
+        public bool SticksInGround => sticksInGround;
         public float RecoverTime => recoverTime;
         public AudioClip FireSound => fireSound;
+        public AudioClip CycleSound => cycleSound;
+        public float CycleDelay => cycleDelay;
+        public bool EjectsShell => ejectsShell;
+        public Color ShellColor => shellColor;
+        public AudioClip SwingSound => swingSound;
+        public AudioClip RicochetSound => ricochetSound;
+        public AudioClip FuseSound => fuseSound;
+        public AudioClip PickupSound => pickupSound;
+        public float HitStop => hitStop;
+        public Sprite SwapHintSprite => swapHintSprite;
         public float FireVolume => fireVolume;
 
         Dictionary<Sprite, int> poseByBody;

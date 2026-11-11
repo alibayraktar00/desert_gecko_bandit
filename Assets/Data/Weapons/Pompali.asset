@@ -288,6 +288,7 @@ MonoBehaviour:
   spreadAngle: 9
   pelletJitter: 0.6
   recoil: 5
+  sticksInGround: 0
   shake: 0.32
   recoverTime: 0.35
   thrownDamage: 1
@@ -300,5 +301,15 @@ MonoBehaviour:
   windupTime: 0.1
   strikeTime: 0.12
   followTime: 0.14
-  fireSound: {fileID: 8300000, guid: 9e82c2d734b160c468ecb384ffb3a470, type: 3}
+  fireSound: {fileID: 8300000, guid: 3ab92342eec51984abe00c71ab35d46c, type: 3}
   fireVolume: 0.8
+  cycleSound: {fileID: 8300000, guid: d18668a16b7f6c245bd3416064a69335, type: 3}
+  cycleDelay: 0.12
+  ejectsShell: 1
+  shellColor: {r: 0.8862745, g: 0.30588236, b: 0.21960784, a: 1}
+  swingSound: {fileID: 0}
+  ricochetSound: {fileID: 8300000, guid: 51942609b5664c346a3f2a0c6853ae2f, type: 3}
+  fuseSound: {fileID: 0}
+  pickupSound: {fileID: 8300000, guid: 0cf68c279ca29df4fa3c788a98d73328, type: 3}
+  hitStop: 0.05
+  swapHintSprite: {fileID: 21300000, guid: 52d0fe9074b9e6741a1e96ccfb6245c2, type: 3}

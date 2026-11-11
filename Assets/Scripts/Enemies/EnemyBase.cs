@@ -45,6 +45,8 @@ namespace DesertGecko.Enemies
         [Header("Hasar tepkisi")]
         [SerializeField] Vector2 knockbackVelocity = new Vector2(4f, 3f);
         [SerializeField] float stunDuration = 0.3f;
+        [Tooltip("Dil darbesinden sonraki sersemlik: dil az vurur ama düşmanı daha uzun durdurur")]
+        [SerializeField] float tongueStunDuration = 0.6f;
         [SerializeField] float flashDuration = 0.12f;
         [Tooltip("Darbe aldıktan sonra bu kadar süre yeni darbe işlemez: peş peşe vurup kilitlenemesin, düşman karşılık verebilsin")]
         [SerializeField] float hitGuardDuration = 0.7f;
@@ -314,19 +316,23 @@ namespace DesertGecko.Enemies
         public void TakeDamage(int amount, Vector2 knockbackDirection) =>
             TakeDamage(new DamageInfo(amount, knockbackDirection, DamageKind.Tongue));
 
-        public void TakeDamage(DamageInfo hit)
+        /// <summary>Son gelen darbe: alt sınıflar OnDamaged/OnBlocked içinde türüne bakar (patlama zırhı kırar gibi).</summary>
+        protected DamageInfo LastHit { get; private set; }
+
+        public bool TakeDamage(DamageInfo hit)
         {
             int amount = hit.Amount;
             Vector2 knockbackDirection = hit.Direction;
             if (!IsAlive || amount <= 0)
-                return;
+                return false;
+            LastHit = hit;
             // Hızlı darbeler yalnız kısa korumaya bakar: dil darbesinden hemen sonra gelen mermi boşa gitmez.
             bool sameShot = hit.ShotId != 0 && hit.ShotId == lastShotId;
             bool guarded = hit.IsRapid ? Time.time < rapidHitGuardUntil && !sameShot : Time.time < hitGuardUntil;
             if (Deflects(hit) || guarded)
             {
                 OnBlocked();
-                return;
+                return false;
             }
 
             health = Mathf.Max(0, health - amount);
@@ -340,8 +346,11 @@ namespace DesertGecko.Enemies
 
             if (health == 0)
             {
+                // Silahla öldürmek bir an durur: son mermi, saçma, kazma oturur. Dille öldürmede akış bozulmaz.
+                if (hit.Kind == DamageKind.Bullet || hit.Kind == DamageKind.Melee || hit.Kind == DamageKind.Thrown)
+                    HitStop.Request(0.045f);
                 Die();
-                return;
+                return true;
             }
 
             float side = Mathf.Abs(knockbackDirection.x) > 0.01f
@@ -350,8 +359,9 @@ namespace DesertGecko.Enemies
             // Ağır düşman kenardaysa geriye savrulmaz, sadece yerinde sarsılır: uçurumdan itilip düşmesin.
             float pushX = KeepsFooting && IsBlocked((int)side) ? 0f : side * knockbackVelocity.x;
             body.linearVelocity = new Vector2(pushX, knockbackVelocity.y);
-            stunnedUntil = Time.time + stunDuration;
+            stunnedUntil = Time.time + (hit.Kind == DamageKind.Tongue ? tongueStunDuration : stunDuration);
             OnDamaged();
+            return true;
         }
 
         /// <summary>

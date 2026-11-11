@@ -7,6 +7,7 @@ using DesertGecko.Environment;
 using DesertGecko.Levels;
 using DesertGecko.Player;
 using DesertGecko.UI;
+using DesertGecko.Weapons;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -284,7 +285,7 @@ namespace DesertGecko.EditorTools
             // Dil: böcek ve ilk akrep
             p.Sign(53f, 6f, "J: dil saldırısı\nBöcek yakala, can yenile");
             p.Bug(57f, 7.3f);
-            p.Sign(64f, 6f, "Akrebe J ile 3 kez vur\nDokunursa can yakar!");
+            p.Sign(64f, 6f, "Akrebe J ile 4 kez vur\nDokunursa can yakar!");
             p.Scorpion(71f, 6f);
             p.Plant("kaktus_16", 68f, 6f);
 
@@ -348,6 +349,7 @@ namespace DesertGecko.EditorTools
             p.Ground(34f, 56f, 1f);
             p.Checkpoint(36f, 1f);
             p.Sign(39f, 1f, "Çıngırak duyarsan kaç!\nMermi alçaktan gelir: zıpla");
+            p.Sign(44f, 1f, "Yılan ölünce silahı düşer: üstünden geç\nK: ateş et, W + K: yukarı nişan");
             p.Snake(47f, 1f);
             p.Bug(41f, 2.4f);
             p.Plant("kaktus_25", 51f, 1f);
@@ -359,6 +361,7 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(59f, 12f);
             p.Scorpion(65f, 12f);
             p.Jackal(73f, 12f);
+            p.Sign(77f, 12f, "J: uzaktaki silahı dille çek\nS + K: elindeki silahı bırak");
             p.Plant("kaktus_05", 69f, 12f);
             p.Platform(68f, 15.5f, "platform_04");
             p.CrystalLine(66.5f, 16.3f, 4, 1f);
@@ -668,8 +671,9 @@ namespace DesertGecko.EditorTools
             p.Ledge(82f, 90f, 10f);
             p.Snake(86f, 10f);
             p.Crystal(83f, 10.8f);
-            p.Sign(89f, floorB, "Yuvarlanırken zırhı delinmez, atla!\nÇarpıp sersemleyince vur");
+            p.Sign(89f, floorB, "Zırhına mermi işlemez, atla!\nDinamit kabuğunu çatlatır");
             p.Armadillo(93f, floorB);
+            p.TreasureRock(98.2f, floorB); // armadillonun kazmasıyla ilk kaya: asansörün yanında, yolu kapatmaz
             p.Mover(94f, 5f, "tahta_kafes", new Vector2(0f, 11f), 2.4f);
             p.Ledge(96.5f, 105f, exitY, register: true); // tünelden dışarı uzanır
             p.Crystal(98f, exitY + 0.8f);
@@ -737,6 +741,8 @@ namespace DesertGecko.EditorTools
             p.Shelf(0f, 9f, 7f, 1.2f, -1);
             p.Snake(4f, 7f);
             p.CrystalLine(11f, 2f, 3, 1.2f);
+            p.Sign(18.5f, floorA, "Altın damarlı kaya:\nkazmayla iki kez vur ya da dinamitle patlat");
+            p.TreasureRock(22f, floorA);
 
             // Dövüş odası: kapılar iner, dördü de ölmeden açılmaz. Çıkıntılar kaçış yeri.
             p.Checkpoint(26f, floorA);
@@ -869,6 +875,7 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(32f, 2f);
             p.Altar(35f, 2f, 3.6f); // checkpoint'in yanında uzaktan görünen sunak
             p.Deco("yuz_kazma", 39f, 2f);
+            p.WeaponCache(40.5f, 2f, "Kazma"); // madencinin bıraktığı kazma: ileride diken mutantının dikenlerini kırar
             p.Snake(44f, 2f);
             p.Crystal(41f, 3f);
 
@@ -878,6 +885,7 @@ namespace DesertGecko.EditorTools
 
             p.Ground(62f, 80f, 4f);
             p.Deco("yuz_araba", 66f, 4f);
+            p.Sign(63.5f, 4f, "Mermi dikenlerden seker!\nKazma ve dinamit dikenleri kırar");
             p.SahteCali(69f, 4f);
             p.Diken(75f, 4f); // arabadan inen Gila'ya yaylım: salvoların arasında zıpla, kelleşince vur
             p.Firefly(76f, 5.6f);
@@ -1105,6 +1113,7 @@ namespace DesertGecko.EditorTools
             p.Snake(32f, 18f);
             p.Armadillo(38.5f, 18f);
             p.Ground(42f, 56f, 20f);
+            p.TreasureRock(44.5f, 20f); // üst basamakta: armadillonun ve yılanın yolunu kesmesin, sana ulaşabilsinler
             p.Fare(51f, 20f); // bayrağın önünde: kenardan uzak, köşe kuralına takılmasın
             p.Deco("yuz_degirmen", 48f, 20f);
             p.Goal(53f, 20f);
@@ -2715,6 +2724,53 @@ namespace DesertGecko.EditorTools
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);
             public void Armadillo(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Armadillo, actors, Name("Armadillo"), x + OriginX, groundTop);
             public void Diken(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.SpikeMutant, actors, Name("DikenMutanti"), x + OriginX, groundTop);
+            /// <summary>
+            /// Altın damarlı kaya: kazmayla iki, dinamitle tek darbede kırılır, içinden kristal fırlar. İsteğe bağlı ödül;
+            /// yolu kapatmaz, üstünden atlanabilir. Default katmanında: Gila'yı ve düşmanları durdurur.
+            /// </summary>
+            public void TreasureRock(float x, float groundTop)
+            {
+                x += OriginX;
+                Sprite intact = TestSceneBuilder.Prop("kaya_damar_0");
+                var go = new GameObject(Name("AltinKaya")) { layer = LayerMask.NameToLayer("Default") };
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector3(x, groundTop - 2f / 32f, 0f); // alt kenarı toprağa biraz gömülü
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = intact;
+                sr.sortingOrder = 4;
+                var box = go.AddComponent<BoxCollider2D>();
+                Vector2 size = intact != null ? (Vector2)intact.bounds.size : new Vector2(1.25f, 1.4f);
+                box.size = new Vector2(size.x * 0.85f, size.y * 0.9f);
+                box.offset = new Vector2(0f, size.y * 0.45f);
+                var rock = go.AddComponent<BreakableRock>();
+                TestSceneBuilder.SetField(rock, "intactSprite", intact);
+                TestSceneBuilder.SetField(rock, "crackedSprite", TestSceneBuilder.Prop("kaya_damar_1"));
+                TestSceneBuilder.SetField(rock, "breakSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kazma.wav"));
+                var drop = go.AddComponent<DesertGecko.Collectibles.CrystalDrop>();
+                var so = new SerializedObject(drop);
+                so.FindProperty("crystalPrefab").objectReferenceValue = ctx.Combat.Crystal;
+                so.FindProperty("minCount").intValue = 4;
+                so.FindProperty("maxCount").intValue = 5;
+                so.FindProperty("spawnOffset").vector2Value = new Vector2(0f, 0.8f);
+                so.ApplyModifiedPropertiesWithoutUndo();
+                occupied.Add((x, size.x / 2f));
+            }
+
+            /// <summary>Yerde duran silah (Assets/Data/Weapons/&lt;ad&gt;.asset): süresi dolmaz, ölünce yeniden konur.</summary>
+            public void WeaponCache(float x, float groundTop, string weapon)
+            {
+                var data = AssetDatabase.LoadAssetAtPath<WeaponData>($"Assets/Data/Weapons/{weapon}.asset");
+                if (data == null)
+                {
+                    Debug.LogWarning($"[DesertGecko] Silah verisi yok: {weapon} (önce Desert Gecko/Silahları Kur)");
+                    return;
+                }
+                var go = new GameObject(Name("Silah_" + weapon));
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector3(x + OriginX, groundTop, 0f);
+                TestSceneBuilder.SetField(go.AddComponent<WeaponSpawner>(), "weapon", data);
+            }
+
             public void Fare(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.TumbleweedMouse, actors, Name("CaliFaresi"), x + OriginX, groundTop);
 
             /// <summary>

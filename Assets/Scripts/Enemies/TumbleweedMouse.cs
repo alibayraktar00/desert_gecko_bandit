@@ -196,9 +196,17 @@ namespace DesertGecko.Enemies
                 Enter(MouseState.Fatigue, fatigueDuration);
         }
 
-        // Gizliyken darbe işlemez; açıkken dil darbelerini sayısı bitene kadar savuşturur. Kuyruk delip geçer.
-        protected override bool Deflects(in DamageInfo hit) =>
-            IsDisguised || (hit.Amount <= maxParriedDamage && ParriesLeft > 0);
+        // Gizliyken darbe işlemez (patlama hariç: çalıyı da fareyi de vurur). Açıkken bıçağıyla yalnız yakın darbeleri,
+        // dili ve kazmayı, sayısı bitene kadar savuşturur. Kuyruk, mermi, saçma ve patlama delip geçer.
+        protected override bool Deflects(in DamageInfo hit)
+        {
+            if (hit.Kind == DamageKind.Explosion)
+                return false;
+            if (IsDisguised)
+                return true;
+            bool parryable = (hit.Kind == DamageKind.Tongue && hit.Amount <= maxParriedDamage) || hit.Kind == DamageKind.Melee;
+            return parryable && ParriesLeft > 0;
+        }
 
         protected override void OnBlocked()
         {

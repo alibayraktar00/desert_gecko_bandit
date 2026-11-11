@@ -32,6 +32,7 @@ namespace DesertGecko.Weapons
         {
             ExplosionFx.Spawn(at, radius);
             CameraShake.AddAt(at, shake);
+            HitStop.Request(0.07f);
 
             float pushRadius = radius * PushRadiusScale;
             int blast = ++nextBlastId;

@@ -11,6 +11,12 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/altin_toplama.wav  altın toplanır: iki hızlı parlak nota, madeni şıngırtı
   Assets/Audio/patlama.wav        dinamit patlaması: sert darbe, derin gümbürtü, toz hışırtısı
   Assets/Audio/kazma.wav          kazma vuruşu: madeni çınlama, tok taş darbesi
+  Assets/Audio/pompali.wav        pompalı atışı: tok ve geniş, uzun boğuk kuyruk
+  Assets/Audio/pompa.wav          pompa sürgüsü: "çak-çak"
+  Assets/Audio/sekme.wav          seken mermi: vuruş ve inen tiz ıslık
+  Assets/Audio/silah_al.wav       silah alma: kavrama ve madeni şıkırtı
+  Assets/Audio/savurma.wav        savurma: dinamit atma, kazma sallama
+  Assets/Audio/fitil.wav          dinamit fitili: çıtırdayan cızırtı (1,3 sn)
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -152,6 +158,67 @@ def pick_clank(rng, seconds=0.4):
     return (ring * 0.6 + thud * 0.8 + click) * 0.8
 
 
+def shotgun_blast(rng, seconds=0.6):
+    """Pompalı: altıpatlardan tok ve geniş; uzun boğuk kuyruk."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.normal(0.0, 1.0, t.size)
+    crack = noise * np.exp(-t * 22.0)
+    body = np.convolve(noise, np.ones(24) / 24, mode="same") * 4.0 * np.exp(-t * 7.0)
+    thump = np.sin(2 * np.pi * (90.0 * t - 70.0 * t ** 2)) * np.exp(-t * 9.0)
+    return (crack * 0.7 + body * 0.8 + thump * 0.9) * 0.75
+
+
+def pump_rack(rng, seconds=0.32):
+    """Pompa: iki kısa madeni tık ("çak-çak"): geri ve ileri sürgü."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(t.size)
+    for start, pitch in ((0.0, 2400.0), (0.15, 1900.0)):
+        u = np.clip(t - start, 0.0, None)
+        on = t >= start
+        click = rng.normal(0.0, 1.0, t.size) * np.exp(-u * 160.0)
+        ring = np.sin(2 * np.pi * pitch * u) * np.exp(-u * 60.0) * 0.5
+        slide = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(6) / 6, mode="same") * np.exp(-u * 40.0) * 0.4
+        out += (click + ring + slide) * on
+    return out * 0.6
+
+
+def ricochet(rng, seconds=0.35):
+    """Seken mermi: kısa vuruş ve inen tiz bir ıslık ("pıııv")."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    hit = rng.normal(0.0, 1.0, t.size) * np.exp(-t * 120.0) * 0.7
+    freq = 3200.0 * np.exp(-t * 2.2) + 900.0
+    phase = np.cumsum(freq) / RATE
+    whine = np.sin(2 * np.pi * phase) * np.exp(-t * 9.0) * np.minimum(t / 0.01, 1.0) * 0.45
+    return hit + whine
+
+
+def weapon_pickup(rng, seconds=0.25):
+    """Silah alma: tok bir kavrama ve madeni şıkırtı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    grab = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(18) / 18, mode="same") * 4.0 * np.exp(-t * 45.0)
+    u = np.clip(t - 0.06, 0.0, None)
+    clink = sum(np.sin(2 * np.pi * f * u) * a for f, a in ((2100.0, 0.4), (3150.0, 0.25))) * np.exp(-u * 30.0) * (t >= 0.06)
+    return (grab * 0.7 + clink) * 0.7
+
+
+def whoosh(rng, seconds=0.28):
+    """Savurma: yükselip sönen hava hışırtısı (dinamit atma, kazma sallama)."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(10) / 10, mode="same") * 3.0
+    envelope = np.sin(np.pi * np.clip(t / seconds, 0.0, 1.0)) ** 2
+    return noise * envelope * 0.55
+
+
+def fuse_hiss(rng, seconds=1.3):
+    """Fitil: çıtırdayan tiz cızırtı, biterken hızlanır."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.normal(0.0, 1.0, t.size)
+    hiss = noise - np.convolve(noise, np.ones(4) / 4, mode="same")
+    crackle = (rng.random(t.size) < 0.004 * (1.0 + 2.0 * t / seconds)) * rng.normal(0.0, 3.0, t.size)
+    envelope = np.minimum(t / 0.05, 1.0) * np.minimum((seconds - t) / 0.05, 1.0)
+    return (hiss * 0.25 + crackle * 0.4) * envelope
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -166,6 +233,12 @@ def main():
     # Yeni sesler kendi tohumuyla: öncekilerin rastgele dizisi bozulmasın.
     save("patlama.wav", explosion(np.random.default_rng(11)))
     save("kazma.wav", pick_clank(np.random.default_rng(12)))
+    save("pompali.wav", shotgun_blast(np.random.default_rng(13)))
+    save("pompa.wav", pump_rack(np.random.default_rng(14)))
+    save("sekme.wav", ricochet(np.random.default_rng(15)))
+    save("silah_al.wav", weapon_pickup(np.random.default_rng(16)))
+    save("savurma.wav", whoosh(np.random.default_rng(17)))
+    save("fitil.wav", fuse_hiss(np.random.default_rng(18)))
 
 
 if __name__ == "__main__":
