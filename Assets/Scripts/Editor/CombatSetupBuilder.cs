@@ -29,6 +29,7 @@ namespace DesertGecko.EditorTools
             public Jackal Jackal;
             public Armadillo Armadillo;
             public TumbleweedMouse TumbleweedMouse;
+            public BanditBat BanditBat;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -54,6 +55,7 @@ namespace DesertGecko.EditorTools
             a.Jackal = BuildJackal(a.Crystal);
             a.Armadillo = BuildArmadillo(a.Crystal);
             a.TumbleweedMouse = BuildTumbleweedMouse(a.Crystal);
+            a.BanditBat = BuildBanditBat(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -321,6 +323,83 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<TumbleweedMouse>(root, "TumbleweedMouse");
+        }
+
+        // Kare sırası (tools/gemini_yarasa_isle.py): 0-7 asılı, 8-15 uçuş, 16-23 süzülme, 24-31 dinamit
+        // (24-27 fitil yanar, 28-29 dinamit hâlâ pençede, 30-31 bıraktı), 32-39 alay, 40-47 sersem,
+        // 48-55 hasar, 56-63 toparlanma, 64-71 yenik (çakılma).
+        static BanditBat BuildBanditBat(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("yarasa", 72);
+            Sprite[] Range(int from, int to)
+            {
+                var frames = new Sprite[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            BatDynamite dynamite = BuildBatDynamite();
+
+            // Transform yarasanın ortası: kareler 64 px tuvalde ortalı, pivot alt orta -> Visual 1 birim aşağı.
+            var root = new GameObject("BanditBat") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.8f, 0.75f);
+            box.offset = new Vector2(0f, -0.05f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            sr.transform.localPosition = new Vector3(0f, -1f, 0f);
+
+            var bat = root.AddComponent<BanditBat>();
+            SetField(bat, "spriteRenderer", sr);
+            SetMask(bat, "groundMask", GameLayers.GroundMask);
+            SetField(bat, "dynamitePrefab", Fresh(dynamite));
+            SetArray(bat, "hangFrames", Range(0, 7));
+            SetArray(bat, "flyFrames", Range(8, 15));
+            SetArray(bat, "glideFrames", Range(16, 23));
+            SetArray(bat, "windupFrames", Range(24, 27));
+            SetArray(bat, "releaseFrames", Range(30, 31));
+            SetArray(bat, "tauntFrames", Range(32, 39));
+            SetArray(bat, "dizzyFrames", Range(40, 47));
+            SetArray(bat, "hurtFrames", Range(48, 55));
+            SetArray(bat, "recoverFrames", Range(56, 63));
+            SetArray(bat, "defeatFrames", Range(64, 71));
+
+            // Kareler sağa bakar. İki darbe: biri havada çapraz dille, biri yorgunken.
+            var so = new SerializedObject(bat);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("maxHealth").intValue = 2;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<BanditBat>(root, "BanditBat");
+        }
+
+        static BatDynamite BuildBatDynamite()
+        {
+            string path = $"{SpriteImportRules.EnemiesFolder}yarasa/yarasa_dinamit.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+
+            var root = new GameObject("BatDynamite");
+            // Dönme ekseni dinamitin ortası olsun: alt-orta pivotlu sprite yarı boyu kadar aşağıda.
+            var pivot = new GameObject("Visual").transform;
+            pivot.SetParent(root.transform, false);
+            SpriteRenderer sr = AddSprite(pivot, "Sprite", sprite, 12);
+            if (sprite != null)
+                sr.transform.localPosition = new Vector3(0f, -sprite.bounds.size.y / 2f, 0f);
+            var d = root.AddComponent<BatDynamite>();
+            SetField(d, "visual", pivot);
+            return Save<BatDynamite>(root, "BatDynamite");
         }
 
         static Sprite[] LoadEnemyFrames(string enemy, int count)

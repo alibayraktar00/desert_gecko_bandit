@@ -1,0 +1,366 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &188413783931284616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 517014961166561474}
+  - component: {fileID: 5087787443650601294}
+  m_Layer: 0
+  m_Name: Visual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &517014961166561474
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 188413783931284616}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 723882370842046479}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!212 &5087787443650601294
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 188413783931284616}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 8
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: bcbb5fea708589b4188f118e37933089, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 2, y: 2}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!1 &7172151132093182025
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 723882370842046479}
+  - component: {fileID: 8237436544232923359}
+  - component: {fileID: 8211761847792040605}
+  - component: {fileID: 8435767317693718027}
+  - component: {fileID: 829585483009503078}
+  m_Layer: 8
+  m_Name: BanditBat
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &723882370842046479
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172151132093182025}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 517014961166561474}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!50 &8237436544232923359
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172151132093182025}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 0
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 1
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 4
+--- !u!61 &8211761847792040605
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172151132093182025}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: -0.05}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.8, y: 0.75}
+  m_EdgeRadius: 0
+--- !u!114 &8435767317693718027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172151132093182025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bff2df22bbe60674c83286048f6264c9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.BanditBat
+  maxHealth: 2
+  contactDamage: 1
+  patrolSpeed: 2
+  chaseSpeed: 4
+  patrolDistance: 3
+  detectRange: 5
+  loseRange: 8
+  verticalTolerance: 2.5
+  belowTolerance: 1.1
+  aboveTolerance: 0.6
+  edgeMargin: 1.2
+  contactPause: 0.5
+  knockbackVelocity: {x: 4, y: 3}
+  stunDuration: 0.3
+  flashDuration: 0.12
+  hitGuardDuration: 0.7
+  guardBlinkRate: 14
+  flashColor: {r: 1, g: 0.35, b: 0.35, a: 1}
+  deathBurstColor: {r: 0.70980394, g: 0.27058825, b: 0.16862746, a: 1}
+  spriteRenderer: {fileID: 5087787443650601294}
+  spriteFacesLeft: 0
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 64
+  killY: -12
+  wakeHalfWidth: 4.5
+  wakeDepth: 12
+  wakeDuration: 0.6
+  wakeDrop: 1.2
+  flySpeed: 4.5
+  flyAcceleration: 14
+  hoverHeight: 3.6
+  leashRange: 9
+  giveUpRange: 13
+  bobAmplitude: 0.18
+  bobFrequency: 1.6
+  dynamitePrefab: {fileID: 2586680791358700231, guid: 06ea86a41f7d32147ae9711a58e5bfa3, type: 3}
+  dynamiteCount: 3
+  aimTolerance: 0.9
+  firstThrowDelay: 0.8
+  windupDuration: 0.75
+  releaseDuration: 0.3
+  tauntDuration: 0.9
+  dropOffset: {x: 0.2, y: -0.55}
+  sparkColor: {r: 1, g: 0.8235294, b: 0.2901961, a: 1}
+  tiredDuration: 3.5
+  tiredHeight: 1.6
+  recoverDuration: 0.7
+  hurtPoseTime: 0.4
+  dustColor: {r: 0.6117647, g: 0.47843137, b: 0.32156864, a: 1}
+  hangFps: 4
+  flyFps: 12
+  tauntFps: 9
+  dizzyFps: 8
+  hangFrames:
+  - {fileID: 21300000, guid: bcbb5fea708589b4188f118e37933089, type: 3}
+  - {fileID: 21300000, guid: 621b2df93fc5488469308179384e45b3, type: 3}
+  - {fileID: 21300000, guid: 123c0111892b7884baf1ceab9d707eba, type: 3}
+  - {fileID: 21300000, guid: bf04d812c9a82e74abbc17b796cf6757, type: 3}
+  - {fileID: 21300000, guid: 616d902985acf9a4f9e5be3db9bda6f7, type: 3}
+  - {fileID: 21300000, guid: 99db9f1b37c720d40a886120c68aadfe, type: 3}
+  - {fileID: 21300000, guid: f866187c1cbb5d74bbd45fe9901250a2, type: 3}
+  - {fileID: 21300000, guid: 69285ccd42d4bf740802666426e9688f, type: 3}
+  flyFrames:
+  - {fileID: 21300000, guid: 7d633518704a0c04da41df37f9a9264d, type: 3}
+  - {fileID: 21300000, guid: b81f96efbce0e0249921a2acd8593933, type: 3}
+  - {fileID: 21300000, guid: 97c407b0a16284e48b973c23554aeb75, type: 3}
+  - {fileID: 21300000, guid: c8309545f759d3741855e6cf2d148db2, type: 3}
+  - {fileID: 21300000, guid: 2a1433d8048427b43b77cb0e4a8fa314, type: 3}
+  - {fileID: 21300000, guid: 099fe13ba18e44b45961748f3713b53c, type: 3}
+  - {fileID: 21300000, guid: 75bfa9eff5ddeb14ea9953b97b60b96f, type: 3}
+  - {fileID: 21300000, guid: 5e55b81861922c8409ea7ca8f4a23b22, type: 3}
+  glideFrames:
+  - {fileID: 21300000, guid: fbea695ecf4705c449d504f75dd016af, type: 3}
+  - {fileID: 21300000, guid: 78bea96aef369594b88bd2563f6c7853, type: 3}
+  - {fileID: 21300000, guid: c746558d3e603a242af33578ec43e3e8, type: 3}
+  - {fileID: 21300000, guid: 11f7c9b4de82e794f81d762367e4eb40, type: 3}
+  - {fileID: 21300000, guid: 29dee9389f6e4b24086ea94d346cd407, type: 3}
+  - {fileID: 21300000, guid: 1cc0931554f2b6642b44c90b323f7cbe, type: 3}
+  - {fileID: 21300000, guid: 26081e4b1192cde49b77cab697d83a61, type: 3}
+  - {fileID: 21300000, guid: b69a24b2d9b43b64380204c61a90d1da, type: 3}
+  windupFrames:
+  - {fileID: 21300000, guid: 841ff2bd6617e64418a1a69abf2df7ce, type: 3}
+  - {fileID: 21300000, guid: 88d73b3412bf3c34eb240e67c5ec0ab0, type: 3}
+  - {fileID: 21300000, guid: 10dadb5fbad92384589f61929d0f5665, type: 3}
+  - {fileID: 21300000, guid: 2a9e7e1d292d2bd4980e363d371ad40b, type: 3}
+  releaseFrames:
+  - {fileID: 21300000, guid: f74f050716cd0944eb6526f3cbb28a34, type: 3}
+  - {fileID: 21300000, guid: 64ba772baec632348bbfa34809b97554, type: 3}
+  tauntFrames:
+  - {fileID: 21300000, guid: 767164df427bf3a48a64f4b06f53e323, type: 3}
+  - {fileID: 21300000, guid: aec1dab5574d4fc40b64788f6335faef, type: 3}
+  - {fileID: 21300000, guid: c094ebf422b3845449b96bbf85e226d6, type: 3}
+  - {fileID: 21300000, guid: 863584a1391fde848ad035a856b91054, type: 3}
+  - {fileID: 21300000, guid: 79763411cd1f8864b891438d0ea0d5fe, type: 3}
+  - {fileID: 21300000, guid: 1c37424fdf1e7904280b5e6e3d02212b, type: 3}
+  - {fileID: 21300000, guid: 2d0db41355c7376468ced1f984ef256b, type: 3}
+  - {fileID: 21300000, guid: 3c8547a8553a61b46a7e82e6f0775997, type: 3}
+  dizzyFrames:
+  - {fileID: 21300000, guid: e5c57f5f58dbf9f4992a619175855f76, type: 3}
+  - {fileID: 21300000, guid: b9a7d322a33ce9443b437d075d8f3f05, type: 3}
+  - {fileID: 21300000, guid: a7e3086ea6bab1f498003974d665420e, type: 3}
+  - {fileID: 21300000, guid: b05e2374a1a74224a9185617802705d9, type: 3}
+  - {fileID: 21300000, guid: ef496b94d4f6c464f9028de07cb4b539, type: 3}
+  - {fileID: 21300000, guid: 3c929e0ce3d593c47bd3027f387ed831, type: 3}
+  - {fileID: 21300000, guid: 8c3e5369d92d4ea45b0db94414dc8e2e, type: 3}
+  - {fileID: 21300000, guid: b64fabfc4a181d74bb372f0cbbf464d5, type: 3}
+  hurtFrames:
+  - {fileID: 21300000, guid: 3e6287c0ec512e341afb46fb9ffa2632, type: 3}
+  - {fileID: 21300000, guid: 5eaaafced5f6d234099a9882615615f7, type: 3}
+  - {fileID: 21300000, guid: ac6a8feb1eebda14bafd6b818667badb, type: 3}
+  - {fileID: 21300000, guid: 631fac72c79a53c4da5eeecc8888e39c, type: 3}
+  - {fileID: 21300000, guid: d3fd4cbd2ee486d4bbb16db1bb12486f, type: 3}
+  - {fileID: 21300000, guid: 18ff73c739d7bcd4da6d3ec5e9a92144, type: 3}
+  - {fileID: 21300000, guid: 527cdb7486f0e9b4a879bdd7eadd782f, type: 3}
+  - {fileID: 21300000, guid: 9ba2bf9b104905f47876b5f0529eedf3, type: 3}
+  recoverFrames:
+  - {fileID: 21300000, guid: 348a317f5fdd4754f83c111109ad79df, type: 3}
+  - {fileID: 21300000, guid: 624e3bbfbc9dbb94f9fd549eaeecab35, type: 3}
+  - {fileID: 21300000, guid: 03cadfa527c51b64e8ee8981175436c1, type: 3}
+  - {fileID: 21300000, guid: 7b31975688f2da848ac1c9631bc70f61, type: 3}
+  - {fileID: 21300000, guid: 7f8b2c12d3e992c43bd26ca7fda20088, type: 3}
+  - {fileID: 21300000, guid: 6f1dee7febdb2d64daee7f5f827f9fab, type: 3}
+  - {fileID: 21300000, guid: d9d5d582efee30d438e4451903ef7cb5, type: 3}
+  - {fileID: 21300000, guid: d88751f34a75f77448eb4949daeaec34, type: 3}
+  defeatFrames:
+  - {fileID: 21300000, guid: c91c3bd34f8b826409b68a3b10738749, type: 3}
+  - {fileID: 21300000, guid: 096e4a0e690442a4492e7768be8c243f, type: 3}
+  - {fileID: 21300000, guid: a56b23622a30f164d929acbaf60c2beb, type: 3}
+  - {fileID: 21300000, guid: 06b6716ab86184349b548f61bdc3496d, type: 3}
+  - {fileID: 21300000, guid: de11e3017604ada4e9c04367186ba414, type: 3}
+  - {fileID: 21300000, guid: c7d1bcfba6af2d847a2e8405b1beeb23, type: 3}
+  - {fileID: 21300000, guid: 0b4d444873a8f7449b0eda21ace79c13, type: 3}
+  - {fileID: 21300000, guid: 5e7f9fce158dbfe4d854212588a97a91, type: 3}
+--- !u!114 &829585483009503078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172151132093182025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc0f90b254112eb499c612e4fa82f4f8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Collectibles.CrystalDrop
+  crystalPrefab: {fileID: 4914030784869760565, guid: 61deac18ea4d6034498c6957e8a207dc, type: 3}
+  minCount: 1
+  maxCount: 2
+  launchSpeed: 5
+  spawnOffset: {x: 0, y: 0.5}

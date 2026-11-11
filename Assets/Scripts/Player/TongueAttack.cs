@@ -10,7 +10,7 @@ namespace DesertGecko.Player
 {
     /// <summary>
     /// Yakın mesafe dil saldırısı (J). Önündeki alanı tarar: düşmana hasar verir, böceği yakalayıp
-    /// can yeniler. Yukarı/aşağı basılıysa o yöne, değilse baktığı yöne uzanır.
+    /// can yeniler. Baktığı yöne uzanır; W/yukarı basılıysa yukarı, W + yön ile çapraz yukarı uzanır.
     /// </summary>
     [RequireComponent(typeof(PlayerController), typeof(PlayerInputReader), typeof(PlayerHealth))]
     public class TongueAttack : MonoBehaviour
@@ -119,10 +119,10 @@ namespace DesertGecko.Player
 
         bool TargetInTongueReach()
         {
-            Vector2 direction = new Vector2(AttackSide(), 0f);
+            Vector2 direction = AimDirection();
             Vector2 center = MouthPosition() + direction * (range * 0.5f);
             var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
-            int count = Physics2D.OverlapBox(center, new Vector2(range, width), 0f, filter, hits);
+            int count = Physics2D.OverlapBox(center, new Vector2(range, width), AngleOf(direction), filter, hits);
             for (int i = 0; i < count; i++)
             {
                 if (hits[i].GetComponentInParent<Bug>() != null)
@@ -155,8 +155,22 @@ namespace DesertGecko.Player
             return true;
         }
 
-        // Dil yalnızca yatay uzanır; yukarı/aşağı nişan yok.
-        Vector2 AimDirection() => new Vector2(AttackSide(), 0f);
+        /// <summary>
+        /// Yukarı basılıysa dil havadaki düşmanlara uzanır: yukarı + yön çapraz (45°), sadece yukarı dimdik.
+        /// Duvara yapışıkken yukarı tırmanmak demek; orada hep yatay.
+        /// </summary>
+        Vector2 AimDirection()
+        {
+            int side = AttackSide();
+            Vector2 move = input.Move;
+            if (controller.State == PlayerController.MoveState.WallCling || move.y < AimUpThreshold)
+                return new Vector2(side, 0f);
+            return Mathf.Abs(move.x) >= AimSideThreshold ? new Vector2(side, 1f).normalized : Vector2.up;
+        }
+
+        const float AimUpThreshold = 0.5f, AimSideThreshold = 0.3f;
+
+        static float AngleOf(Vector2 direction) => Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
         // Duvara yapışıkken yüz duvara dönük; dil duvardan uzağa uzansın (TailAttack ile aynı).
         int AttackSide() => controller.State == PlayerController.MoveState.WallCling
@@ -203,7 +217,8 @@ namespace DesertGecko.Player
             alreadyHit.Clear();
             // Böcekler trigger; global "queriesHitTriggers" ayarından bağımsız olarak bulunsun.
             var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
-            int count = Physics2D.OverlapBox(center, size, 0f, filter, hits);
+            // Kutu dilin yönüne döner: çapraz/yukarı vuruşta da dil boyunca tarar.
+            int count = Physics2D.OverlapBox(center, size, AngleOf(direction), filter, hits);
             for (int i = 0; i < count; i++)
             {
                 Collider2D hit = hits[i];

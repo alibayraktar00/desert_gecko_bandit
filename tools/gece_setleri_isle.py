@@ -218,7 +218,27 @@ def wavy(image, phase, amount):
         out[y] = np.roll(image[y], shift, axis=0)
         if shift > 0:
             out[y, :shift] = image[y, :1]  # sol kenar fırtınanın içine bakar, açık kalmasın
+        elif shift < 0:
+            out[y, shift:] = 0  # sola kayınca dolu sol kenar sağ uca sarıyordu: önde dikey şerit kalmasın
     return out
+
+
+def ragged_front(cell, seed):
+    """Panelden kesilen sağ uç dümdüz bir dikey çizgiydi: her satırın ucunu dalgalı ve
+    kırık kırık bitirir, son pikseller seyrekleşir. Fırtınanın önü kesik değil savrulan toz gibi görünür."""
+    out = cell.copy()
+    h, w = out.shape[:2]
+    rng = np.random.default_rng(seed)
+    for y in range(h):
+        # İki dalganın toplamı: büyük kıvrım + küçük tırtıl; uç 8-30 piksel içeride biter.
+        wave = 0.5 + 0.3 * np.sin(y / h * np.pi * 2.6 + seed) + 0.2 * np.sin(y / h * np.pi * 9 + seed * 0.7)
+        limit = w - 8 - int(wave * 22) - int(rng.integers(0, 3))
+        out[y, limit:] = 0
+        tail = np.arange(max(0, limit - 6), limit)
+        thin = rng.random(len(tail)) < (tail - (limit - 6)) / 7  # uca yaklaştıkça seyrek
+        out[y, tail[thin]] = 0
+    xs = np.nonzero(out[..., 3].any(axis=0))[0]
+    return out[:, :xs.max() + 1]
 
 
 def process_wide_storm(preview):
@@ -239,6 +259,7 @@ def process_wide_storm(preview):
             cell[row][rng.random(cell.shape[1]) < (6 - k) / 7] = 0
         ys = np.nonzero(cell[..., 3].any(axis=1))[0]
         cell = cell[ys.min():ys.max() + 1]
+        cell = ragged_front(cell, seed={"a": 11, "b": 23}[key])
         for frame in range(6):
             out = wavy(cell, frame / 6 * np.pi * 2, 2.5)
             save(out, PROPS / f"gece_firtina_bulut_{key}_{frame}.png")

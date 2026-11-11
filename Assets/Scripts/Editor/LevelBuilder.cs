@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DesertGecko.Core;
+using DesertGecko.Enemies;
 using DesertGecko.Environment;
 using DesertGecko.Levels;
 using DesertGecko.Player;
@@ -633,6 +634,7 @@ namespace DesertGecko.EditorTools
             p.Scorpion(49f, floorA);
             p.FallingRock(51f, roofA);
             p.FallingRock(54.5f, roofA);
+            p.Yarasa(56.5f, roofA); // kayalar düşerken tepeden dinamit: ikisine birden bak
             p.Snake(58f, floorA);
             p.Bug(60.5f, floorA + 1.3f);
 
@@ -733,6 +735,7 @@ namespace DesertGecko.EditorTools
             p.Jackal(47f, floorA);
             p.Snake(53f, floorA);
             p.Armadillo(57f, floorA);
+            p.Yarasa(45f, roofA, wakeHalfWidth: 15f); // kapılar inince odanın tavanından uyanır
 
             // Birleşim: çürük köprü, tavandan kaya, ortada hareketli platform
             p.Chasm(62f, 88f, floorA);
@@ -751,6 +754,7 @@ namespace DesertGecko.EditorTools
             p.CaveFloor(88f, 118f, floorB);
             p.Checkpoint(89.5f, floorB);
             p.Bug(92f, floorB + 1.3f);
+            p.Yarasa(95f, roofB); // galerinin tavanında uyur, yılanla birlikte iki kat baskı
             p.Snake(97f, floorB);
             p.Armadillo(103f, floorB);
             p.Sign(108.5f, floorB, "Sıcak hava bacası:\nSpace basılı tut, yukarı!");
@@ -894,6 +898,7 @@ namespace DesertGecko.EditorTools
             p.Firefly(37.5f, 5.5f);
             p.Ground(50f, 62f, 3f);
             p.Checkpoint(52f, 3f);
+            p.Yarasa(54.5f, wireTop); // telgraf telinde baş aşağı uyur
             p.Pole(56f, 3f, 7f);
             p.Snake(59f, 3f);
 
@@ -914,6 +919,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(99.5f, 10f);
             p.Ground(112f, 129f, 9f);
             p.Checkpoint(113.5f, 9f);
+            p.Yarasa(116f, 14.95f); // eğik telin ucunda: zırhlıyla birlikte
             p.Brazier(116f, 9f);
             p.Pole(118f, 9f, 6f);
             p.Armadillo(121f, 9f);
@@ -946,6 +952,7 @@ namespace DesertGecko.EditorTools
             p.CaveFloor(40f, 44f, 5.5f);
             p.CaveFloor(44f, 62f, 3f);
             p.Checkpoint(49f, 3f);
+            p.Yarasa(45.5f, 15f); // tünelden inen basamakların tavanında
             p.Firefly(52f, 4.6f);
 
             // Tanıtım: taş üstünde gayzer. Bekle, fışkırınca havalan.
@@ -1050,6 +1057,7 @@ namespace DesertGecko.EditorTools
             p.CrystalArc(64f, 22f, 72f, 21f, 3);
             p.Ground(76f, 90f, 18f);
             p.Pole(78f, 18f, 7f);
+            p.Yarasa(76.5f, 25.2f); // fırtına kovalarken telden dinamit: durmak yok
             p.Firefly(84f, 19.6f);
             p.SahteCali(86f, 18f);
 
@@ -2219,11 +2227,13 @@ namespace DesertGecko.EditorTools
                 body.sprite = pixel;
                 body.sharedMaterial = material;
                 body.color = new Color32(0x4E, 0x36, 0x2A, 0xFF);
-                body.sortingOrder = 40;
+                body.sortingOrder = 38; // yedi bulut sırasının (46..40) arkasında
 
-                // Bulut sıraları: yerdeki en önde, yukarı çıktıkça geride; her biri kendi hızında kıvrılır.
-                string[] kinds = { "a", "b", "a", "b", "a" };
-                float[] leads = { 1.2f, 0.2f, -0.9f, -1.6f, -2.4f };
+                // Bulut sıraları: yerdeki en önde, yukarı çıktıkça geride ama düz bir eğimle değil, dalgalı
+                // (ortada bir kabarma öne taşar). Yedi sıra ekranın tepesini de kapatır: arkadaki gövdenin
+                // dümdüz kenarı hiçbir yükseklikte görünmez.
+                string[] kinds = { "a", "b", "a", "b", "a", "b", "a" };
+                float[] leads = { 1.4f, 0.1f, -1.1f, -0.2f, -1.4f, -2.6f, -2.0f };
                 var rows = new List<Transform>();
                 for (int i = 0; i < kinds.Length; i++)
                 {
@@ -2629,6 +2639,20 @@ namespace DesertGecko.EditorTools
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);
             public void Armadillo(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Armadillo, actors, Name("Armadillo"), x + OriginX, groundTop);
             public void Fare(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.TumbleweedMouse, actors, Name("CaliFaresi"), x + OriginX, groundTop);
+
+            /// <summary>
+            /// Haydut Yarasa: <paramref name="roofY"/> tavanın/telin alt yüzü; yarasa oraya asılı uyur.
+            /// <paramref name="wakeHalfWidth"/> verilirse Gila yatayda bu kadar yaklaşınca uyanır (dövüş odasında odanın tamamı).
+            /// </summary>
+            public void Yarasa(float x, float roofY, float wakeHalfWidth = 0f)
+            {
+                GameObject bat = CombatSetupBuilder.Place(ctx.Combat.BanditBat, actors, Name("Yarasa"), x + OriginX, roofY - 0.5f);
+                if (wakeHalfWidth <= 0f)
+                    return;
+                var so = new SerializedObject(bat.GetComponent<BanditBat>());
+                so.FindProperty("wakeHalfWidth").floatValue = wakeHalfWidth;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             /// <summary>Çalı Faresi'nin gizli haliyle aynı, zararsız çalı: oyuncu her çalıdan şüphelensin.</summary>
             public void SahteCali(float x, float groundTop) => Deco("yuz_top_a", x, groundTop);
