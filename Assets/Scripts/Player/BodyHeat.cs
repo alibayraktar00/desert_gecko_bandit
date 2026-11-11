@@ -5,7 +5,7 @@ namespace DesertGecko.Player
 {
     /// <summary>
     /// Gila soğukkanlıdır: gecenin ayazında vücudu soğur, üşüdükçe yavaşlar ve zıplaması kısalır. Tamamen donarsa
-    /// canı azalır. Ateş, fener ve ateş böcekleri ısıtır; yer altının sıcağında fazladan hızlanır.
+    /// canı azalır. Ateş, fener ve zümrüt böcekler ısıtır; yer altının sıcağında fazladan hızlanır.
     /// Sadece gece levellerinde oyuncuya eklenir.
     /// </summary>
     [RequireComponent(typeof(PlayerController), typeof(PlayerHealth))]
@@ -63,7 +63,7 @@ namespace DesertGecko.Player
             warmUntil = Time.time + Time.fixedDeltaTime * 1.5f;
         }
 
-        /// <summary>Tek seferlik ısı: ateş böceği gibi.</summary>
+        /// <summary>Tek seferlik ısı: yutulan zümrüt böcek gibi.</summary>
         public void AddHeat(float amount) => Heat = Mathf.Clamp01(Heat + amount);
 
         /// <summary>Yer altının sıcak bölgesi çağırır: ısıyı doldurur, fazladan hız verir.</summary>

@@ -123,6 +123,8 @@ namespace DesertGecko.Player
             Vector2 center = MouthPosition() + direction * (range * 0.5f);
             var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
             int count = Physics2D.OverlapBox(center, new Vector2(range, width), AngleOf(direction), filter, hits);
+            if (FindBugTarget(MouthPosition(), direction) != null)
+                return true;
             for (int i = 0; i < count; i++)
             {
                 if (hits[i].GetComponentInParent<Bug>() != null)
@@ -151,8 +153,43 @@ namespace DesertGecko.Player
         {
             if (IsAttacking || Time.time < readyAt || controller.MovementLocked || !health.IsAlive)
                 return false;
-            StartCoroutine(AttackRoutine(AimDirection()));
+            Vector2 aim = AimDirection();
+            Bug bug = FindBugTarget(MouthPosition(), aim);
+            StartCoroutine(bug != null ? CatchRoutine(bug, aim) : AttackRoutine(aim));
             return true;
+        }
+
+        /// <summary>
+        /// Dilin yolu bir böceğin görünmez yakalama çemberine değiyorsa o böcek (birden çoksa en yakını).
+        /// Tam isabet gerekmez: dil çembere değince böceğe doğru kıvrılıp yapışır.
+        /// </summary>
+        Bug FindBugTarget(Vector2 mouth, Vector2 direction)
+        {
+            Bug best = null;
+            float bestDistance = float.MaxValue;
+            Vector2 tip = mouth + direction * range;
+            IReadOnlyList<Bug> bugs = Bug.Active;
+            for (int i = 0; i < bugs.Count; i++)
+            {
+                Bug bug = bugs[i];
+                Vector2 center = bug.transform.position;
+                if (DistanceToSegment(center, mouth, tip) > bug.CatchRadius)
+                    continue;
+                float distance = Vector2.Distance(mouth, center);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = bug;
+                }
+            }
+            return best;
+        }
+
+        static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / Mathf.Max(ab.sqrMagnitude, 0.0001f));
+            return Vector2.Distance(point, a + ab * t);
         }
 
         /// <summary>
@@ -209,7 +246,53 @@ namespace DesertGecko.Player
             IsAttacking = false;
         }
 
-        void HitTargets(Vector2 origin, Vector2 direction)
+        /// <summary>
+        /// Böcek yakalama: dil böceğe doğru uzanıp yapışır, sonra böcekle birlikte ağza sarılır
+        /// (BugSwallow ile aynı süre ve eğri: dilin ucu hep böceğin üstünde kalır).
+        /// Dilin asıl yönündeki düşmanlar yine vurulur.
+        /// </summary>
+        IEnumerator CatchRoutine(Bug bug, Vector2 aim)
+        {
+            IsAttacking = true;
+            readyAt = Time.time + cooldown;
+            controller.MovementLocked = true;
+            Attacked?.Invoke();
+
+            HitTargets(MouthPosition(), aim, catchBugs: false);
+
+            // Uzan: uç, süzülmeye devam eden böceği izler.
+            Vector2 grab = bug.transform.position;
+            float t = 0f;
+            while (t < extendTime && bug.isActiveAndEnabled)
+            {
+                t += Time.deltaTime;
+                grab = bug.transform.position;
+                Vector2 mouth = MouthPosition();
+                ShowTongue(mouth, (grab - mouth).normalized, Vector2.Distance(mouth, grab) * Mathf.Clamp01(t / extendTime));
+                yield return null;
+            }
+
+            // Yapış ve sar: böcek ağza çekilirken dilin ucu onunla gelir.
+            if (bug.isActiveAndEnabled)
+                bug.Catch(health, MouthPosition());
+            t = 0f;
+            while (t < BugSwallow.PullTime)
+            {
+                t += Time.deltaTime;
+                Vector2 mouth = MouthPosition();
+                Vector2 tip = Vector2.Lerp(grab, mouth, BugSwallow.PullCurve(Mathf.Clamp01(t / BugSwallow.PullTime)));
+                ShowTongue(mouth, (tip - mouth).normalized, Vector2.Distance(mouth, tip));
+                yield return null;
+            }
+
+            if (tongueRenderer != null)
+                tongueRenderer.enabled = false;
+            if (health.IsAlive) // ölüm sırasında kilidi PlayerHealth yönetir
+                controller.MovementLocked = false;
+            IsAttacking = false;
+        }
+
+        void HitTargets(Vector2 origin, Vector2 direction, bool catchBugs = true)
         {
             Vector2 center = origin + direction * (range * 0.5f);
             Vector2 size = new Vector2(range, width);
@@ -225,8 +308,8 @@ namespace DesertGecko.Player
                 var bug = hit.GetComponentInParent<Bug>();
                 if (bug != null)
                 {
-                    if (alreadyHit.Add(bug))
-                        bug.Catch(health);
+                    if (catchBugs && alreadyHit.Add(bug))
+                        bug.Catch(health, origin); // dilin çıktığı yere, ağza çekilir
                     continue;
                 }
 

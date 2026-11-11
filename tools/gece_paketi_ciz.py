@@ -248,6 +248,43 @@ def lantern_hook():
     Image.fromarray(canvas, "RGBA").save(PROPS / "gece_kanca_fener.png")
 
 
+def trolley_pulley():
+    """Hat makarası: tekerleği hattın üstüne oturur, iki yanaklı askısı aşağıda zincire bağlanır.
+    16x16, alt orta pivotlu. Tekerlek merkezi üstten 5. satırda; hat tekerleğin oluğundan (üst kenar) geçer."""
+    rows = [
+        "                ",
+        "     xxxxxx     ",
+        "    xmmMMmmx    ",
+        "   xmMMssMMmx   ",
+        "  xxmMsaasMmxx  ",
+        "  xkxmsaasmxkx  ",
+        "  xkxmMssMmxkx  ",
+        "  xkxxmmmmxxkx  ",
+        "  xkkxxxxxxkkx  ",
+        "   xkkkkkkkkx   ",
+        "    xxkkkkxx    ",
+        "      xkkx      ",
+        "      xkkx      ",
+        "     xx  xx     ",
+        "     x    x     ",
+        "      xxxx      ",
+    ]
+    colors = {
+        "x": OUTLINE,
+        "m": (92, 78, 70, 255),     # tekerlek kenarı (demir)
+        "M": (138, 120, 104, 255),  # tekerlek parlak yüz
+        "s": (60, 50, 46, 255),     # tekerlek gölgesi
+        "a": (200, 170, 120, 255),  # mil (pirinç)
+        "k": (74, 52, 40, 255),     # yanak ve askı
+    }
+    canvas = np.zeros((16, 16, 4), dtype=np.uint8)
+    for y, row in enumerate(rows):
+        for x, c in enumerate(row):
+            if c in colors:
+                canvas[y, x] = colors[c]
+    Image.fromarray(canvas, "RGBA").save(PROPS / "gece_makara.png")
+
+
 def brazier():
     """Kor sepeti: arabaya ve taş halkaya konan demir mangal. 24x18, alt orta pivotlu."""
     rows = [
@@ -302,10 +339,17 @@ def thermometer_icon():
 def telegraph_pole():
     """Telgraf direği: yuz_direk'in tepesi ve gövdesinden tekrar eden parça; istenen boya uzatılır."""
     source = np.array(Image.open(PROPS / "yuz_direk.png").convert("RGBA"))
-    Image.fromarray(source[:30], "RGBA").save(LAYER / "gece_direk_tepe.png")
-    rows = source[36:52]
-    columns = np.nonzero(rows[..., 3].any(axis=0))[0]
-    Image.fromarray(rows[:, columns.min():columns.max() + 1], "RGBA").save(LAYER / "gece_direk_govde.png")
+    head = source[:30].copy()
+    # Tepenin altındaki direk sütunları: gövde tam bu sütunlardan kesilir, birleşim yerinde kayma olmaz.
+    pole = np.nonzero(head[-1, :, 3] > 0)[0]
+    x0, x1 = pole.min(), pole.max() + 1
+    # Tepedeki direkte tek piksellik delik vardı: üst satırdan doldurulur.
+    for y in range(1, head.shape[0]):
+        gap = (head[y, x0:x1, 3] == 0) & (head[y - 1, x0:x1, 3] > 0)
+        head[y, x0:x1][gap] = head[y - 1, x0:x1][gap]
+    Image.fromarray(head, "RGBA").save(LAYER / "gece_direk_tepe.png")
+    # Sadece direk: yanındaki sarkan kablo parçası tekrarlanınca sağda nokta nokta bir çizgi oluyordu.
+    Image.fromarray(source[36:52, x0:x1], "RGBA").save(LAYER / "gece_direk_govde.png")
 
 
 def tall_night_sky():
@@ -336,6 +380,7 @@ def main():
     storm_tile()
     storm_front()
     lantern_hook()
+    trolley_pulley()
     brazier()
     thermometer_icon()
     print("gece paketi hazır")

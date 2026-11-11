@@ -30,6 +30,7 @@ namespace DesertGecko.EditorTools
             public Armadillo Armadillo;
             public TumbleweedMouse TumbleweedMouse;
             public BanditBat BanditBat;
+            public SpikeMutant SpikeMutant;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -48,7 +49,7 @@ namespace DesertGecko.EditorTools
             };
             a.TailProjectile = BuildTailProjectile(a.TailIcon);
             a.Crystal = BuildCrystal(a.CrystalIcon);
-            a.Bug = BuildBug(PlaceholderArt.Bug());
+            a.Bug = BuildBug();
             a.Scorpion = BuildScorpion(PlaceholderArt.Scorpion(), a.Crystal);
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
@@ -56,6 +57,7 @@ namespace DesertGecko.EditorTools
             a.Armadillo = BuildArmadillo(a.Crystal);
             a.TumbleweedMouse = BuildTumbleweedMouse(a.Crystal);
             a.BanditBat = BuildBanditBat(a.Crystal);
+            a.SpikeMutant = BuildSpikeMutant(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -91,14 +93,64 @@ namespace DesertGecko.EditorTools
             return Save<Crystal>(root, "Crystal");
         }
 
-        static Bug BuildBug(Sprite sprite)
+        const string BugFolder = "Assets/Sprites/Collectibles/bocek/";
+        const string UnlitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";
+
+        // Kare sırası (tools/zumrut_bocek_isle.py): 0-7 süzülme (kanat çırpar, karın zonklar), 8-10 yutulurken
+        // kıvılcımlanıp dağılır, 11 duman (kullanılmıyor). bocek_hale: karın parıltısı, bocek_halka: şifa dalgası.
+        static Bug BuildBug()
         {
+            Sprite Load(string name)
+            {
+                string path = BugFolder + name + ".png";
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                if (sprite == null)
+                {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                    sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                }
+                return sprite;
+            }
+            Sprite[] Frames(int from, int to)
+            {
+                var frames = new Sprite[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = Load($"bocek_{i}");
+                return frames;
+            }
+            var unlit = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+
             var root = new GameObject("Bug");
-            AddSprite(root.transform, null, sprite, 5);
             var col = root.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
-            col.radius = 0.3f;
-            root.AddComponent<Bug>();
+            col.radius = 0.35f;
+
+            // Karın parıltısı gövdenin arkasında, karnın (sol alt) üstünde; gece de parlasın diye ışıksız.
+            Sprite haloSprite = Load("bocek_hale");
+            SpriteRenderer glow = AddSprite(root.transform, "Parilti", haloSprite, 4);
+            glow.transform.localPosition = new Vector3(-0.12f, -0.1f, 0f);
+            if (haloSprite != null)
+                glow.transform.localScale = Vector3.one * (1.3f / haloSprite.bounds.size.x);
+            glow.color = new Color(0.45f, 1f, 0.6f, 0.45f);
+            if (unlit != null)
+                glow.sharedMaterial = unlit;
+
+            // 0-7: sabit gövde üstünde tek, yavaş kanat çırpışı (araç gövdeyi kilitler, titreme olmaz).
+            Sprite[] hover = Frames(0, 7);
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", hover[0], 5);
+
+            foreach (string clip in new[] { "bocek_slap", "bocek_yutma" })
+                AssetDatabase.ImportAsset($"Assets/Audio/{clip}.wav", ImportAssetOptions.ForceSynchronousImport);
+
+            var bug = root.AddComponent<Bug>();
+            SetField(bug, "spriteRenderer", sr);
+            SetArray(bug, "hoverFrames", hover);
+            SetArray(bug, "swallowFrames", Frames(8, 10));
+            SetField(bug, "glow", glow);
+            SetField(bug, "ringSprite", Load("bocek_halka"));
+            SetField(bug, "unlitMaterial", unlit);
+            SetField(bug, "slapClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/bocek_slap.wav"));
+            SetField(bug, "gulpClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/bocek_yutma.wav"));
             return Save<Bug>(root, "Bug");
         }
 
@@ -400,6 +452,99 @@ namespace DesertGecko.EditorTools
             var d = root.AddComponent<BatDynamite>();
             SetField(d, "visual", pivot);
             return Save<BatDynamite>(root, "BatDynamite");
+        }
+
+        // Kare sırası (tools/gemini_diken_isle.py): 0-7 bekleme, 8-15 devriye, 16-23 çömelme, 24-31 titreme,
+        // 32-39 yaylım (dolu -> yarı -> kel), 40-47 nefes, 48-55 yenilenme, 56-63 kel bekleme, 64-71 kel yenik,
+        // 72-79 yarı bekleme, 80-87 yarı yürüyüş, 88-95 yarı sendeleme, 96-103 dolu yenik, 104-111 yarı yenik,
+        // 112-119 kel sendeleme.
+        static SpikeMutant BuildSpikeMutant(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("diken", 120);
+            Sprite[] Range(int from, int to)
+            {
+                var frames = new Sprite[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            EnemyBullet spike = BuildSpikeProjectile();
+
+            var root = new GameObject("SpikeMutant") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(1.05f, 1.25f);
+            box.offset = new Vector2(0f, 0.625f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+            foreach (string clip in new[] { "diken_gerilme", "diken_atis", "diken_fis" })
+                AssetDatabase.ImportAsset($"Assets/Audio/{clip}.wav", ImportAssetOptions.ForceSynchronousImport);
+
+            var mutant = root.AddComponent<SpikeMutant>();
+            SetField(mutant, "spriteRenderer", sr);
+            SetMask(mutant, "groundMask", GameLayers.GroundMask);
+            SetField(mutant, "spikePrefab", Fresh(spike));
+            SetField(mutant, "audioSource", audio);
+            SetField(mutant, "bristleClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/diken_gerilme.wav"));
+            SetField(mutant, "shotClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/diken_atis.wav"));
+            SetField(mutant, "regrowClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/diken_fis.wav"));
+            SetArray(mutant, "idleFrames", Range(0, 7));
+            SetArray(mutant, "walkFrames", Range(8, 15));
+            SetArray(mutant, "crouchFrames", Range(16, 23));
+            SetArray(mutant, "bristleFrames", Range(24, 31));
+            SetArray(mutant, "volleyFrames", Range(32, 39));
+            SetArray(mutant, "exhaustedFrames", Range(40, 47));
+            SetArray(mutant, "regrowFrames", Range(48, 55));
+            SetArray(mutant, "halfIdleFrames", Range(72, 79));
+            SetArray(mutant, "hurtFrames", Range(112, 114));
+            SetArray(mutant, "fullDefeatFrames", Range(96, 103));
+            SetArray(mutant, "halfDefeatFrames", Range(104, 111));
+            SetArray(mutant, "baldDefeatFrames", Range(64, 71));
+
+            // Kareler sağa bakar. Ağır yürür; sadece kelken vurulur, dört darbede ölür.
+            var so = new SerializedObject(mutant);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 0.9f;
+            so.FindProperty("maxHealth").intValue = 4;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<SpikeMutant>(root, "SpikeMutant");
+        }
+
+        /// <summary>Diken mermisi: yılan mermisiyle aynı davranış, kendi görseli ve hızıyla.</summary>
+        static EnemyBullet BuildSpikeProjectile()
+        {
+            string path = $"{SpriteImportRules.EnemiesFolder}diken/diken_mermi.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+
+            var root = new GameObject("SpikeProjectile");
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", sprite, 12);
+            // Alt-orta pivotlu sprite yarı boyu kadar aşağıda: diken merminin tam ortasından uçsun.
+            if (sprite != null)
+                sr.transform.localPosition = new Vector3(0f, -sprite.bounds.size.y / 2f, 0f);
+            var bullet = root.AddComponent<EnemyBullet>();
+            SetField(bullet, "spriteRenderer", sr);
+            var so = new SerializedObject(bullet);
+            so.FindProperty("speed").floatValue = 8f;
+            so.FindProperty("lifetime").floatValue = 1.6f;
+            so.FindProperty("radius").floatValue = 0.08f;
+            so.FindProperty("burstColor").colorValue = new Color32(0xD8, 0xDC, 0xE6, 0xFF);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return Save<EnemyBullet>(root, "SpikeProjectile");
         }
 
         static Sprite[] LoadEnemyFrames(string enemy, int count)

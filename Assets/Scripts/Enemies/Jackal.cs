@@ -270,7 +270,12 @@ namespace DesertGecko.Enemies
                     int i = Mathf.FloorToInt((Time.time - reloadStartedAt) / reloadDuration * reloadFrames.Length);
                     return reloadFrames[Mathf.Clamp(i, 0, reloadFrames.Length - 1)];
                 default:
-                    return IsChasing ? Loop(runFrames, runFps) : Loop(patrolFrames, patrolFps);
+                    // Kenarda ya da duvarda EnemyBase onu durdurur; yerinde koşmasın.
+                    // Kovalarken kenarda bekliyorsa çiftesi Gila'ya doğrultulu, hazır bekler.
+                    bool moving = Mathf.Abs(body.linearVelocity.x) > 0.1f;
+                    if (IsChasing)
+                        return moving ? Loop(runFrames, runFps) : aimFrame;
+                    return moving ? Loop(patrolFrames, patrolFps) : (patrolFrames != null && patrolFrames.Length > 0 ? patrolFrames[0] : null);
             }
         }
 

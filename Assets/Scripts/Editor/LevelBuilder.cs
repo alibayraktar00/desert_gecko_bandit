@@ -848,7 +848,7 @@ namespace DesertGecko.EditorTools
 
             p.Ground(16f, 30f, 1f);
             p.Scorpion(22f, 1f);
-            p.Sign(26f, 1f, "Ateş böceğini dille yakala (J):\nısıtır ve can verir");
+            p.Sign(26f, 1f, "Zümrüt böceği dille yakala (J):\nısıtır ve can verir");
             p.Firefly(28.5f, 2.4f);
 
             p.Ground(30f, 48f, 2f);
@@ -865,7 +865,7 @@ namespace DesertGecko.EditorTools
             p.Ground(62f, 80f, 4f);
             p.Deco("yuz_araba", 66f, 4f);
             p.SahteCali(69f, 4f);
-            p.Jackal(73f, 4f);
+            p.Diken(75f, 4f); // arabadan inen Gila'ya yaylım: salvoların arasında zıpla, kelleşince vur
             p.Firefly(76f, 5.6f);
 
             // Bükülme: üstte ısınıp alta dalan iki yol; ateş sadece üst yolda
@@ -1945,12 +1945,13 @@ namespace DesertGecko.EditorTools
                 Halo(cart, new Vector2(wx, top + 1f), new Color(1f, 0.58f, 0.25f, 0.34f), 3f);
             }
 
-            /// <summary>Ateş böceği: dille yakalanır, can ve ısı verir. Kendi küçük ışığı var.</summary>
+            /// <summary>Gece için zümrüt böcek: dille yakalanır, can ve ısı verir. Karnıyla birlikte zonklayan kendi ışığı var.</summary>
             public void Firefly(float x, float y)
             {
                 Bug(x, y);
                 Transform bug = actors.GetChild(actors.childCount - 1);
-                PointLight(bug, new Vector2(x + OriginX, y), new Color(0.75f, 1f, 0.45f), 2.6f, 0.9f, 0.2f);
+                // Titreme yok: ışığın gücünü Bug karnın zonklamasıyla birlikte sürer.
+                PointLight(bug, new Vector2(x + OriginX, y), new Color(0.45f, 1f, 0.6f), 2.6f, 0.9f);
             }
 
             // Hat parçaları: fenerlerin zinciri bu hatta çıkar. y(x): sarkık hattın yüksekliği.
@@ -1965,7 +1966,7 @@ namespace DesertGecko.EditorTools
                 float headHeight = head.bounds.size.y;
                 float top = groundTop + height;
                 occupied.Add((wx, 0.6f));
-                TiledArt(decor, Name("DirekGovde"), trunk, new Vector2(wx + 0.06f, top - headHeight + 0.05f), new Vector2(trunk.bounds.size.x, height - headHeight + 0.2f), -6);
+                TiledArt(decor, Name("DirekGovde"), trunk, new Vector2(wx, top - headHeight + 0.05f), new Vector2(trunk.bounds.size.x, height - headHeight + 0.2f), -6);
                 TiledArt(decor, Name("DirekTepe"), head, new Vector2(wx, top), head.bounds.size, -6);
             }
 
@@ -2016,27 +2017,34 @@ namespace DesertGecko.EditorTools
             public void MovingHook(float x, float y, float wireY, float travelX, float speed, float phase = 0f)
             {
                 float wx = x + OriginX;
+                // Makara hattın üstünde gider: kök hattın tam üstünde, hat sarktıkça o da iner çıkar.
+                (float x0, float y0, float x1, float y1)? wire = null;
+                foreach (var w in wires)
+                    if (wx >= w.x0 && wx + travelX <= w.x1)
+                        wire = w;
+                float onWire = wire.HasValue ? WireYAt(wx, wireY) : wireY;
+
                 var trolley = new GameObject(Name("Makara"));
                 trolley.transform.SetParent(actors);
-                trolley.transform.position = new Vector2(wx, wireY);
-                var sr = trolley.AddComponent<SpriteRenderer>();
-                sr.sprite = ctx.Solid;
-                sr.color = new Color32(0x3A, 0x2A, 0x24, 0xFF);
-                sr.sortingOrder = -5;
-                Vector2 unit = ctx.Solid.bounds.size;
-                trolley.transform.localScale = Vector3.one;
-                BuildHook(trolley.transform, wx, y, wireY);
-                var body = trolley.AddComponent<Rigidbody2D>();
-                body.bodyType = RigidbodyType2D.Kinematic;
-                trolley.AddComponent<MovingPlatform>().Configure(new Vector2(travelX, 0f), speed, phase);
-                sr.enabled = false; // makara görseli çocukta: kök ölçeği bozulmasın
+                trolley.transform.position = new Vector2(wx, onWire);
+
+                // gece_makara: 16 px, alt orta pivot; tekerleğin oluğu (1.5. satır) hatta, askının halkası en altta.
+                Sprite art = TestSceneBuilder.Prop("gece_makara");
+                float artHeight = art.bounds.size.y;
+                float grooveFromBottom = artHeight * (16f - 1.5f) / 16f;
                 var wheel = new GameObject("Teker").AddComponent<SpriteRenderer>();
                 wheel.transform.SetParent(trolley.transform);
-                wheel.transform.position = new Vector2(wx, wireY);
-                wheel.transform.localScale = new Vector3(0.5f / unit.x, 0.28f / unit.y, 1f);
-                wheel.sprite = ctx.Solid;
-                wheel.color = sr.color;
-                wheel.sortingOrder = -5;
+                wheel.transform.position = new Vector2(wx, onWire - grooveFromBottom);
+                wheel.sprite = art;
+                wheel.sortingOrder = -5; // hattın (-6) önünde: hat oluğa girer gibi görünür
+
+                BuildHook(trolley.transform, wx, y, onWire - grooveFromBottom + 0.06f);
+                var body = trolley.AddComponent<Rigidbody2D>();
+                body.bodyType = RigidbodyType2D.Kinematic;
+                var mover = trolley.AddComponent<MovingPlatform>();
+                mover.Configure(new Vector2(travelX, 0f), speed, phase);
+                if (wire.HasValue)
+                    mover.FollowWire(new Vector2(wire.Value.x0, wire.Value.y0), new Vector2(wire.Value.x1, wire.Value.y1), WireSag);
                 platforms.Add((wx - 3f, wx + travelX + 3f, y - 4.2f));
                 lifts.Add((wx - 3f, wx + travelX + 3f, y - 4.2f));
             }
@@ -2638,6 +2646,7 @@ namespace DesertGecko.EditorTools
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x + OriginX, groundTop);
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);
             public void Armadillo(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Armadillo, actors, Name("Armadillo"), x + OriginX, groundTop);
+            public void Diken(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.SpikeMutant, actors, Name("DikenMutanti"), x + OriginX, groundTop);
             public void Fare(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.TumbleweedMouse, actors, Name("CaliFaresi"), x + OriginX, groundTop);
 
             /// <summary>
