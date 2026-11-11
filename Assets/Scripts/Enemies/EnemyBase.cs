@@ -72,6 +72,8 @@ namespace DesertGecko.Enemies
         protected virtual bool Invulnerable => false;
         /// <summary>Bu güçteki darbe boşa çıkar mı (zırh, savuşturma).</summary>
         protected virtual bool Deflects(int amount) => Invulnerable;
+        /// <summary>true ise darbe onu uçurumdan aşağı itmez (iri, ağır düşmanlar): kenardaysa yerinde sendeler.</summary>
+        protected virtual bool KeepsFooting => false;
         protected PlayerHealth Player => player;
 
         public event Action<EnemyBase> Died;
@@ -84,6 +86,7 @@ namespace DesertGecko.Enemies
         float stunnedUntil;
         float flashUntil;
         float hitGuardUntil;
+        float perchedSince = -1f;
         bool lootDropped;
         Color baseColor = Color.white;
         PlayerHealth player;
@@ -141,7 +144,12 @@ namespace DesertGecko.Enemies
                 gameObject.SetActive(false); // uçuruma düştü: ödül yok, oyuncu doğunca geri gelir
                 return;
             }
-            if (Time.time < stunnedUntil || !IsGrounded())
+            bool grounded = IsGrounded();
+            if (!grounded)
+                UnstickFromLedge();
+            else
+                perchedSince = -1f;
+            if (Time.time < stunnedUntil || !grounded)
                 return; // havadayken yön değiştirip titremesin
 
             if (HoldPosition)
@@ -152,6 +160,32 @@ namespace DesertGecko.Enemies
 
             UpdateAggro();
             Move();
+        }
+
+        /// <summary>
+        /// Gövdenin ortası boşlukta ama bir köşesi kenarın üstünde kaldıysa (darbe ya da geri tepme onu
+        /// kenara itmiş) düşmez de: yerde sayılmadığı için hiçbir şey yapamaz, havada asılı kalır.
+        /// Kısa bir süre böyle kalırsa basabildiği tarafa, kenarın üstüne geri kaydırılır.
+        /// </summary>
+        void UnstickFromLedge()
+        {
+            if (body.gravityScale <= 0f || Mathf.Abs(body.linearVelocity.y) > 0.05f)
+            {
+                perchedSince = -1f; // uçan ya da gerçekten düşen düşman
+                return;
+            }
+            if (perchedSince < 0f)
+                perchedSince = Time.time;
+            if (Time.time - perchedSince < 0.12f)
+                return;
+
+            Bounds b = box.bounds;
+            float footY = b.min.y + 0.05f;
+            bool leftFoot = Physics2D.Raycast(new Vector2(b.min.x + 0.04f, footY), Vector2.down, 0.15f, groundMask);
+            bool rightFoot = Physics2D.Raycast(new Vector2(b.max.x - 0.04f, footY), Vector2.down, 0.15f, groundMask);
+            if (leftFoot == rightFoot)
+                return;
+            body.linearVelocity = new Vector2(leftFoot ? -2.5f : 2.5f, body.linearVelocity.y);
         }
 
         protected bool IsGrounded()
@@ -282,7 +316,9 @@ namespace DesertGecko.Enemies
             float side = Mathf.Abs(knockbackDirection.x) > 0.01f
                 ? Mathf.Sign(knockbackDirection.x)
                 : (player != null ? Mathf.Sign(transform.position.x - player.transform.position.x) : 1f);
-            body.linearVelocity = new Vector2(side * knockbackVelocity.x, knockbackVelocity.y);
+            // Ağır düşman kenardaysa geriye savrulmaz, sadece yerinde sarsılır: uçurumdan itilip düşmesin.
+            float pushX = KeepsFooting && IsBlocked((int)side) ? 0f : side * knockbackVelocity.x;
+            body.linearVelocity = new Vector2(pushX, knockbackVelocity.y);
             stunnedUntil = Time.time + stunDuration;
             OnDamaged();
         }
@@ -327,6 +363,7 @@ namespace DesertGecko.Enemies
             stunnedUntil = 0f;
             flashUntil = 0f;
             hitGuardUntil = 0f;
+            perchedSince = -1f;
         }
 
         protected virtual void OnDrawGizmosSelected()

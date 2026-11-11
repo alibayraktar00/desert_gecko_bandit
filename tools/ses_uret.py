@@ -8,6 +8,7 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/diken_fis.wav      dikenler yeniden çıkar: tok "Fııışş"
   Assets/Audio/bocek_slap.wav     dil böceği kapar: ıslak "şlap"
   Assets/Audio/bocek_yutma.wav    yutkunma ve ardından cızırdayan enerji
+  Assets/Audio/altin_toplama.wav  altın toplanır: iki hızlı parlak nota, madeni şıngırtı
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -113,6 +114,21 @@ def gulp_sizzle(rng, seconds=0.6):
     return gulp * 0.8 + (hiss * 0.35 + crackle * 0.5) * sizzle_env
 
 
+def coin_chime(rng, seconds=0.45):
+    """Altın: yükselen iki hızlı nota (madeni armoniklerle), altında kısa şıngırtı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+
+    def bell(freq, start):
+        u = np.maximum(t - start, 0.0)
+        on = (t >= start).astype(float)
+        tone = np.sin(2 * np.pi * freq * u) + 0.4 * np.sin(2 * np.pi * freq * 2.76 * u) + 0.2 * np.sin(2 * np.pi * freq * 5.4 * u)
+        return tone * np.exp(-u * 9.0) * np.minimum(u / 0.003, 1.0) * on
+
+    noise = rng.normal(0.0, 1.0, t.size)
+    shards = (noise - np.convolve(noise, np.ones(2) / 2, mode="same")) * np.exp(-t * 40.0)
+    return (bell(987.8, 0.0) * 0.4 + bell(1318.5, 0.06) * 0.5 + shards * 0.3) * 0.9
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -123,6 +139,7 @@ def main():
     save("diken_fis.wav", spike_regrow(rng))
     save("bocek_slap.wav", tongue_slap(rng))
     save("bocek_yutma.wav", gulp_sizzle(rng))
+    save("altin_toplama.wav", coin_chime(rng))
 
 
 if __name__ == "__main__":

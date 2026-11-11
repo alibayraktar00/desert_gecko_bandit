@@ -231,7 +231,7 @@ MonoBehaviour:
   aboveTolerance: 0.6
   edgeMargin: 1.2
   contactPause: 0.5
-  knockbackVelocity: {x: 4, y: 3}
+  knockbackVelocity: {x: 1.5, y: 1.5}
   stunDuration: 0.3
   flashDuration: 0.12
   hitGuardDuration: 0.7
@@ -260,6 +260,7 @@ MonoBehaviour:
   muzzleJitter: 0.08
   recoilSpeed: 1.6
   reloadDuration: 0.6
+  prickDamage: 1
   exhaustedDuration: 3.5
   regrowDuration: 0.8
   hurtDuration: 0.35

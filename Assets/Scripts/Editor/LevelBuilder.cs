@@ -67,6 +67,20 @@ namespace DesertGecko.EditorTools
         /// <summary>EditorBridge için: menü, level ve sahne listesi; bağlantı noktalarının görüntüsüyle.</summary>
         public static string BuildAllWithShots() => BuildAll("Temp/Screenshots") + " tasarım uyarısı";
 
+        /// <summary>Level 3'te kaplıca bacasından Soğuk Cephe'ye çıkışı görüntüler; sahneyi kaydetmez.</summary>
+        public static string CaptureKaplicaExit()
+        {
+            string previous = EditorSceneManager.GetActiveScene().path;
+            EditorSceneManager.OpenScene($"{SceneFolder}/Level_3.unity");
+            foreach (float x in new[] { KaplicaX + 110f, KaplicaX + 118f, CepheX, CepheX + 6f })
+                SceneCapture.Capture($"Temp/Screenshots/L3cikis_{x:0}.png", new Vector3(x, 26f, -10f));
+            // Level 2: derin galerinin sonundaki sıcak hava bacası
+            EditorSceneManager.OpenScene($"{SceneFolder}/Level_2.unity");
+            SceneCapture.Capture("Temp/Screenshots/L2baca.png", new Vector3(DerinGaleriX + 108f, 9f, -10f));
+            EditorSceneManager.OpenScene(string.IsNullOrEmpty(previous) ? $"{SceneFolder}/Level_3.unity" : previous);
+            return "tamam";
+        }
+
         /// <summary>Level 3'ün çalışma anında değişen hallerini (şafak, fırtına) görüntüler; sahneyi kaydetmez.</summary>
         public static string PreviewLevel3()
         {
@@ -711,7 +725,7 @@ namespace DesertGecko.EditorTools
             p.RockEdge(16f, 40f, roofA, -1);
             p.RockMass(62f, 110f, roofB, 60f);
             p.RockEdge(62f, roofB, roofA, 1);
-            p.RockEdge(110f, 40f, floorB, 1);
+            p.RockEdge(110f, 40f, roofB, 1); // kütlenin kenarı tavanda biter: galeride içinden geçilen sahte duvar olmasın
             p.RockMass(117f, 118f, GroundBottom, 19.6f); // bacanın sağı tırmanılmaz: yukarı sadece rüzgârla çıkılır
 
             // Zikzak kuyu: her raf bir sonrakine sağdan ya da soldan iner
@@ -853,7 +867,7 @@ namespace DesertGecko.EditorTools
 
             p.Ground(30f, 48f, 2f);
             p.Checkpoint(32f, 2f);
-            p.Fire(35f, 2f);
+            p.Altar(35f, 2f, 3.6f); // checkpoint'in yanında uzaktan görünen sunak
             p.Deco("yuz_kazma", 39f, 2f);
             p.Snake(44f, 2f);
             p.Crystal(41f, 3f);
@@ -871,7 +885,7 @@ namespace DesertGecko.EditorTools
             // Bükülme: üstte ısınıp alta dalan iki yol; ateş sadece üst yolda
             p.Ground(84f, 100f, 3f);
             p.Checkpoint(86f, 3f);
-            p.Brazier(89f, 3f);
+            p.Altar(89f, 3f);
             p.Fare(93f, 3f);
             p.Pole(97f, 3f, 7.2f);
             p.Sign(94.5f, 3f, "Eski telgraf hattı. Fenere dille yapış:\nJ basılı sallan, bırakınca uç");
@@ -920,7 +934,7 @@ namespace DesertGecko.EditorTools
             p.Ground(112f, 129f, 9f);
             p.Checkpoint(113.5f, 9f);
             p.Yarasa(116f, 14.95f); // eğik telin ucunda: zırhlıyla birlikte
-            p.Brazier(116f, 9f);
+            p.Altar(116f, 9f);
             p.Pole(118f, 9f, 6f);
             p.Armadillo(121f, 9f);
         }
@@ -982,7 +996,7 @@ namespace DesertGecko.EditorTools
             p.Sign(104f, 6f, "Bu çatlak kaynıyor.\nHızlı tırman!");
             p.Slab(99f, 100f, 26f, 15f, fringe: false); // yan duvarlar tırmanılır: çamurdan kaçışın ikinci yolu
             p.RockEdge(100f, 26f, 11f, 1);
-            p.Slab(117.5f, 118f, doorY - 0.5f, doorY - 6.5f, fringe: false);
+            p.Slab(117.5f, 118f, doorY, doorY - 6.5f, fringe: false);
             p.Ledge(101f, 107f, 9.5f);
             p.Ledge(111f, 117f, 13f);
             p.Ledge(101f, 107f, 16.5f);
@@ -993,10 +1007,12 @@ namespace DesertGecko.EditorTools
             p.Crystal(114f, 20.8f);
             p.Mud(100f, 118f, 3f, doorY - 1f, 7.5f, 2.1f); // tabanın 3 birim altından, hızlı: arkana bakmadan tırman
 
-            p.RockMass(118f, 125f, GroundBottom, doorY - 0.5f);
+            // Kapının altındaki kaya tam kapı zemininde biter: tek yönlü rafla arasında basamak kalmasın.
+            // Yarım birim aşağıda bitince köşeden zıplayan Gila rafla kayanın arasına sıkışıp kayanın içine itiliyordu.
+            p.RockMass(118f, 125f, GroundBottom, doorY);
             p.RockMass(118f, 125f, doorY + 4f, roofShaft);
-            p.RockEdge(118f, doorY - 0.5f, 6f, -1);
-            p.RockEdge(125f, doorY - 0.5f, GroundBottom, 1);
+            p.RockEdge(118f, doorY, 6f, -1);
+            p.RockEdge(125f, doorY, GroundBottom, 1);
             p.DoorFade(125f, 1, 4.5f, doorY - 0.5f, doorY + 4f);
             p.Ledge(106f, 126f, doorY, register: true);
         }
@@ -1035,7 +1051,7 @@ namespace DesertGecko.EditorTools
         {
             p.Ground(0f, 22f, 24f);
             p.Checkpoint(2.5f, 24f);
-            p.Fire(5.5f, 24f);
+            p.Altar(5.5f, 24f, 3.6f);
             p.Sign(9f, 24f, "Ufukta ayaz fırtınası!\nDurma, büyük ateşe koş");
             p.Storm(-14f, 12f, 122f, 5.3f); // koşu hızına yakın: durmak yakalanmak demek
 
@@ -1048,7 +1064,7 @@ namespace DesertGecko.EditorTools
             p.Crumble(46.67f, 22f, "tahta_ray");
             p.Ground(49f, 60f, 20f);
             p.Checkpoint(50.5f, 20f);
-            p.Brazier(53f, 20f);
+            p.Altar(53f, 20f);
             p.Jackal(57f, 20f);
 
             p.Pole(59f, 20f, 7f);
@@ -1287,7 +1303,7 @@ namespace DesertGecko.EditorTools
             RectTransform overlay = UiKit.Overlay("LevelSonu", canvas, new Color(0f, 0f, 0f, 0.55f));
             RectTransform box = UiKit.Panel("Kutu", overlay, Vector2.zero, new Vector2(280f, 200f));
             Text title = UiKit.Shadowed(UiKit.Label("Baslik", box, "Level tamamlandı!", new Vector2(0f, 68f), new Vector2(260f, 30f), 22, UiKit.ButtonHighlight));
-            Text crystals = UiKit.Label("Kristal", box, "Kristal: 0", new Vector2(0f, 36f), new Vector2(260f, 22f), 15, UiKit.LightText);
+            Text crystals = UiKit.Label("Kristal", box, "Altın: 0", new Vector2(0f, 36f), new Vector2(260f, 22f), 15, UiKit.LightText);
             Button next = UiKit.Button("Sonraki", box, "Sonraki Level", new Vector2(0f, -4f), new Vector2(180f, 30f), out _);
             Button retry = UiKit.Button("Tekrar", box, "Tekrar Oyna", new Vector2(0f, -40f), new Vector2(180f, 30f), out _);
             Button menu = UiKit.Button("AnaMenu", box, "Ana Menü", new Vector2(0f, -76f), new Vector2(180f, 30f), out _);
@@ -1919,14 +1935,65 @@ namespace DesertGecko.EditorTools
                 Halo(decor, new Vector2(wx, y + 1f), new Color(1f, 0.58f, 0.25f, 0.42f), radius * 1.5f);
             }
 
-            /// <summary>Kor sepeti: küçük ısı noktası. Kaynar kaya üstünde ya da yol kenarında.</summary>
-            public void Brazier(float x, float y)
+            const int AltarFrames = 7; // ates_sunak_1..7 (0 yeni tutuşan kor, döngüye girmez)
+
+            /// <summary>
+            /// Ateş sunağı: boynuzlu ahşap direğin tepesinde demir sepette yanan ateş (tools/ates_sunak_isle.py).
+            /// Isı noktası ve gecenin uzaktan görünen işareti. Işık ve hale alevin hizasında.
+            /// Sepetin ağzı tek yönlü platform: üstüne inilir, alttan içinden geçilir. Üstünde duran her
+            /// seferinde yarım kalp yanar ve savrulur; direğe yandan ya da alttan çarpmak can yakmaz.
+            /// </summary>
+            public void Altar(float x, float y, float heatRadius = 2.6f)
             {
                 float wx = x + OriginX;
-                Deco("gece_mangal", x, y);
-                HeatCircle(decor, new Vector2(wx, y + 0.7f), 2.4f, 1.1f);
-                PointLight(decor, new Vector2(wx, y + 0.9f), FireLight, 6.5f, 1.6f, 0.1f);
-                Halo(decor, new Vector2(wx, y + 0.9f), new Color(1f, 0.58f, 0.25f, 0.34f), 3f);
+                var sr = new GameObject(Name("AtesSunagi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(decor);
+                sr.transform.position = new Vector3(wx, y - 0.06f, 0f); // direğin dibi toprağa gömülsün
+                var frames = new Sprite[AltarFrames];
+                for (int i = 0; i < AltarFrames; i++)
+                    frames[i] = TestSceneBuilder.Prop("ates_sunak_" + (i + 1));
+                sr.sprite = frames[0];
+                sr.sortingOrder = -9;
+                var loop = sr.gameObject.AddComponent<DesertGecko.Effects.SpriteLoop>();
+                var so = new SerializedObject(loop);
+                SerializedProperty prop = so.FindProperty("frames");
+                prop.arraySize = frames.Length;
+                for (int i = 0; i < frames.Length; i++)
+                    prop.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+                so.FindProperty("fps").floatValue = 9f;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                occupied.Add((wx, 0.6f));
+
+                const float FlameY = 1.45f; // sepetteki alevin ortası, direğin dibinden
+                HeatCircle(decor, new Vector2(wx, y + 0.8f), heatRadius, 1.2f);
+                PointLight(decor, new Vector2(wx, y + FlameY), FireLight, heatRadius * 2.8f, 1.8f, 0.12f);
+                Halo(decor, new Vector2(wx, y + FlameY), new Color(1f, 0.58f, 0.25f, 0.38f), heatRadius * 1.3f);
+                // Sepetin ağzı: üstüne basılır. Tepesindeki alev yalnız üstte durana değer.
+                const float RimY = 1.32f, RimWidth = 0.7f;
+                var rim = new GameObject(Name("SunakTepe")) { layer = ctx.GroundLayer };
+                rim.transform.SetParent(geometry);
+                rim.transform.position = new Vector3(wx, y + RimY, 0f);
+                AddOneWayCollider(rim, RimWidth, 0.2f, new Vector2(0f, -0.1f));
+
+                GameObject flame = FlameHazard(wx, y + RimY - 0.1f, new Vector2(RimWidth + 0.1f, 0.7f));
+                flame.GetComponent<FireHazard>().Configure(1, fromAboveOnly: true, surfaceHeight: 0.1f);
+            }
+
+            /// <summary>
+            /// Alevin kendisi: dokunan Gila yarım kalp yanar ve savrulur. Isınma alanından (HeatCircle) çok dar,
+            /// yalnız alevin gövdesi. Üstünde binilen kor arabasına eklenmez: o yolculuk için.
+            /// </summary>
+            GameObject FlameHazard(float wx, float baseY, Vector2 size)
+            {
+                var go = new GameObject(Name("AlevHasar"));
+                go.transform.SetParent(decor);
+                go.transform.position = new Vector3(wx, baseY, 0f);
+                var box = go.AddComponent<BoxCollider2D>();
+                box.isTrigger = true;
+                box.size = size;
+                box.offset = new Vector2(0f, size.y / 2f);
+                go.AddComponent<FireHazard>();
+                return go;
             }
 
             /// <summary>Üstünde kor sepeti taşıyan platform: boşluğu geçerken ısıtır.</summary>
@@ -2327,6 +2394,7 @@ namespace DesertGecko.EditorTools
                     frames[i] = TestSceneBuilder.Prop("yuz_ates_" + i);
                 sr.sprite = frames[0];
                 sr.sortingOrder = -9;
+                FlameHazard(wx, y, new Vector2(0.6f, 0.95f)); // alevin içine giren yanar
                 var loop = sr.gameObject.AddComponent<DesertGecko.Effects.SpriteLoop>();
                 var so = new SerializedObject(loop);
                 SerializedProperty prop = so.FindProperty("frames");

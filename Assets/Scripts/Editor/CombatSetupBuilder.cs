@@ -44,11 +44,11 @@ namespace DesertGecko.EditorTools
                 HeartHalf = PlaceholderArt.Heart(1),
                 HeartEmpty = PlaceholderArt.Heart(0),
                 Ring = PlaceholderArt.Ring(),
-                CrystalIcon = PlaceholderArt.Crystal(),
+                CrystalIcon = LoadCollectible(CrystalFolder + "altin_ikon"), // kırpılmış: sayaç kutusunu doldurur
                 TailIcon = PlaceholderArt.TailProjectile(),
             };
             a.TailProjectile = BuildTailProjectile(a.TailIcon);
-            a.Crystal = BuildCrystal(a.CrystalIcon);
+            a.Crystal = BuildCrystal(LoadCollectible(CrystalFolder + "altin_0")); // oyundaki kareler 40x40 tuvalde
             a.Bug = BuildBug();
             a.Scorpion = BuildScorpion(PlaceholderArt.Scorpion(), a.Crystal);
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
@@ -81,15 +81,63 @@ namespace DesertGecko.EditorTools
             return Save<TailProjectile>(root, "TailProjectile");
         }
 
+        const string CrystalFolder = "Assets/Sprites/Collectibles/altin/";
+
+        static Sprite LoadCollectible(string pathWithoutExtension)
+        {
+            string path = pathWithoutExtension + ".png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                // İçe aktarma kuralları derlenmeden önce gelmiş olabilir.
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+            return sprite;
+        }
+
+        // Kare sırası (tools/altin_isle.py): 0 altın, 1-3 parıltı gezinir ve çakar, 4 ışınlı patlama, 5 kırılma,
+        // 6-7 kırıntılar (8-9 neredeyse boş, kullanılmıyor). altin_hale: arkada zonklayan parıltı.
+        // Arayüz ikonu altin_ikon (0. kare, kenarı kırpılmış). Sınıf adı (Crystal) kayıtlı sahneler bozulmasın diye kaldı.
         static Crystal BuildCrystal(Sprite sprite)
         {
+            var unlit = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
             var root = new GameObject("Crystal");
-            AddSprite(root.transform, null, sprite, 5);
+
+            Sprite haloSprite = LoadCollectible(CrystalFolder + "altin_hale");
+            SpriteRenderer glow = AddSprite(root.transform, "Parilti", haloSprite, 4);
+            if (haloSprite != null)
+                glow.transform.localScale = Vector3.one * (1.1f / haloSprite.bounds.size.x);
+            glow.color = new Color(1f, 0.85f, 0.45f, 0.3f);
+            if (unlit != null)
+                glow.sharedMaterial = unlit;
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", sprite, 5);
             var col = root.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
-            col.radius = 0.25f;
+            col.radius = 0.3f;
+
+            Sprite[] Frames(int from, int to)
+            {
+                var frames = new Sprite[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = LoadCollectible(CrystalFolder + "altin_" + i);
+                return frames;
+            }
+            AssetDatabase.ImportAsset("Assets/Audio/altin_toplama.wav", ImportAssetOptions.ForceSynchronousImport);
+
             var crystal = root.AddComponent<Crystal>();
             SetMask(crystal, "groundMask", GameLayers.GroundMask);
+            SetField(crystal, "spriteRenderer", sr);
+            SetField(crystal, "glow", glow);
+            SetArray(crystal, "glintFrames", Frames(0, 3));
+            SetArray(crystal, "collectFrames", Frames(4, 7));
+            SetField(crystal, "unlitMaterial", unlit);
+            SetField(crystal, "collectClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/altin_toplama.wav"));
+            // Altın 19 piksel boyunda: yere düşünce alt kenarı toprağa değsin.
+            var so = new SerializedObject(crystal);
+            so.FindProperty("radius").floatValue = 0.3f;
+            so.ApplyModifiedPropertiesWithoutUndo();
             return Save<Crystal>(root, "Crystal");
         }
 
@@ -406,10 +454,29 @@ namespace DesertGecko.EditorTools
             SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
             sr.transform.localPosition = new Vector3(0f, -1f, 0f);
 
+            // Gece görünürlüğü: arkada soluk ay ışığı halesi (ışıksız, hep parlak) ve gövdeyi aydınlatan küçük ışık.
+            // Gücünü yarasa ortam ışığına göre ayarlar; gündüz ikisi de kapalı.
+            Sprite glowSprite = PlaceholderArt.Glow();
+            SpriteRenderer halo = AddSprite(root.transform, "GeceHalesi", glowSprite, 7);
+            halo.transform.localScale = Vector3.one * (1.9f / glowSprite.bounds.size.x);
+            halo.color = new Color(0.86f, 0.8f, 1f, 0f);
+            var haloMaterial = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+            if (haloMaterial != null)
+                halo.sharedMaterial = haloMaterial;
+            var nightLight = new GameObject("GeceIsigi").AddComponent<UnityEngine.Rendering.Universal.Light2D>();
+            nightLight.transform.SetParent(root.transform, false);
+            nightLight.lightType = UnityEngine.Rendering.Universal.Light2D.LightType.Point;
+            nightLight.pointLightOuterRadius = 1.7f;
+            nightLight.pointLightInnerRadius = 0.3f;
+            nightLight.color = new Color(0.82f, 0.78f, 1f);
+            nightLight.intensity = 0f;
+
             var bat = root.AddComponent<BanditBat>();
             SetField(bat, "spriteRenderer", sr);
             SetMask(bat, "groundMask", GameLayers.GroundMask);
             SetField(bat, "dynamitePrefab", Fresh(dynamite));
+            SetField(bat, "nightHalo", halo);
+            SetField(bat, "nightLight", nightLight);
             SetArray(bat, "hangFrames", Range(0, 7));
             SetArray(bat, "flyFrames", Range(8, 15));
             SetArray(bat, "glideFrames", Range(16, 23));
@@ -513,6 +580,8 @@ namespace DesertGecko.EditorTools
             so.FindProperty("spriteFacesLeft").boolValue = false;
             so.FindProperty("patrolSpeed").floatValue = 0.9f;
             so.FindProperty("maxHealth").intValue = 4;
+            // Ağır gövde: darbe onu az savurur (çakal gibi hafif düşmanlar 4 birim geri uçar).
+            so.FindProperty("knockbackVelocity").vector2Value = new Vector2(1.5f, 1.5f);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();
@@ -713,7 +782,8 @@ namespace DesertGecko.EditorTools
 
             // Kristal sayacı
             RectTransform scoreRoot = CreateRect("Kristaller", hud, new Vector2(1f, 1f), new Vector2(-8f, -8f), new Vector2(56f, 16f));
-            ImageAt("Ikon", scoreRoot, new Vector2(0f, 1f), Vector2.zero, new Vector2(16f, 16f), a.CrystalIcon);
+            ImageAt("Ikon", scoreRoot, new Vector2(0f, 1f), Vector2.zero, new Vector2(16f, 16f), a.CrystalIcon)
+                .preserveAspect = true; // altın 18x19: kare kutuda basılmasın
             RectTransform labelRect = CreateRect("Sayi", scoreRoot, new Vector2(0f, 1f), new Vector2(20f, 1f), new Vector2(36f, 18f));
             labelRect.pivot = new Vector2(0f, 0.5f);
             labelRect.anchoredPosition = new Vector2(20f, -8f);

@@ -269,9 +269,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Collectibles.Bug
   healAmount: 2
   heatAmount: 0.45
-  hoverHeight: 0.14
-  hoverSpeed: 3.2
-  driftWidth: 0.08
+  catchRadius: 0.9
+  hoverHeight: 0.16
+  hoverPeriod: 2.6
+  driftWidth: 0.22
+  driftPeriod: 5.2
+  turnDeadZone: 0.6
   spriteRenderer: {fileID: 8433882669585349153}
   hoverFrames:
   - {fileID: 21300000, guid: 55a900e2037b0774db92dda87669d416, type: 3}
@@ -282,7 +285,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: ecd353f97ba9a3d46832bdf9d3ceb91f, type: 3}
   - {fileID: 21300000, guid: c154b758f43a76f4487eaa4f0260d6cb, type: 3}
   - {fileID: 21300000, guid: bff3c26d0505b4749ae3b3811c76eb82, type: 3}
-  flapFps: 14
+  wingFps: 8
   swallowFrames:
   - {fileID: 21300000, guid: da299d8b3e03fd641b8f823030cde8e4, type: 3}
   - {fileID: 21300000, guid: 51e520e6f1f02fe4ab8be789e21ddb28, type: 3}

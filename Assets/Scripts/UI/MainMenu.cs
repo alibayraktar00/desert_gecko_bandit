@@ -85,14 +85,14 @@ namespace DesertGecko.UI
         {
             playLabel.text = GameProgress.HasProgress ? "Devam Et" : "Başla";
             int total = GameProgress.TotalCrystals;
-            totalCrystalsLabel.text = total > 0 ? $"Toplam kristal: {total}" : "";
+            totalCrystalsLabel.text = total > 0 ? $"Toplam altın: {total}" : "";
 
             for (int i = 0; i < levelButtons.Length && i < LevelCatalog.Count; i++)
             {
                 bool unlocked = GameProgress.IsUnlocked(i);
                 levelButtons[i].interactable = unlocked;
                 string status = !unlocked ? "Kilitli"
-                    : GameProgress.IsCompleted(i) ? $"Bitti  -  {GameProgress.BestCrystals(i)} kristal"
+                    : GameProgress.IsCompleted(i) ? $"Bitti  -  {GameProgress.BestCrystals(i)} altın"
                     : "Yeni";
                 levelLabels[i].text = $"{LevelCatalog.Levels[i].Title}\n<size=11>{status}</size>";
             }

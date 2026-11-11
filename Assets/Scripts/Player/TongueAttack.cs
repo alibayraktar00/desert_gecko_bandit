@@ -120,13 +120,14 @@ namespace DesertGecko.Player
         bool TargetInTongueReach()
         {
             Vector2 direction = AimDirection();
-            Vector2 center = MouthPosition() + direction * (range * 0.5f);
-            var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
-            int count = Physics2D.OverlapBox(center, new Vector2(range, width), AngleOf(direction), filter, hits);
-            if (FindBugTarget(MouthPosition(), direction) != null)
+            Vector2 mouth = MouthPosition();
+            if (FindBugTarget(mouth, direction) != null)
                 return true;
+            int count = OverlapTongue(mouth, direction);
             for (int i = 0; i < count; i++)
             {
+                if (WallBetween(mouth, hits[i].ClosestPoint(mouth)))
+                    continue;
                 if (hits[i].GetComponentInParent<Bug>() != null)
                     return true;
                 var target = hits[i].GetComponentInParent<IDamageable>();
@@ -134,6 +135,55 @@ namespace DesertGecko.Player
                     return true;
             }
             return false;
+        }
+
+        // --- Duvar ve zemin: dil içinden geçmez ---
+
+        readonly RaycastHit2D[] solidHits = new RaycastHit2D[8];
+
+        ContactFilter2D SolidFilter => new ContactFilter2D
+        {
+            useLayerMask = true,
+            layerMask = GameLayers.GroundMask | LayerMask.GetMask("Default"), // kapılar ve kayalar da katı
+            useTriggers = false,
+        };
+
+        /// <summary>Dilin bu yönde uzanabildiği boy: ilk duvara/zemine kadar, en fazla menzil.</summary>
+        float Reach(Vector2 mouth, Vector2 direction)
+        {
+            int count = Physics2D.Raycast(mouth, direction, SolidFilter, solidHits, range);
+            float reach = range;
+            for (int i = 0; i < count; i++)
+                if (!solidHits[i].collider.usedByEffector) // tek yönlü platformlar dili kesmez
+                    reach = Mathf.Min(reach, solidHits[i].distance);
+            return reach;
+        }
+
+        /// <summary>Ağızla hedef arasında duvar/zemin var mı (alt kattan üst kattaki düşmana vurulmasın).</summary>
+        bool WallBetween(Vector2 from, Vector2 to)
+        {
+            Vector2 delta = to - from;
+            float distance = delta.magnitude;
+            if (distance < 0.01f)
+                return false;
+            int count = Physics2D.Raycast(from, delta / distance, SolidFilter, solidHits, distance);
+            for (int i = 0; i < count; i++)
+                if (!solidHits[i].collider.usedByEffector)
+                    return true;
+            return false;
+        }
+
+        /// <summary>Dilin süpürdüğü kutudaki dil hedefleri (hits dizisine); kutu duvarda biter.</summary>
+        int OverlapTongue(Vector2 mouth, Vector2 direction)
+        {
+            float reach = Reach(mouth, direction);
+            if (reach < 0.05f)
+                return 0;
+            Vector2 center = mouth + direction * (reach * 0.5f);
+            // Böcekler trigger; global "queriesHitTriggers" ayarından bağımsız olarak bulunsun.
+            var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
+            // Kutu dilin yönüne döner: çapraz/yukarı vuruşta da dil boyunca tarar.
+            return Physics2D.OverlapBox(center, new Vector2(reach, width), AngleOf(direction), filter, hits);
         }
 
         // Saldırı ortasında obje kapanırsa coroutine durur; kilit takılı kalmasın.
@@ -167,13 +217,13 @@ namespace DesertGecko.Player
         {
             Bug best = null;
             float bestDistance = float.MaxValue;
-            Vector2 tip = mouth + direction * range;
+            Vector2 tip = mouth + direction * Reach(mouth, direction);
             IReadOnlyList<Bug> bugs = Bug.Active;
             for (int i = 0; i < bugs.Count; i++)
             {
                 Bug bug = bugs[i];
                 Vector2 center = bug.transform.position;
-                if (DistanceToSegment(center, mouth, tip) > bug.CatchRadius)
+                if (DistanceToSegment(center, mouth, tip) > bug.CatchRadius || WallBetween(mouth, center))
                     continue;
                 float distance = Vector2.Distance(mouth, center);
                 if (distance < bestDistance)
@@ -225,8 +275,9 @@ namespace DesertGecko.Player
             Attacked?.Invoke();
 
             HitTargets(MouthPosition(), direction);
+            float reach = Reach(MouthPosition(), direction);
 
-            // Görsel: hızlıca uzan, kısa dur, geri çekil.
+            // Görsel: hızlıca uzan, kısa dur, geri çekil. Duvara değerse orada durur.
             float t = 0f;
             float retractStart = extendTime * 2f;
             while (t < lockDuration)
@@ -235,7 +286,7 @@ namespace DesertGecko.Player
                 float extension = t < extendTime ? t / extendTime
                     : t < retractStart ? 1f
                     : 1f - (t - retractStart) / Mathf.Max(0.01f, lockDuration - retractStart);
-                ShowTongue(MouthPosition(), direction, range * Mathf.Clamp01(extension));
+                ShowTongue(MouthPosition(), direction, reach * Mathf.Clamp01(extension));
                 yield return null;
             }
 
@@ -294,17 +345,13 @@ namespace DesertGecko.Player
 
         void HitTargets(Vector2 origin, Vector2 direction, bool catchBugs = true)
         {
-            Vector2 center = origin + direction * (range * 0.5f);
-            Vector2 size = new Vector2(range, width);
-
             alreadyHit.Clear();
-            // Böcekler trigger; global "queriesHitTriggers" ayarından bağımsız olarak bulunsun.
-            var filter = new ContactFilter2D { useLayerMask = true, layerMask = hitMask, useTriggers = true };
-            // Kutu dilin yönüne döner: çapraz/yukarı vuruşta da dil boyunca tarar.
-            int count = Physics2D.OverlapBox(center, size, AngleOf(direction), filter, hits);
+            int count = OverlapTongue(origin, direction);
             for (int i = 0; i < count; i++)
             {
                 Collider2D hit = hits[i];
+                if (WallBetween(origin, hit.ClosestPoint(origin)))
+                    continue; // zeminin/duvarın öbür yanında: dil oraya ulaşmaz
                 var bug = hit.GetComponentInParent<Bug>();
                 if (bug != null)
                 {
@@ -317,6 +364,12 @@ namespace DesertGecko.Player
                 if (target == null || target is PlayerHealth || !target.IsAlive || !alreadyHit.Add((Component)target))
                     continue;
 
+                // Dikenli düşmana dil değerse diken Gila'nın canını yakar; darbe dikenlerden seker.
+                if (target is IPrickly prickly && prickly.PricksTongue)
+                {
+                    float away = Mathf.Sign(transform.position.x - ((Component)target).transform.position.x);
+                    health.TakeDamage(prickly.PrickDamage, new Vector2(away == 0f ? -AttackSide() : away, 0f));
+                }
                 target.TakeDamage(damage, direction);
             }
         }

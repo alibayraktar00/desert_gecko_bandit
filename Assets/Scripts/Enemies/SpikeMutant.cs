@@ -13,7 +13,7 @@ namespace DesertGecko.Enemies
     /// Süre bitince "Fııışş" ile dikenler yeniden çıkar.
     /// Kareler sağa bakar; sola bakarken EnemyBase sprite'ı aynalar, dikenler de o yöne uçar.
     /// </summary>
-    public class SpikeMutant : EnemyBase
+    public class SpikeMutant : EnemyBase, IPrickly
     {
         public enum SpikeState { Patrol, Crouch, Bristle, Volley, Reload, Exhausted, Regrow }
         public enum SpikePhase { Full, Half, Bald }
@@ -46,6 +46,10 @@ namespace DesertGecko.Enemies
         [SerializeField] float recoilSpeed = 1.6f;
         [Tooltip("İki yaylım arasında yarı dikenle soluklanma")]
         [SerializeField] float reloadDuration = 0.6f;
+
+        [Header("Dikenler")]
+        [Tooltip("Dikenliyken dil atan Gila'nın kaybettiği can (yarım kalp = 1)")]
+        [SerializeField] int prickDamage = 1;
 
         [Header("Tükenme")]
         [SerializeField] float exhaustedDuration = 3.5f;
@@ -97,9 +101,15 @@ namespace DesertGecko.Enemies
             }
         }
 
+        /// <summary>Dikenleri varken dil atmak Gila'nın canını yakar: ondan kaçılır, kelleşince vurulur.</summary>
+        public bool PricksTongue => IsAlive && State != SpikeState.Exhausted;
+        public int PrickDamage => prickDamage;
+
         /// <summary>Dikenleri varken (ya da yeniden çıkarken) her darbe seker.</summary>
         protected override bool Invulnerable => State != SpikeState.Exhausted;
         protected override bool CanChase => false;
+        /// <summary>İri ve ağır: dil darbeleri onu uçurumdan itemez.</summary>
+        protected override bool KeepsFooting => true;
         protected override bool HoldPosition => State != SpikeState.Patrol;
 
         readonly RaycastHit2D[] sightHits = new RaycastHit2D[4];

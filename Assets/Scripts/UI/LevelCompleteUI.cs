@@ -35,8 +35,8 @@ namespace DesertGecko.UI
 
             titleLabel.text = hasNext ? "Level tamamlandı!" : "Kızgın Kum Vadisi bitti!";
             crystalsLabel.text = newRecord && crystals > 0
-                ? $"Kristal: {crystals}   (yeni rekor!)"
-                : $"Kristal: {crystals}";
+                ? $"Altın: {crystals}   (yeni rekor!)"
+                : $"Altın: {crystals}";
             nextButton.gameObject.SetActive(hasNext);
             panel.SetActive(true);
             StartCoroutine(EnableButtonsAfterDelay(hasNext ? nextButton : mainMenuButton));

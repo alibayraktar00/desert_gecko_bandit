@@ -1,6 +1,7 @@
 using DesertGecko.Core;
 using DesertGecko.Effects;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace DesertGecko.Enemies
 {
@@ -12,6 +13,8 @@ namespace DesertGecko.Enemies
     /// Havada olduğu için Gila ona dili yukarı/çapraz uzatarak (W + J) ulaşır.
     /// Ölünce kanatları kapanır, yere çakılır, toz kalkar.
     /// Transform yarasanın ortasıdır; kareler sağa bakar.
+    /// Gece mor gövdesi gökyüzüne karışmasın diye arkasında soluk ay ışığı halesi yanar ve kendi küçük
+    /// ışığı gövdesini aydınlatır; ikisi de ortam karardıkça güçlenir, gündüz tamamen söner.
     /// </summary>
     public class BanditBat : EnemyBase
     {
@@ -63,6 +66,16 @@ namespace DesertGecko.Enemies
         [SerializeField] float flyFps = 12f;
         [SerializeField] float tauntFps = 9f;
         [SerializeField] float dizzyFps = 8f;
+
+        [Header("Gece görünürlüğü")]
+        [Tooltip("Arkadaki soluk hale: silueti koyu gökyüzünden ayırır")]
+        [SerializeField] SpriteRenderer nightHalo;
+        [SerializeField] float nightHaloAlpha = 0.45f;
+        [Tooltip("Gövdeyi aydınlatan küçük ışık")]
+        [SerializeField] Light2D nightLight;
+        [SerializeField] float nightLightIntensity = 1.4f;
+        [Tooltip("Ortam ışığı bu aralıkta karardıkça hale ve ışık açılır (1 gündüz, 0.5 gece)")]
+        [SerializeField] Vector2 darkRange = new Vector2(0.95f, 0.6f);
 
         [Header("Kareler")]
         [SerializeField] Sprite[] hangFrames;
@@ -297,9 +310,42 @@ namespace DesertGecko.Enemies
             Enter(BatState.Asleep, 0f);
         }
 
+        Light2D globalLight;
+
+        protected override void Start()
+        {
+            base.Start();
+            foreach (Light2D l in FindObjectsByType<Light2D>(FindObjectsSortMode.None))
+                if (l.lightType == Light2D.LightType.Global)
+                {
+                    globalLight = l;
+                    break;
+                }
+            UpdateNightVisibility();
+        }
+
+        /// <summary>Ortam karardıkça hale ve ışık güçlenir; şafakta yavaşça söner.</summary>
+        void UpdateNightVisibility()
+        {
+            float darkness = globalLight != null ? Mathf.InverseLerp(darkRange.x, darkRange.y, globalLight.intensity) : 0f;
+            if (nightHalo != null)
+            {
+                Color c = nightHalo.color;
+                c.a = nightHaloAlpha * darkness;
+                nightHalo.color = c;
+                nightHalo.enabled = darkness > 0.01f;
+            }
+            if (nightLight != null)
+            {
+                nightLight.intensity = nightLightIntensity * darkness;
+                nightLight.enabled = darkness > 0.01f;
+            }
+        }
+
         protected override void Update()
         {
             base.Update();
+            UpdateNightVisibility();
             if (spriteRenderer == null)
                 return;
             Sprite frame = CurrentFrame();
