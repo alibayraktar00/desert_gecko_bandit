@@ -19,6 +19,7 @@ namespace DesertGecko.EditorTools
         public const string LayerArtFolder = "Assets/Sprites/Environment/Katman/";
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
+        const float PlatformCap = 30f; // tools/platform_paketi_isle.py CAP ile aynı
 
         // tools/gemini_sprite_isle.py: 64x64 tuval, ayaklar 48. satırda -> alttan 16/64
         static readonly Vector2 GilaPivot = new Vector2(0.5f, 0.25f);
@@ -97,6 +98,9 @@ namespace DesertGecko.EditorTools
                 settings.spriteMeshType = SpriteMeshType.FullRect;
                 if (assetPath.EndsWith("kaya_kenar.png"))
                     settings.spriteBorder = new Vector4(16f, 0f, 16f, 0f);
+                // Geçirgen platformlar (tools/platform_paketi_isle.py): uçlar sabit, orta tekrar eder.
+                if (System.IO.Path.GetFileName(assetPath).StartsWith("plat_"))
+                    settings.spriteBorder = new Vector4(PlatformCap, 0f, PlatformCap, 0f);
                 importer.SetTextureSettings(settings);
                 // Mağara arka duvarı küçük bir kaynaktan geliyor: oda boyunu kaplasın diye büyütülür. 16'da pikseller
                 // kaba kare görünüyordu; 22 oda yüksekliğine (~8.7 birim) yetiyor, pikseller daha ince.

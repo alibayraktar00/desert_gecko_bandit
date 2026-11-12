@@ -20,6 +20,7 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/kapi_zincir.wav    tavan kapısının zinciri boşalır (kapı inmeden hemen önce)
   Assets/Audio/kapi_carpma.wav    ağır ahşap kapı yere çakılır, mağarada gümbürtü
   Assets/Audio/kapi_kalkma.wav    kapı kalkarken makara takırtısı (döngü)
+  Assets/Audio/sandik_acilma.wav  sandık açılır: sarsıntı, kilit, menteşe gıcırtısı, dökülen altın
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -262,6 +263,37 @@ def gate_grind(rng, seconds=1.0):
     return (grind * 0.45 + ratchet * 0.4 + hum) * 0.6
 
 
+def chest_open(rng, seconds=1.4):
+    """Sandık açılır: kilit tıkırtısı ve sarsıntı, gıcırdayan menteşe, ardından dökülen altın şıngırtısı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(t.size)
+    # Sarsıntı (0-0.45 sn): tahtanın tok tıkırtıları
+    for start in np.arange(0.0, 0.45, 0.065) + rng.uniform(0, 0.01, 7):
+        u = np.clip(t - start, 0.0, None)
+        knock = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(25) / 25, mode="same") * 4.0 * np.exp(-u * 60.0)
+        out += knock * (t >= start) * 0.5
+    # Kilit açılır (0.45)
+    u = np.clip(t - 0.45, 0.0, None)
+    out += np.sin(2 * np.pi * 2300.0 * u) * np.exp(-u * 70.0) * (t >= 0.45) * 0.4
+    # Menteşe gıcırtısı (0.5-0.75): titreşen, yükselen sürtünme
+    hinge = (t > 0.5) & (t < 0.78)
+    freq = 420.0 + 380.0 * np.clip((t - 0.5) / 0.28, 0, 1)
+    creak = np.sign(np.sin(2 * np.pi * np.cumsum(freq) / RATE)) * (0.6 + 0.4 * np.sin(2 * np.pi * 38.0 * t))
+    out += creak * hinge * np.sin(np.pi * np.clip((t - 0.5) / 0.28, 0, 1)) * 0.18
+    # Altın şıngırtısı (0.74 sonrası): rastgele madeni çınlamalar, yoğun başlar, seyrelir
+    for _ in range(26):
+        start = 0.74 + rng.exponential(0.16)
+        if start >= seconds:
+            continue
+        u = np.clip(t - start, 0.0, None)
+        f = rng.uniform(2400.0, 4600.0)
+        ring = (np.sin(2 * np.pi * f * u) + 0.4 * np.sin(2 * np.pi * f * 1.51 * u)) * np.exp(-u * rng.uniform(25.0, 45.0))
+        out += ring * (t >= start) * rng.uniform(0.08, 0.18)
+    burst = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(3) / 3, mode="same") * np.exp(-np.clip(t - 0.74, 0, None) * 12.0) * (t >= 0.74)
+    out += burst * 0.25
+    return out * 0.85
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -285,6 +317,7 @@ def main():
     save("kapi_zincir.wav", chain_release(np.random.default_rng(19)))
     save("kapi_carpma.wav", gate_slam(np.random.default_rng(20)))
     save("kapi_kalkma.wav", gate_grind(np.random.default_rng(21)))
+    save("sandik_acilma.wav", chest_open(np.random.default_rng(22)))
 
 
 if __name__ == "__main__":

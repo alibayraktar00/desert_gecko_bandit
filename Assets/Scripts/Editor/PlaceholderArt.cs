@@ -239,6 +239,20 @@ namespace DesertGecko.EditorTools
         // Düz beyaz kare: renklendirilip kenarlıksız dolgu olarak kullanılır (tile'ın ızgara çizgisi yok).
         public static Sprite Solid() => Create("duz_placeholder", 4, 4, Center, c => c.Rect(0, 0, 3, 3, new Color32(255, 255, 255, 255)));
 
+        // Tünel ağzı: uçurum geçişiyle aynı renk ve yön, ama yumuşak (32 kademe, iki ucu düz). 8 kademeli geçişte
+        // koyu duvarın bittiği yerde gökyüzü birden beliriyor, şerit şerit görünüyordu.
+        public static Sprite SoftFade() => Create("tunel_gecis", 2, 64, new Vector2(0.5f, 1f), c =>
+        {
+            for (int y = 0; y < 64; y++)
+            {
+                float s = 1f - y / 63f;               // altta 1 (koyu), üstte 0 (saydam)
+                float a = s * s * (3f - 2f * s);      // iki ucu düz: koyu duvara ve gökyüzüne fark edilmeden bağlanır
+                byte alpha = (byte)(Mathf.Round(a * 31f) / 31f * 255f);
+                c.Set(0, y, new Color32(0x1A, 0x0C, 0x09, alpha));
+                c.Set(1, y, new Color32(0x1A, 0x0C, 0x09, alpha));
+            }
+        });
+
         // Uçurum ağzı: yukarıda şeffaf, aşağıda koyu toprak (2x32, 1 birim). Ölçeklenerek kullanılır.
         public static Sprite PitGradient() => Create("ucurum_gecis", 2, 32, new Vector2(0.5f, 1f), c =>
         {

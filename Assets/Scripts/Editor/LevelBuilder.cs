@@ -77,8 +77,28 @@ namespace DesertGecko.EditorTools
                 SceneCapture.Capture($"Temp/Screenshots/L3cikis_{x:0}.png", new Vector3(x, 26f, -10f));
             // Level 2: derin galerinin sonundaki sıcak hava bacası
             EditorSceneManager.OpenScene($"{SceneFolder}/Level_2.unity");
-            SceneCapture.Capture("Temp/Screenshots/L2baca.png", new Vector3(DerinGaleriX + 108f, 9f, -10f));
+            SceneCapture.Capture("Temp/Screenshots/L2baca.png", new Vector3(DerinGaleriX + 134f, 9f, -10f));
             EditorSceneManager.OpenScene(string.IsNullOrEmpty(previous) ? $"{SceneFolder}/Level_3.unity" : previous);
+            return "tamam";
+        }
+
+        /// <summary>Level 2 gizli odasındaki sandığın altı açılma karesini görüntüler (sahte kaya gizlenir); sahneyi kaydetmez.</summary>
+        public static string PreviewChest()
+        {
+            string previous = EditorSceneManager.GetActiveScene().path;
+            EditorSceneManager.OpenScene($"{SceneFolder}/Level_2.unity");
+            foreach (SecretWall wall in Object.FindObjectsByType<SecretWall>())
+                wall.GetComponent<SpriteRenderer>().enabled = false;
+            var chest = Object.FindAnyObjectByType<TreasureChest>();
+            var sr = chest.GetComponent<SpriteRenderer>();
+            var frames = (Sprite[])typeof(TreasureChest).GetField("frames", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(chest);
+            Vector3 p = chest.transform.position;
+            for (int i = 0; i < frames.Length; i++)
+            {
+                sr.sprite = frames[i];
+                SceneCapture.Capture($"Temp/Screenshots/sandik_{i}.png", new Vector3(p.x - 3f, p.y + 1.5f, -10f));
+            }
+            EditorSceneManager.OpenScene(string.IsNullOrEmpty(previous) ? $"{SceneFolder}/Level_3.unity" : previous); // değişiklikler atılır
             return "tamam";
         }
 
@@ -520,7 +540,7 @@ namespace DesertGecko.EditorTools
         //   Rüzgâr Geçidi: sıcak hava sütunu         Derin Galeri: zikzak kuyu, dövüş odası, kaya altında köprü
         //   Son Tırmanış : hepsi bir arada
         // İki madenin girişi de çıkışı da farklı: tahtası yıkılan kuyu / zikzak kuyu, asansörlü kapı / sıcak hava bacası.
-        const float MadenSaftiX = 100f, RuzgarGecidiX = 207f, DerinGaleriX = 295f, SonTirmanisX = 413f;
+        const float MadenSaftiX = 100f, RuzgarGecidiX = 207f, DerinGaleriX = 295f, SonTirmanisX = 439f;
 
         static void Level_2(LevelPainter p)
         {
@@ -528,6 +548,7 @@ namespace DesertGecko.EditorTools
             p.Boundary(-9f);
             // Terk edilmiş maden: kalıntılar, cevher damarları, kristaller, gömülü sandıklar.
             p.Veins = new[] { "maden", "maden_eski", "cevher", "kristal", "hazine", "harabe", "kok_sik", "kaya", "kirik", "oyuk", "sizinti", "fosil" };
+            p.LedgeStyles = new[] { "plat_tahta", "plat_izgara", "plat_kok", "plat_tas" }; // maden iskelesi ve ızgarası
 
             Maden_KanyonAgzi(p);
             Dekor_KanyonAgzi(p);
@@ -546,14 +567,15 @@ namespace DesertGecko.EditorTools
 
             // Botun geri dönmesi ya da durup beklemesi gereken yerler; dünya koordinatı.
             p.OriginX = 0f;
-            p.Route(194f, 4f, 194f, 16f, 201f, 16f, 210f, 15f, 303f, 17f, 309f, 12f, 298f, 7f, 315f, 1f);
+            p.Route(194f, 4f, 194f, 16f, 201f, 16f, 210f, 15f, 298f, 18f, 312f, 13f, 299f, 7.5f, 337f, 1f);
 
             p.ShotPoints.AddRange(new[]
             {
                 new Vector2(20f, 3f), new Vector2(45f, 7f), new Vector2(72f, 12f), new Vector2(103f, 9f), new Vector2(135f, 4f),
                 new Vector2(152f, 4f), new Vector2(172f, 9f), new Vector2(192f, 11f), new Vector2(228f, 17f), new Vector2(250f, 19f),
-                new Vector2(282f, 20f), new Vector2(302f, 14f), new Vector2(340f, 5f), new Vector2(370f, 6f), new Vector2(408f, 12f),
-                new Vector2(450f, 22f), new Vector2(8f, 3f), new Vector2(88f, 14f), new Vector2(214f, 17f), new Vector2(424f, 22f), new Vector2(485f, 26f),
+                new Vector2(282f, 20f), new Vector2(302f, 16f), new Vector2(305f, 5f), new Vector2(322f, 4.5f), new Vector2(334f, 5f),
+                new Vector2(366f, 5f), new Vector2(396f, 6f), new Vector2(434f, 12f),
+                new Vector2(476f, 22f), new Vector2(8f, 3f), new Vector2(88f, 14f), new Vector2(214f, 17f), new Vector2(450f, 22f), new Vector2(511f, 26f),
             });
         }
 
@@ -670,7 +692,8 @@ namespace DesertGecko.EditorTools
             p.Crystal(71f, 10.2f);
             p.SecretRock(66f, 76f, roofB, 15f);
             p.Ledge(66.5f, 75.5f, 11.5f);
-            p.CrystalLine(68f, 12.4f, 5, 1.5f);
+            p.CrystalLine(67.5f, 12.4f, 4, 1.5f);
+            p.Chest(74.2f, 11.5f); // kayıp madencinin sandığı: dille açılır
             p.Bug(71f, 13.8f);
 
             // Çıkış: asansör, üstünden yılan ateş eder
@@ -723,72 +746,98 @@ namespace DesertGecko.EditorTools
             p.Scorpion(85f, 22f);
         }
 
-        // Derin Galeri (yer altı). Giriş: sağa sola inilen zikzak kuyu. Fikir: dövüş odası.
-        // Sonra öğrenilen her şey birleşir: çürük köprü + düşen kaya + hareketli platform. Çıkış: sıcak hava bacası.
+        // Derin Galeri (yer altı). Giriş: duvarları dikenli sarmaşıkla kaplı kuyu, raftan rafa inilir; dibinde sarı lav,
+        // tavandaki halkalı sarmaşıklara dille tutunup sallanarak mağaraya geçilir, arada tavandan diken kozaları düşer.
+        // Sonra dövüş odası, ardından öğrenilen her şey birleşir: çürük köprü + düşen kaya + hareketli platform.
+        // Çıkış: sıcak hava bacası.
         static void Maden_DerinGaleri(LevelPainter p)
         {
             const float floorA = 1f, roofA = 9f, floorB = 4f, roofB = 13f, shaftTop = 22f;
+            const float lavaY = 0.8f, swingRoof = 10.6f, shelfA = 18f, shelfB = 13f, shelfC = 7.5f, shelfThick = 1.2f;
 
             p.CaveMouth(0f, 16f, shaftTop, 7f);
-            p.CaveWall(16f, 110f, roofB);
-            p.CaveMouth(110f, 118f, 20f, 6f);
-            p.RockMass(16f, 62f, roofA, 60f);
-            p.RockEdge(16f, 40f, roofA, -1);
-            p.RockMass(62f, 110f, roofB, 60f);
-            p.RockEdge(62f, roofB, roofA, 1);
-            p.RockEdge(110f, 40f, roofB, 1); // kütlenin kenarı tavanda biter: galeride içinden geçilen sahte duvar olmasın
-            p.RockMass(117f, 118f, GroundBottom, 19.6f); // bacanın sağı tırmanılmaz: yukarı sadece rüzgârla çıkılır
+            p.CaveWall(16f, 136f, roofB);
+            p.CaveMouth(136f, 144f, 20f, 6f);
+            p.RockMass(16f, 42f, swingRoof, 60f); // kuyunun sağ duvarı, altı halkaların asıldığı tavan
+            p.RockEdge(16f, 40f, swingRoof, -1);
+            p.RockMass(42f, 88f, roofA, 60f);
+            p.RockMass(88f, 136f, roofB, 60f);
+            p.RockEdge(88f, roofB, roofA, 1);
+            p.RockEdge(136f, 40f, roofB, 1); // kütlenin kenarı tavanda biter: galeride içinden geçilen sahte duvar olmasın
+            p.RockMass(143f, 144f, GroundBottom, 19.6f); // bacanın sağı tırmanılmaz: yukarı sadece rüzgârla çıkılır
 
-            // Zikzak kuyu: her raf bir sonrakine sağdan ya da soldan iner
-            p.CaveFloor(0f, 62f, floorA);
-            p.Shelf(0f, 9f, 17f, 1.2f, -1);
-            p.Crystal(4f, 17.8f);
-            p.Shelf(7f, 16f, 12f, 1.2f, 1);
-            p.Scorpion(12f, 12f);
-            p.Shelf(0f, 9f, 7f, 1.2f, -1);
-            p.Snake(4f, 7f);
-            p.CrystalLine(11f, 2f, 3, 1.2f);
-            p.Sign(18.5f, floorA, "Altın damarlı kaya:\nkazmayla iki kez vur ya da dinamitle patlat");
-            p.TreasureRock(22f, floorA);
+            // Dikenli kuyu: raflar sırayla soldan, sağdan, soldan. Rafların üstü güvenli; duvarın köşesi ve rafın altı ölüm.
+            // Kuyunun ağzında (ilk rafa kadar) sol duvar temiz: kenardan yürüyüp inen haksız yere ölmesin.
+            p.Sign(-3f, shaftTop, "Dikenli sarmaşığa değme: öldürür!\nRaftan rafa in, duvara yapışma");
+            p.Shelf(0f, 7f, shelfA, shelfThick, -1);
+            p.Checkpoint(3f, shelfA); // kuyunun ilk rafı: ölen buradan, lavın üstünü tekrar dener
+            p.ThornUnderside(0f, 6f, shelfA - shelfThick);
+            p.ThornWall(0f, shelfC + 0.5f, shelfA - shelfThick - 0.4f, 1);
+            p.Shelf(9f, 16f, shelfB, shelfThick, 1);
+            p.ThornWall(16f, shelfB + 0.6f, shaftTop + 2f, -1);
+            p.CrystalLine(12f, shelfB + 0.8f, 2, 1.2f);
+            p.Shelf(0f, 7f, shelfC, shelfThick, -1);
+            p.ThornUnderside(0f, 6.5f, shelfC - shelfThick);
+            p.ThornWall(0f, lavaY - 1f, shelfC - shelfThick - 0.3f, 1);
+            p.Crystal(4f, shelfC + 0.8f);
+
+            // Sarı lav ve halkalar: J basılı sallan, bırakıp bir sonrakine yapış. Kozalar düzenli aralıkla düşer,
+            // biri hep düşmek üzere: ritmi görüp geç.
+            p.YellowLava(0f, 40f, lavaY);
+            p.Sign(5.5f, shelfC, "Halkaya dille yapış (J basılı)\nsallan, bırak, sıradakine yapış");
+            p.VineRing(11.5f, shelfB - shelfThick); // sağ rafın altından sarkar
+            p.VineRing(19.5f, swingRoof);
+            p.VineRing(27.5f, swingRoof);
+            p.VineRing(35.5f, swingRoof);
+            p.ThornPod(15.5f, swingRoof, 3f, 0f, lavaY);
+            p.ThornPod(23.5f, swingRoof, 3f, 1f, lavaY);
+            p.ThornPod(31.5f, swingRoof, 3f, 2f, lavaY);
+            p.CrystalArc(13f, 6.5f, 18f, 6.5f, 3);
+            p.CrystalArc(29f, 6.5f, 34f, 6.5f, 3);
+
+            // Mağara: lavdan çıkılan taban
+            p.CaveFloor(40f, 88f, floorA);
+            p.Sign(44.5f, floorA, "Altın damarlı kaya:\nkazmayla iki kez vur ya da dinamitle patlat");
+            p.TreasureRock(48f, floorA);
 
             // Dövüş odası: kapılar iner, dördü de ölmeden açılmaz. Çıkıntılar kaçış yeri.
-            p.Checkpoint(26f, floorA);
-            p.Arena(30f, 60f, 36f, floorA, roofA);
-            p.Ledge(38f, 44f, 4.2f);
-            p.Ledge(47f, 53f, 4.2f);
-            p.Crystal(41f, 5f);
-            p.Crystal(50f, 5f);
-            p.Scorpion(42f, floorA);
-            p.Jackal(47f, floorA);
-            p.Snake(53f, floorA);
-            p.Armadillo(57f, floorA);
-            p.Yarasa(45f, roofA, wakeHalfWidth: 15f); // kapılar inince odanın tavanından uyanır
+            p.Checkpoint(52f, floorA);
+            p.Arena(56f, 86f, 62f, floorA, roofA);
+            p.Ledge(64f, 70f, 4.2f);
+            p.Ledge(73f, 79f, 4.2f);
+            p.Crystal(67f, 5f);
+            p.Crystal(76f, 5f);
+            p.Scorpion(68f, floorA);
+            p.Jackal(73f, floorA);
+            p.Snake(79f, floorA);
+            p.Armadillo(83f, floorA);
+            p.Yarasa(71f, roofA, wakeHalfWidth: 15f); // kapılar inince odanın tavanından uyanır
 
             // Birleşim: çürük köprü, tavandan kaya, ortada hareketli platform
-            p.Chasm(62f, 88f, floorA);
-            p.Crumble(63.33f, floorA, "tahta_ray");
-            p.Crumble(66f, floorA, "tahta_ray");
-            p.Crumble(68.67f, floorA, "tahta_ray");
-            p.Crumble(71.33f, floorA, "tahta_ray");
-            p.FallingRock(65.5f, roofB);
-            p.FallingRock(70f, roofB);
-            p.Mover(74f, 2.5f, "tahta_zincir", new Vector2(7f, 0f), 2.5f);
-            p.CrystalArc(74f, 4.5f, 81f, 4.5f, 3);
-            p.Crumble(83.33f, 2.5f, "tahta_ray");
-            p.Crumble(86f, 2.5f, "tahta_ray");
-            p.FallingRock(85f, roofB);
+            p.Chasm(88f, 114f, floorA);
+            p.Crumble(89.33f, floorA, "tahta_ray");
+            p.Crumble(92f, floorA, "tahta_ray");
+            p.Crumble(94.67f, floorA, "tahta_ray");
+            p.Crumble(97.33f, floorA, "tahta_ray");
+            p.FallingRock(91.5f, roofB);
+            p.FallingRock(96f, roofB);
+            p.Mover(100f, 2.5f, "tahta_zincir", new Vector2(7f, 0f), 2.5f);
+            p.CrystalArc(100f, 4.5f, 107f, 4.5f, 3);
+            p.Crumble(109.33f, 2.5f, "tahta_ray");
+            p.Crumble(112f, 2.5f, "tahta_ray");
+            p.FallingRock(111f, roofB);
 
-            p.CaveFloor(88f, 118f, floorB);
-            p.Checkpoint(89.5f, floorB);
-            p.Bug(92f, floorB + 1.3f);
-            p.Yarasa(95f, roofB); // galerinin tavanında uyur, yılanla birlikte iki kat baskı
-            p.Snake(97f, floorB);
-            p.Armadillo(103f, floorB);
-            p.Sign(108.5f, floorB, "Sıcak hava bacası:\nSpace basılı tut, yukarı!");
+            p.CaveFloor(114f, 144f, floorB);
+            p.Checkpoint(115.5f, floorB);
+            p.Bug(118f, floorB + 1.3f);
+            p.Yarasa(121f, roofB); // galerinin tavanında uyur, yılanla birlikte iki kat baskı
+            p.Snake(123f, floorB);
+            p.Armadillo(129f, floorB);
+            p.Sign(134.5f, floorB, "Sıcak hava bacası:\nSpace basılı tut, yukarı!");
 
             // Baca: yer altından gökyüzüne
-            p.Thermal(111f, 117f, floorB, 24f, 16f);
-            p.CrystalLine(114f, 8f, 5, 2.5f, vertical: true);
+            p.Thermal(137f, 143f, floorB, 24f, 16f);
+            p.CrystalLine(140f, 8f, 5, 2.5f, vertical: true);
         }
 
         // Son Tırmanış (yüzey). Yeni fikir yok: tahta, platform, rüzgâr art arda, sonunda en kalabalık grup.
@@ -842,6 +891,7 @@ namespace DesertGecko.EditorTools
             p.Boundary(-9f);
             // Sıcak su kaynakları: lav ve su cepleri, balçık, sızıntılar.
             p.Veins = new[] { "lav", "su_cebi", "balcik", "sizinti", "kristal", "kok_ag", "kaya_iri", "kirik", "fosil" };
+            p.LedgeStyles = new[] { "plat_bitki", "plat_tas", "plat_sarmasik", "plat_cakil" }; // nemli kaplıca: bitki ve sarmaşık
 
             Ayaz_Kamp(p);
             p.OriginX = TelgrafX;
@@ -1183,7 +1233,7 @@ namespace DesertGecko.EditorTools
 
             // Gizli oda
             p.Deco("mgr_iskelet", 69f, 11.5f);
-            p.Deco("yuz_kurukafa", 73.5f, 11.5f);
+            p.Deco("yuz_kurukafa", 71.6f, 11.5f); // sandığın yeri açılsın diye iskeletin yanına alındı
             p.Glow(71f, 13f, LampLight, 3f, 0.2f);
 
             p.Deco("mgr_cark", 90.5f, b);
@@ -1206,65 +1256,65 @@ namespace DesertGecko.EditorTools
             p.Deco("yuz_kova_direk", 85.5f, 22f);
         }
 
-        // Daha derin ve daha doğal: kökler, kristaller, mantarlar. Sonda buhar borularının geldiği baca.
+        // Daha derin ve daha doğal: kökler, kristaller, mantarlar. Girişte dikenli kuyu ve lav, sonda buhar borularının geldiği baca.
         static void Dekor_DerinGaleri(LevelPainter p)
         {
-            const float a = 1f, b = 4f, roofA = 9f, roofB = 13f;
+            const float a = 1f, b = 4f, roofA = 9f, roofB = 13f, swingRoof = 10.6f;
 
             p.InCave = true;
-            p.Hang("tavan_kok", 5f, 15.3f);
-            p.Deco("mgr_cevher_turuncu", 14f, 12f);
-            p.Glow(14f, 12.5f, OrangeLight, 2.5f);
-            p.Hang("tavan_sarmasik", 11f, 10.3f);
-            p.Hang("tavan_sarkit_2", 3f, 4.9f);
-            p.Deco("mgr_kristal_kucuk", 1.5f, 7f);
-            p.Glow(1.5f, 7.5f, VioletLight, 1.8f);
-            p.Deco("mgr_mantar", 11.5f, a);
-            p.Glow(11.5f, a + 0.5f, MushroomLight, 2.5f);
+            // Kuyu ve lav gölü: dikensiz sarmaşıklar süs, dikenliler (öldürenler) bölümün kendisinde
+            p.Deco("mgr_cevher_turuncu", 14.5f, 13f);
+            p.Glow(14.5f, 13.5f, OrangeLight, 2.5f);
+            p.Deco("mgr_kristal_kucuk", 1.6f, 7.5f);
+            p.Glow(1.6f, 8f, VioletLight, 1.8f);
+            p.Hang("tavan_sarmasik", 13.5f, 11.8f);
+            p.Hang("tavan_sarmasik", 25.5f, swingRoof);
+            p.Hang("tavan_kok", 33.5f, swingRoof);
+            p.Hang("tavan_sarmasik", 39f, swingRoof);
 
-            p.Hang("tavan_sarkit_2", 19f, roofA);
-            p.Deco("yuz_mezar", 22.5f, a);
-            p.Deco("yuz_kurukafa", 19f, a);
+            p.Hang("tavan_sarkit_2", 45f, roofA);
+            p.Deco("yuz_mezar", 48.5f, a);
+            p.Deco("yuz_kurukafa", 45f, a);
 
             // Dövüş odası
-            p.Deco("mgr_dikit_2", 33.5f, a);
-            p.Deco("yuz_sandik_varil", 44.5f, a);
-            p.Hang("tavan_zincir", 45f, roofA);
-            p.Hang("tavan_sarkit_2", 35f, roofA);
-            p.Deco("mgr_tnt", 55f, a);
-            p.Fener(50.5f, a);
-            p.Hang("tavan_sarkit_3", 53f, roofA);
+            p.Deco("mgr_dikit_2", 59.5f, a);
+            p.Deco("yuz_sandik_varil", 70.5f, a);
+            p.Hang("tavan_zincir", 71f, roofA);
+            p.Hang("tavan_sarkit_2", 61f, roofA);
+            p.Deco("mgr_tnt", 81f, a);
+            p.Fener(76.5f, a);
+            p.Hang("tavan_sarkit_3", 79f, roofA);
 
             // Köprü
-            p.Hang("tavan_kristal", 63f, roofB);
-            p.Glow(63f, roofB - 0.8f, VioletLight, 2f);
-            p.Hang("tavan_sarmasik", 75f, roofB);
-            p.Hang("tavan_kok", 79f, roofB);
+            p.Hang("tavan_kristal", 89f, roofB);
+            p.Glow(89f, roofB - 0.8f, VioletLight, 2f);
+            p.Hang("tavan_sarmasik", 101f, roofB);
+            p.Hang("tavan_kok", 105f, roofB);
 
-            p.Hang("tavan_ag", 90f, roofB);
-            p.Deco("mgr_kristal_siyah", 93.5f, b);
-            p.Glow(93.5f, b + 1f, VioletLight, 3f);
-            p.Deco("mgr_dikit_1", 96f, b);
-            p.Deco("mgr_mantar_kutuk", 100.5f, b);
-            p.Glow(100.5f, b + 1f, MushroomLight, 3f);
-            p.Hang("tavan_damla", 105.5f, roofB);
-            p.Drip(105.2f, roofB - 0.6f, b);
-            p.Deco("mgr_su", 105.5f, b);
+            p.Hang("tavan_ag", 116f, roofB);
+            p.Deco("mgr_kristal_siyah", 119.5f, b);
+            p.Glow(119.5f, b + 1f, VioletLight, 3f);
+            p.Deco("mgr_dikit_1", 122f, b);
+            p.Deco("mgr_mantar_kutuk", 126.5f, b);
+            p.Glow(126.5f, b + 1f, MushroomLight, 3f);
+            p.Hang("tavan_damla", 131.5f, roofB);
+            p.Drip(131.2f, roofB - 0.6f, b);
+            p.Deco("mgr_su", 131.5f, b);
 
             // Baca: sıcak hava borulardan geliyor
             // Duvardan duvara uzanan boru ağı; üstte gökyüzüne açılır
-            p.PipeUp(111.4f, b, 19.4f);
-            p.PipeUp(114f, b, 19.4f);
-            p.PipeUp(116.3f, b, 19.4f);
-            p.PipeAcross(110.2f, 111.4f, 12.5f);
-            p.PipeAcross(111.4f, 114f, 7f);
-            p.PipeAcross(114f, 116.3f, 10f);
-            p.PipeAcross(111.4f, 116.3f, 15.5f);
-            p.PipeAcross(116.3f, 117.2f, 6f);
-            p.PipeValve(111.4f, 9.5f);
-            p.PipeValve(116.3f, 13f);
-            p.PipeValve(114f, 17.5f);
-            p.Glow(114f, b + 1f, OrangeLight, 4f);
+            p.PipeUp(137.4f, b, 19.4f);
+            p.PipeUp(140f, b, 19.4f);
+            p.PipeUp(142.3f, b, 19.4f);
+            p.PipeAcross(136.2f, 137.4f, 12.5f);
+            p.PipeAcross(137.4f, 140f, 7f);
+            p.PipeAcross(140f, 142.3f, 10f);
+            p.PipeAcross(137.4f, 142.3f, 15.5f);
+            p.PipeAcross(142.3f, 143.2f, 6f);
+            p.PipeValve(137.4f, 9.5f);
+            p.PipeValve(142.3f, 13f);
+            p.PipeValve(140f, 17.5f);
+            p.Glow(140f, b + 1f, OrangeLight, 4f);
             p.InCave = false;
         }
 
@@ -1699,6 +1749,7 @@ namespace DesertGecko.EditorTools
                 Sprite art = LayerArt(CaveBackArt);
                 float bandHeight = art.bounds.size.y;
                 var floors = grounds.Concat(caveFloors).ToList();
+                DrawDoorFades();
 
                 // Yan yana iki duvar (ör. mağara ağzı ile içerisi) ayrı bant alır: aralarındaki sınır da karanlığa söner.
                 foreach (var a in walls)
@@ -1837,15 +1888,45 @@ namespace DesertGecko.EditorTools
             /// </summary>
             public void DoorFade(float outerX, int side, float length, float yMin, float yMax)
             {
-                float inner = outerX + OriginX - side * length;
-                indoors.Add((Mathf.Min(inner, outerX + OriginX) - 1f, Mathf.Max(inner, outerX + OriginX) + 0.5f));
-                var sr = new GameObject(Name("KapiGecisi")).AddComponent<SpriteRenderer>();
-                sr.transform.SetParent(geometry);
-                sr.transform.position = new Vector3(outerX + OriginX, (yMin + yMax) / 2f, 0f);
-                sr.transform.rotation = Quaternion.Euler(0f, 0f, side > 0 ? -90f : 90f); // saydam ucu dışarı baksın
-                sr.sprite = pitSprite;
-                sr.sortingOrder = -39;
-                sr.transform.localScale = new Vector3((yMax - yMin) / pitSprite.bounds.size.x, length / pitSprite.bounds.size.y, 1f);
+                float outer = outerX + OriginX, inner = outer - side * length;
+                indoors.Add((Mathf.Min(inner, outer) - 1f, Mathf.Max(inner, outer) + 0.5f));
+                doorFades.Add((outer, side, length, yMin, yMax));
+            }
+
+            readonly List<(float outer, int side, float length, float yMin, float yMax)> doorFades = new List<(float, int, float, float, float)>();
+            static Sprite softFadeSprite;
+
+            /// <summary>
+            /// Tünel ağızlarının karanlık geçişini çizer (DressCaveWalls'tan, bütün duvarlar bilinince). Geçiş, tünelin
+            /// arka duvarının bittiği yerde tümüyle koyu başlar ve ağza doğru yumuşakça söner: duvarın kenarında
+            /// gökyüzü birden belirmez.
+            /// </summary>
+            void DrawDoorFades()
+            {
+                softFadeSprite = softFadeSprite != null ? softFadeSprite : PlaceholderArt.SoftFade();
+                foreach (var f in doorFades)
+                {
+                    float inner = f.outer - f.side * f.length;
+                    // Ağza en yakın duvar kenarı (ağızla tasarlanan iç uç arasında): geçiş tam oradan başlar.
+                    foreach (var w in walls.Where(w => w.bottom <= f.yMax && w.top >= f.yMin))
+                    {
+                        float edge = f.side > 0 ? w.xMax : w.xMin;
+                        bool between = f.side > 0 ? edge > inner - 1f && edge < f.outer : edge < inner + 1f && edge > f.outer;
+                        if (between)
+                            inner = f.side > 0 ? Mathf.Max(inner, edge) : Mathf.Min(inner, edge);
+                    }
+                    float length = Mathf.Abs(f.outer - inner);
+                    if (length < 0.5f)
+                        continue;
+                    var sr = new GameObject(Name("KapiGecisi")).AddComponent<SpriteRenderer>();
+                    sr.transform.SetParent(geometry);
+                    sr.transform.position = new Vector3(f.outer, (f.yMin + f.yMax) / 2f, 0f);
+                    sr.transform.rotation = Quaternion.Euler(0f, 0f, f.side > 0 ? -90f : 90f); // saydam ucu dışarı baksın
+                    sr.sprite = softFadeSprite;
+                    sr.sortingOrder = -39;
+                    Vector2 unit = softFadeSprite.bounds.size;
+                    sr.transform.localScale = new Vector3((f.yMax - f.yMin) / unit.x, length / unit.y, 1f);
+                }
             }
 
             /// <summary>
@@ -2036,18 +2117,32 @@ namespace DesertGecko.EditorTools
                 effector.useSideBounce = false;
             }
 
-            /// <summary>İnce kaya çıkıntısı: alttan zıplayarak geçilen tek yönlü platform.</summary>
+            /// <summary>Geçirgen platform türleri (plat_*); level tanımı kendi temasını seçer. Yakındaki çıkıntılar aynı türü alır.</summary>
+            public string[] LedgeStyles = { "plat_kok", "plat_cakil", "plat_tas" };
+
+            // Platform görselinde yürünen yüzeyin tepeden uzaklığı (piksel): otlar ve taşlar çarpışma çizgisinin üstüne taşar.
+            // Değerler tools/platform_paketi_isle.py çıktısı.
+            static readonly Dictionary<string, int> LedgeSurfaces = new Dictionary<string, int>
+            {
+                { "plat_tahta", 1 }, { "plat_sarmasik", 7 }, { "plat_izgara", 2 }, { "plat_kok", 3 },
+                { "plat_tas", 3 }, { "plat_bitki", 6 }, { "plat_cakil", 4 },
+            };
+
+            /// <summary>Geçirgen çıkıntı: alttan zıplayarak geçilen, S + Space ile inilen tek yönlü platform.</summary>
             public void Ledge(float xMin, float xMax, float top, bool register = false)
             {
                 xMin += OriginX;
                 xMax += OriginX;
                 if (register)
                     platforms.Add((xMin, xMax, top));
-                Sprite s = LayerArt("kaya_kenar");
-                SpriteRenderer sr = TiledArt(geometry, Name("Cikinti"), s, new Vector2((xMin + xMax) / 2f, top),
+                // 30 birimlik bölgeler aynı türü alır: bir odadaki çıkıntılar birbirine benzer, odadan odaya değişir.
+                string style = LedgeStyles[Mathf.Abs(Mathf.FloorToInt(xMin / 30f)) % LedgeStyles.Length];
+                Sprite s = LayerArt(style);
+                float rise = (LedgeSurfaces.TryGetValue(style, out int px) ? px : 0) / 32f;
+                SpriteRenderer sr = TiledArt(geometry, Name("Cikinti"), s, new Vector2((xMin + xMax) / 2f, top + rise),
                     new Vector2(xMax - xMin, s.bounds.size.y), 1);
                 sr.gameObject.layer = ctx.GroundLayer;
-                AddOneWayCollider(sr.gameObject, xMax - xMin, 0.3f, new Vector2(0f, -0.15f));
+                AddOneWayCollider(sr.gameObject, xMax - xMin, 0.3f, new Vector2(0f, -rise - 0.15f));
             }
 
             /// <summary>Otomatik testteki botun sırayla gideceği noktalar: x, y, x, y...</summary>
@@ -2510,12 +2605,129 @@ namespace DesertGecko.EditorTools
                 zone.AddComponent<PitZone>();
             }
 
-            // Kaynar yüzey: Gemini'nin lav setinden 8 karelik dalgalanan şerit; altı koyu çamur gövdesi.
+            // --- Dikenli sarmaşık ve sarı lav (tools/sarmasik_paketi_isle.py) ---
+            // Kural: kırmızı dikenli sarmaşık görülen her yer öldürür; dikensiz sarmaşık süs.
+
+            static readonly Color LavaLight = new Color(1f, 0.78f, 0.25f);
+
+            /// <summary>Anında öldüren görünmez kutu (dünya koordinatı).</summary>
+            void DeadlyBox(string name, float x0, float x1, float y0, float y1)
+            {
+                var go = new GameObject(Name(name));
+                go.transform.SetParent(geometry);
+                go.transform.position = new Vector2((x0 + x1) / 2f, (y0 + y1) / 2f);
+                go.AddComponent<BoxCollider2D>().size = new Vector2(Mathf.Abs(x1 - x0), Mathf.Abs(y1 - y0));
+                go.AddComponent<DeadlyZone>();
+            }
+
+            /// <summary>
+            /// Duvar yüzünü saran dikenli sarmaşık: değen (yapışan, yaslanan) ölür. x: duvarın yüzü,
+            /// face: yüzün baktığı yön (1 sağa, -1 sola). Dikenler yüzden boşluğa biraz taşar.
+            /// </summary>
+            public void ThornWall(float x, float yMin, float yMax, int face)
+            {
+                const float reach = 0.3f;
+                float wx = x + OriginX;
+                Sprite art = LayerArt(face > 0 ? "sarmasik_duvar_sol" : "sarmasik_duvar_sag");
+                float width = art.bounds.size.x;
+                SpriteRenderer sr = TiledArt(decor, Name("DikenliDuvar"), art, new Vector2(wx - face * (width / 2f - 0.4f), yMax + 0.2f),
+                    new Vector2(width, yMax - yMin + 0.4f), 3);
+                DeadlyBox("DikenBolgesi", wx, wx + face * reach, yMin, yMax);
+            }
+
+            /// <summary>Kaya rafının altından sarkan dikenli sarmaşık: alttan zıplayan ya da sallanırken çarpan ölür.</summary>
+            public void ThornUnderside(float xMin, float xMax, float y)
+            {
+                const float hang = 0.55f;
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
+                Sprite art = LayerArt("sarmasik_tavan");
+                SpriteRenderer sr = TiledArt(decor, Name("DikenliTavan"), art, new Vector2((wx0 + wx1) / 2f, y + 0.15f),
+                    new Vector2(wx1 - wx0, 1.1f), 3);
+                DeadlyBox("DikenBolgesi", wx0 + 0.3f, wx1 - 0.3f, y - hang, y);
+            }
+
+            /// <summary>
+            /// Tavandan sarkan halkalı sarmaşık: fener kancası gibi dil yapışır, J basılı sallanılır.
+            /// Halka sarmaşığın ucunda, tavandan ~1.6 birim aşağıda.
+            /// </summary>
+            public void VineRing(float x, float roofY)
+            {
+                const float scale = 1.25f, ringFromBottom = 5f / 32f; // halkanın merkezi görselin altından 5 piksel yukarıda
+                float wx = x + OriginX;
+                Sprite art = TestSceneBuilder.Prop("tavan_sarmasik_halka");
+                float top = roofY + 0.15f;
+                float ringY = top - (art.bounds.size.y - ringFromBottom) * scale;
+
+                var root = new GameObject(Name("SarmasikHalka"));
+                root.transform.SetParent(actors);
+                root.transform.position = new Vector2(wx, ringY);
+
+                var vine = new GameObject("Sarmasik").AddComponent<SpriteRenderer>();
+                vine.transform.SetParent(root.transform);
+                vine.transform.position = new Vector2(wx, top);
+                vine.transform.localScale = Vector3.one * scale;
+                vine.sprite = art;
+                vine.color = CaveTint;
+                vine.sortingOrder = SwingOrder;
+
+                var marker = new GameObject("Hedef").AddComponent<SpriteRenderer>();
+                marker.transform.SetParent(root.transform);
+                marker.transform.position = new Vector2(wx, ringY);
+                marker.sprite = ctx.Combat.Ring;
+                marker.sharedMaterial = Unlit;
+                marker.color = new Color(0.75f, 1f, 0.45f, 0.95f);
+                marker.sortingOrder = SwingOrder + 1;
+
+                root.AddComponent<SwingPoint>().Configure(marker);
+                platforms.Add((wx - 3f, wx + 3f, ringY - 4.2f));
+                lifts.Add((wx - 3f, wx + 3f, ringY - 4.2f));
+            }
+
+            /// <summary>
+            /// Tavandan sarkan diken kozası: kendi saatiyle (cycle, offset) titreyip dikenli top olarak düşer, bir kalp götürür,
+            /// lavda sıçratıp yeniden büyür.
+            /// </summary>
+            public void ThornPod(float x, float roofY, float cycle, float offset, float lavaY)
+            {
+                float wx = x + OriginX;
+                var sr = new GameObject(Name("DikenKozasi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(actors);
+                sr.transform.position = new Vector3(wx, roofY + 0.1f, 0f);
+                sr.sprite = TestSceneBuilder.Prop("tavan_diken_koza");
+                sr.color = CaveTint;
+                sr.sortingOrder = 4;
+
+                var splash = new GameObject("Sicrama").AddComponent<SpriteRenderer>();
+                splash.transform.SetParent(actors);
+                splash.transform.position = new Vector3(wx, lavaY - 0.3f, 0f);
+                splash.sprite = TestSceneBuilder.Prop("sari_lav_sicrama");
+                splash.sharedMaterial = Unlit;
+                splash.sortingOrder = 8;
+                splash.enabled = false;
+
+                sr.gameObject.AddComponent<ThornPod>().Configure(sr.sprite, TestSceneBuilder.Prop("tavan_diken_top"), splash, cycle, offset, lavaY);
+            }
+
+            /// <summary>Sarı lav gölü: değen ölür. Yüzey kaynar lavın dalgalanan karelerinin sarı boyanmışı.</summary>
+            public void YellowLava(float xMin, float xMax, float y)
+            {
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX, cx = (wx0 + wx1) / 2f;
+                Pit(wx0, wx1, y - 0.05f, -35);
+                // Yüzey görselinin üst ~0.7 birimi dalga tepeleri: dolu lav y'de başlasın, öldüren kutu onunla aynı yerde.
+                MudArt(geometry, cx, y + 0.5f, xMax - xMin, 5f, 6, "sari_lav"); // göl: yüzeyin altı da lav, sonra karanlık
+                for (float lx = xMin + 5f; lx < xMax; lx += 10f)
+                {
+                    PointLight(decor, new Vector2(lx + OriginX, y + 1.2f), LavaLight, 8f, 1f, 0.06f);
+                    Glow(lx, y + 0.6f, new Color(1f, 0.8f, 0.3f, 0.12f), 3.5f, 0.2f); // arka duvara vuran sarı ışık
+                }
+                DeadlyBox("SariLav", wx0, wx1, y - 10f, y - 0.2f);
+            }
+
             // Kaynar yüzey: Gemini'nin lav setinden 8 karelik dalgalanan şerit. Üstü verilen y'de (komşu zeminin altında),
             // altı sadece yükselen çamurda koyu lavla dolar; havuzda altını uçurum karanlığı örter.
-            static void MudArt(Transform parent, float wx, float y, float width, float depth, int order)
+            static void MudArt(Transform parent, float wx, float y, float width, float depth, int order, string art = "gece_lav")
             {
-                Sprite[] surface = Enumerable.Range(0, 8).Select(i => LayerArt("gece_lav_yuzey_" + i)).ToArray();
+                Sprite[] surface = Enumerable.Range(0, 8).Select(i => LayerArt(art + "_yuzey_" + i)).ToArray();
                 float crestHeight = surface[0].bounds.size.y;
                 var material = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
                 SpriteRenderer c = TiledArt(parent, "CamurUst", surface[0], new Vector2(wx, y + 0.1f), new Vector2(width, crestHeight), order + 1);
@@ -2533,12 +2745,12 @@ namespace DesertGecko.EditorTools
                     solid.transform.localScale = new Vector3(width / unit.x, fill / unit.y, 1f);
                     solid.sprite = pixel;
                     solid.sharedMaterial = material;
-                    solid.color = new Color32(0x6E, 0x14, 0x0E, 0xFF);
+                    solid.color = art == "sari_lav" ? new Color32(0x96, 0x3E, 0x00, 0xFF) : new Color32(0x6E, 0x14, 0x0E, 0xFF);
                     solid.sortingOrder = order;
                 }
 
                 // Fışkırmalar: her 5-6 birimde bir, farklı zamanlarda.
-                Sprite[] spurt = Enumerable.Range(0, 8).Select(i => TestSceneBuilder.Prop("gece_lav_fiskirma_" + i)).ToArray();
+                Sprite[] spurt = Enumerable.Range(0, 8).Select(i => TestSceneBuilder.Prop(art + "_fiskirma_" + i)).ToArray();
                 var random = new System.Random(Mathf.RoundToInt(wx * 10f));
                 for (float sx = wx - width / 2f + 2.5f; sx < wx + width / 2f - 1.5f; sx += 8f + (float)random.NextDouble() * 4f)
                 {
@@ -3059,6 +3271,46 @@ namespace DesertGecko.EditorTools
                 so.FindProperty("spawnOffset").vector2Value = new Vector2(0f, 0.8f);
                 so.ApplyModifiedPropertiesWithoutUndo();
                 occupied.Add((x, size.x / 2f));
+            }
+
+            /// <summary>
+            /// Kertenkele sandığı: yalnız dille açılır, içinden altın saçılır. İsteğe bağlı ödül; yolu kapatmaz
+            /// (tetikleyici collider, önünden geçilir). coins: saçılan altın sayısı.
+            /// </summary>
+            public void Chest(float x, float groundTop, int coins = 8)
+            {
+                x += OriginX;
+                var frames = Enumerable.Range(0, 6).Select(i => TestSceneBuilder.Prop("sandik_" + i)).ToArray();
+                var go = new GameObject(Name("Sandik")) { layer = LayerMask.NameToLayer("Default") };
+                go.transform.SetParent(actors);
+                go.transform.position = new Vector3(x, groundTop - 1f / 32f, 0f); // ayakları zemine oturur
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = frames[0];
+                sr.sortingOrder = 4;
+                // Görsel kıvılcımlar için uzun; collider yalnız sandığın gövdesi (~1.8 x 1.4 birim).
+                var box = go.AddComponent<BoxCollider2D>();
+                box.isTrigger = true;
+                box.size = new Vector2(1.7f, 1.3f);
+                box.offset = new Vector2(0f, 0.65f);
+                var chest = go.AddComponent<TreasureChest>();
+                var so = new SerializedObject(chest);
+                var list = so.FindProperty("frames");
+                list.arraySize = frames.Length;
+                for (int i = 0; i < frames.Length; i++)
+                    list.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
+                so.FindProperty("openSound").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/sandik_acilma.wav");
+                so.ApplyModifiedPropertiesWithoutUndo();
+                var drop = go.AddComponent<DesertGecko.Collectibles.CrystalDrop>();
+                var dso = new SerializedObject(drop);
+                dso.FindProperty("crystalPrefab").objectReferenceValue = ctx.Combat.Crystal != null
+                    ? ctx.Combat.Crystal
+                    : AssetDatabase.LoadAssetAtPath<DesertGecko.Collectibles.Crystal>("Assets/Prefabs/Crystal.prefab");
+                dso.FindProperty("minCount").intValue = coins;
+                dso.FindProperty("maxCount").intValue = coins + 2;
+                dso.FindProperty("launchSpeed").floatValue = 6f;
+                dso.FindProperty("spawnOffset").vector2Value = new Vector2(0f, 1f);
+                dso.ApplyModifiedPropertiesWithoutUndo();
+                occupied.Add((x, 0.9f));
             }
 
             /// <summary>Yerde duran silah (Assets/Data/Weapons/&lt;ad&gt;.asset): süresi dolmaz, ölünce yeniden konur.</summary>

@@ -119,6 +119,13 @@ namespace DesertGecko.Player
             if (LoseHealth(amount))
                 return;
 
+            if (controller.IsSwinging)
+            {
+                // Sallanırken itme yok: dil kopsa altındaki lava düşerdi, tek darbe ölüm olurdu.
+                StartInvincibility(invincibleDuration);
+                return;
+            }
+
             float side = Mathf.Abs(knockbackDirection.x) > 0.01f ? Mathf.Sign(knockbackDirection.x) : -controller.FacingDirection;
             controller.Knockback(new Vector2(side * SafeSpeed(side, knockbackVelocity.x), knockbackVelocity.y), knockbackControlLock);
             StartInvincibility(invincibleDuration);
@@ -137,6 +144,13 @@ namespace DesertGecko.Player
             controller.Teleport(CheckpointPosition);
             StartInvincibility(invincibleDuration);
             ReturnedToCheckpoint?.Invoke();
+        }
+
+        /// <summary>Dikenli sarmaşık, lav gibi öldürücü tehlikeler: dokunulmazlığa bakmadan bütün can gider.</summary>
+        public void Kill()
+        {
+            if (IsAlive)
+                LoseHealth(CurrentHealth);
         }
 
         /// <summary>Donma gibi itmeyen hasar: dokunulmazlığa takılmaz, karakteri savurmaz.</summary>
