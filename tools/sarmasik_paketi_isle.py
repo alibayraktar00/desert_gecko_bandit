@@ -6,12 +6,17 @@ ve sarı lav üstündeki sarmaşık halkaları için.
     tavan_sarmasik_halka   dilin tutunduğu halkalı sarmaşık (8.4 / prop_01)
     tavan_diken_koza       tavanda sallanan diken kozası (8.4 / prop_03)
     tavan_diken_top        düşerken açılmış dikenli top (8.4 / prop_03_b)
+    dikenli_zemin_a / _b   rafın üstünü kaplayan kabarık dikenli sarmaşık (8.3 / tile_01, tile_01_b)
+    tavan_dikenli_sarkit   rafın altından sarkan dikenler (8.3 / tile_02)
+    tavan_dikenli_sarkan   uzun sarkan dikenli sarmaşıklar (8.3 / prop_01)
+    dikenli_cali           dikenli çalı yumağı: rafın ucu, duvar (8.3 / prop_03)
+    dikenli_kose_dis/_ic   dış ve iç köşe sarmaşıkları (8.3 / tile_07, prop_04)
     sari_lav_sicrama       lava düşenin sıçraması (8.4 / fluid_01_b)
     sari_lav_fiskirma_0..7 gece_lav_fiskirma karelerinin sarıya boyanmışı
   Katman (üst kenarından pivotlu, yan yana tekrar eder):
     sarmasik_duvar_sol / sarmasik_duvar_sag   duvar yüzündeki dikenler (8.3 / tile_03, tile_04)
-    sarmasik_tavan                            rafın altından sarkan dikenler (8.3 / tile_02)
     sari_lav_yuzey_0..7                       gece_lav_yuzey karelerinin sarıya boyanmışı (8.4 / fluid_01_c rengi)
+    sari_lav_govde_0..7, gece_lav_govde_0..7  yüzeyin altındaki lav gövdesi: alt alta dikişsiz tekrar eder
 
 Kaynaklar: Assets/Sprites/_Gelen/sarmasik_part8_3.webp, sarmasik_part8_4.webp
 Kullanım (proje kökünden):  python tools/sarmasik_paketi_isle.py [--preview onizleme.png]
@@ -37,9 +42,15 @@ PIECES = {
     "tavan_diken_koza": ("sarmasik_part8_4", (585, 365, 680, 480), PROPS, "tek"),
     "tavan_diken_top": ("sarmasik_part8_4", (805, 325, 945, 490), PROPS, "tek"),
     "sari_lav_sicrama": ("sarmasik_part8_4", (295, 548, 490, 715), PROPS, "hepsi"),
+    "dikenli_zemin_a": ("sarmasik_part8_3", (45, 330, 256, 495), PROPS, "hepsi"),
+    "dikenli_zemin_b": ("sarmasik_part8_3", (286, 330, 498, 495), PROPS, "hepsi"),
+    "tavan_dikenli_sarkit": ("sarmasik_part8_3", (528, 325, 740, 480), PROPS, "hepsi"),
+    "tavan_dikenli_sarkan": ("sarmasik_part8_3", (50, 92, 322, 250), PROPS, "hepsi"),
+    "dikenli_cali": ("sarmasik_part8_3", (528, 545, 740, 715), PROPS, "hepsi"),
+    "dikenli_kose_dis": ("sarmasik_part8_3", (286, 545, 498, 715), PROPS, "hepsi"),
+    "dikenli_kose_ic": ("sarmasik_part8_3", (769, 545, 980, 715), PROPS, "hepsi"),
     "sarmasik_duvar_sol": ("sarmasik_part8_3", (770, 327, 860, 492), LAYERS, "seffaf"),
     "sarmasik_duvar_sag": ("sarmasik_part8_3", (889, 327, 980, 492), LAYERS, "seffaf"),
-    "sarmasik_tavan": ("sarmasik_part8_3", (528, 325, 740, 470), LAYERS, "seffaf"),
 }
 
 # Sarı lav rampası (koyudan açığa), fluid_01_c'den ölçüldü.
@@ -153,6 +164,57 @@ def recolor_lava(path_in, path_out):
     Image.fromarray(im.astype(np.uint8)).save(path_out)
 
 
+BODY_W, BODY_H = 64, 64
+
+
+def lava_palette(surface_path):
+    """Yüzey karesinin kullandığı renkler, koyudan açığa (az kullanılan ara tonlar atılır)."""
+    im = np.array(Image.open(surface_path).convert("RGBA"))
+    px = im[im[..., 3] > 0][:, :3]
+    colors, counts = np.unique(px, axis=0, return_counts=True)
+    colors = colors[counts >= 20]
+    lum = colors @ np.array([0.3, 0.55, 0.15])
+    return colors[np.argsort(lum)].astype(float)
+
+
+def make_body(surface_path, out_paths, seed):
+    """
+    Lav gövdesi: yüzeyin renkleriyle akışkan damarlı doku ve kabarcıklar. Dalgaların periyodu karenin tam katı olduğu
+    için her yönde dikişsiz tekrar eder; 8 kare boyunca damarlar yana akar, kabarcıklar şişip söner (döngü kapanır).
+    Yüzeyin alt satırları koyu olduğundan gövde de koyu tonlardan başlar, açık tonlar sadece damar ve kabarcıkta.
+    """
+    palette = lava_palette(surface_path)
+    n = len(palette)
+    dark = palette[: max(3, int(n * 0.65))]  # gövde: en açık tonlar yüzeye kalsın
+    rng = np.random.default_rng(seed)
+    y, x = np.mgrid[0:BODY_H, 0:BODY_W].astype(float)
+    waves = [(0, 3, 1.0), (1, 2, 0.7), (1, 5, 0.45), (2, 4, 0.35), (3, 7, 0.2)]  # çoğu yatay: lav yana akar
+    phases = rng.uniform(0, 2 * np.pi, len(waves))
+    bubbles = [(rng.uniform(0, BODY_W), rng.uniform(0, BODY_H), rng.uniform(2.2, 3.8), rng.integers(0, 8)) for _ in range(6)]
+    for frame, out in enumerate(out_paths):
+        t = 2 * np.pi * frame / len(out_paths)
+        v = np.zeros_like(x)
+        for (fx, fy, a), ph in zip(waves, phases):
+            v += a * np.sin(2 * np.pi * (fx * x / BODY_W + fy * y / BODY_H) + ph + t * max(1, fx))
+        v = (v - v.min()) / (v.max() - v.min())
+        v = v ** 2.0  # çoğu koyu, damarlar ince ve parlak
+        idx = np.clip((v * len(dark)).astype(int), 0, len(dark) - 1)
+        rgb = dark[idx]
+        for bx, by, r, born in bubbles:
+            life = (frame - born) % 8
+            radius = r * [0.5, 0.8, 1.0, 1.0, 0.8, 0.5, 0, 0][life]
+            if radius <= 0:
+                continue
+            dx = (x - bx + BODY_W / 2) % BODY_W - BODY_W / 2
+            dy = (y - by + BODY_H / 2) % BODY_H - BODY_H / 2
+            d = np.hypot(dx, dy)
+            rgb[d <= radius] = palette[int(n * 0.6)]
+            rgb[(d <= radius) & (dx + dy < -radius * 0.4)] = palette[int(n * 0.85)]  # sol üstte parıltı
+            rgb[(d > radius) & (d <= radius + 0.9)] = palette[1]  # koyu kontur
+        tile = np.dstack([rgb, np.full(x.shape, 255.0)])
+        Image.fromarray(tile.astype(np.uint8)).save(out)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--preview")
@@ -169,7 +231,10 @@ def main():
     for i in range(8):
         recolor_lava(LAYERS / f"gece_lav_yuzey_{i}.png", LAYERS / f"sari_lav_yuzey_{i}.png")
         recolor_lava(PROPS / f"gece_lav_fiskirma_{i}.png", PROPS / f"sari_lav_fiskirma_{i}.png")
-    made += [LAYERS / "sari_lav_yuzey_0.png", PROPS / "sari_lav_fiskirma_3.png"]
+    for seed, lava in enumerate(("gece", "sari")):
+        make_body(LAYERS / f"{lava}_lav_yuzey_0.png", [LAYERS / f"{lava}_lav_govde_{i}.png" for i in range(8)], seed + 3)
+    made += [LAYERS / "sari_lav_yuzey_0.png", LAYERS / "sari_lav_govde_0.png", LAYERS / "gece_lav_govde_0.png",
+             PROPS / "sari_lav_fiskirma_3.png"]
 
     if args.preview:
         tiles = [Image.open(p).convert("RGBA") for p in made]

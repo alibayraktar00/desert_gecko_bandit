@@ -1,12 +1,11 @@
-using DesertGecko.Levels;
 using DesertGecko.Player;
 using UnityEngine;
 
 namespace DesertGecko.Environment
 {
     /// <summary>
-    /// Arkadan gelen kum fırtınası: oyuncu başlangıç çizgisini geçince ilerler, yakalarsa can yakar ve oyuncu
-    /// checkpoint'e döner. Oyuncu açılırsa hızlanır, yakınsa biraz yavaşlar: hep ensede ama adil.
+    /// Arkadan gelen kum fırtınası: oyuncu başlangıç çizgisini geçince ilerler. İlk yakalayışta canın yarısı gider,
+    /// fırtına biraz geri çekilir ve kaçış sürer; ikinci yakalayış öldürür, oyuncu checkpoint'e döner. Oyuncu açılırsa hızlanır, yakınsa biraz yavaşlar: hep ensede ama adil.
     /// Bitiş çizgisinde (büyük ateş) dağılır.
     ///
     /// Görünüş: arkada koyu toz gövdesi, önünde kat kat kıvrılan bulut sıraları. Sıralar ekranın dibinden tepesine
@@ -23,6 +22,9 @@ namespace DesertGecko.Environment
         [Tooltip("Yeniden doğunca fırtına oyuncunun bu kadar gerisinden başlar")]
         [SerializeField] float respawnLead = 13f;
         [SerializeField] float respawnDelay = 1.2f;
+        [Tooltip("Yakaladığında can yarıya iner, fırtına oyuncunun bu kadar gerisine çekilir ve kısa süre bekler")]
+        [SerializeField] float catchPushback = 6f;
+        [SerializeField] float catchPause = 0.8f;
         [SerializeField] float startX, triggerX, endX;
         [SerializeField] float fadeTime = 2.5f;
 
@@ -175,8 +177,21 @@ namespace DesertGecko.Environment
             float rate = lead > farLead ? speed * farFactor : lead < closeLead ? speed * closeFactor : speed;
             transform.position += Vector3.right * (rate * Time.deltaTime);
 
-            if (lead <= 0f && LevelManager.Current != null)
-                LevelManager.Current.PlayerFell();
+            if (lead <= 0f)
+                Catch();
+        }
+
+        // Yakalanan oyuncu canının yarısını kaybeder ve kaçmaya devam eder; fırtına bir an geri çekilir.
+        // Can zaten yarıdaysa bu darbe öldürür, oyuncu checkpoint'te doğar (OnPlayerReturned fırtınayı geri alır).
+        void Catch()
+        {
+            if (player.IsInvincible)
+                return;
+            player.LoseHealthQuietly(Mathf.Max(1, player.MaxHealth / 2));
+            if (!player.IsAlive)
+                return;
+            transform.position = new Vector3(player.transform.position.x - catchPushback, transform.position.y, transform.position.z);
+            waitUntil = Time.time + catchPause;
         }
 
         // Sıralar ve gövde ekranın dibine göre dizilir: fırtına hangi yükseklikte olursa olsun ekranı kaplar.
