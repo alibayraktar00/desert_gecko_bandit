@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "MiniMax": {
+      "command": "C:/Users/emrec/AppData/Local/Programs/Python/Python312/python.exe",
+      "args": ["-m", "minimax_mcp.server"],
+      "env": {
+        "MINIMAX_API_KEY": "${MINIMAX_API_KEY}",
+        "MINIMAX_API_HOST": "https://api.minimax.io",
+        "MINIMAX_MCP_BASE_PATH": "C:/Users/emrec/OneDrive/Belgeler/GitHub/desert_gecko_bandit/Assets/Sprites/_Gelen/minimax",
+        "MINIMAX_API_RESOURCE_MODE": "local"
+      }
+    }
+  }
+}

@@ -182,6 +182,9 @@ namespace DesertGecko.EditorTools
             painter.FillPits();
             painter.DressCliffs();
             painter.DressCaveFloors();
+            painter.DressCaveWalls();
+            painter.DressCeilings();
+            painter.ScatterVeins();
             painter.ScatterGroundCover();
             painter.DressBoundaries();
 
@@ -236,6 +239,8 @@ namespace DesertGecko.EditorTools
         {
             p.Spawn = new Vector2(0f, 0f);
             p.Boundary(-9f);
+            // Çöl toprağı: fosiller, kemikler, kökler, gömülü mezar.
+            p.Veins = new[] { "fosil", "kemik", "kok", "kok_ag", "kaya", "kaya_iri", "yarik", "mezar" };
 
             Bolum_IlkAdimlar(p);
             Dekor_IlkAdimlar(p);
@@ -521,6 +526,8 @@ namespace DesertGecko.EditorTools
         {
             p.Spawn = new Vector2(0f, 0f);
             p.Boundary(-9f);
+            // Terk edilmiş maden: kalıntılar, cevher damarları, kristaller, gömülü sandıklar.
+            p.Veins = new[] { "maden", "maden_eski", "cevher", "kristal", "hazine", "harabe", "kok_sik", "kaya", "kirik", "oyuk", "sizinti", "fosil" };
 
             Maden_KanyonAgzi(p);
             Dekor_KanyonAgzi(p);
@@ -833,6 +840,8 @@ namespace DesertGecko.EditorTools
             p.DawnStartX = SafakX + 2f;
             p.DawnEndX = SafakX + 40f;
             p.Boundary(-9f);
+            // Sıcak su kaynakları: lav ve su cepleri, balçık, sızıntılar.
+            p.Veins = new[] { "lav", "su_cebi", "balcik", "sizinti", "kristal", "kok_ag", "kaya_iri", "kirik", "fosil" };
 
             Ayaz_Kamp(p);
             p.OriginX = TelgrafX;
@@ -1366,7 +1375,11 @@ namespace DesertGecko.EditorTools
             readonly List<(float x, float y, float half)> bigDecor = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float top)> lifts = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float top)> caveFloors = new List<(float, float, float)>();
+            readonly List<(float xMin, float xMax, float yMin, float yMax)> rockMasses = new List<(float, float, float, float)>();
             int count;
+
+            /// <summary>Toprağın içine gömülecek süslerin temaları (mg_damar_*). Level tanımı kendi temasını seçer.</summary>
+            public string[] Veins = { "kaya", "kaya_iri", "kok", "fosil", "kemik", "yarik" };
             bool hasGoal;
 
             public Vector2 Spawn;
@@ -1508,6 +1521,56 @@ namespace DesertGecko.EditorTools
                 }
             }
 
+            /// <summary>
+            /// Zeminlerin ve tavanların görünen kısmına gömülü süsler dağıtır (kökler, fosiller, cevher, maden kalıntısı...):
+            /// uzun toprak bantları tekdüze görünmesin. Yüzeye yakın durmaz, birbirine binmez. Yalnızca görsel.
+            /// </summary>
+            public void ScatterVeins()
+            {
+                Sprite[] sprites = Veins.Select(v => LayerArt("mg_damar_" + v)).Where(s => s != null).ToArray();
+                if (sprites.Length == 0)
+                    return;
+                var rng = new System.Random(4271);
+                var placed = new List<Rect>();
+                int last = -1;
+
+                // Zemin ve mağara tabanı: yüzeyin 2-6 birim altı. Tavan: alt yüzün (katmanlı toprak) hemen üstü.
+                var bands = new List<(float xMin, float xMax, float topMin, float topMax, int order)>();
+                // Kamera yüzeyin ancak birkaç birim altını görür: süsler katmanlı toprağın hemen altına, görünür yere.
+                foreach (var g in grounds)
+                    bands.Add((g.xMin, g.xMax, g.top - 3.2f, g.top - 1.9f, 0));
+                foreach (var f in caveFloors)
+                    bands.Add((f.xMin, f.xMax, f.top - 3.2f, f.top - 1.9f, 1));
+                foreach (var r in rockMasses.Where(r => r.yMin > GroundBottom + 1f && r.yMax - r.yMin > 4f))
+                    bands.Add((r.xMin, r.xMax, r.yMin + 3.6f, r.yMin + 5f, 2));
+
+                foreach (var b in bands.Where(b => b.xMax - b.xMin >= 5f).OrderBy(b => b.xMin))
+                {
+                    for (float x = b.xMin + 2f + (float)rng.NextDouble() * 4f; x < b.xMax - 2f; x += 5f + (float)rng.NextDouble() * 4f)
+                    {
+                        int pick = rng.Next(sprites.Length);
+                        if (pick == last && sprites.Length > 1)
+                            pick = (pick + 1) % sprites.Length;
+                        Sprite s = sprites[pick];
+                        Vector2 size = s.bounds.size;
+                        float cx = Mathf.Clamp(x, b.xMin + 1f + size.x / 2f, b.xMax - 1f - size.x / 2f);
+                        float top = Mathf.Lerp(b.topMin, b.topMax, (float)rng.NextDouble());
+                        var rect = new Rect(cx - size.x / 2f - 0.8f, top - size.y - 0.8f, size.x + 1.6f, size.y + 1.6f);
+                        if (placed.Any(p => p.Overlaps(rect)))
+                            continue;
+                        placed.Add(rect);
+                        last = pick;
+
+                        var sr = new GameObject(Name("Damar")).AddComponent<SpriteRenderer>();
+                        sr.transform.SetParent(geometry);
+                        sr.transform.position = new Vector3(cx, top, -0.05f); // aynı sıradaki toprağın önünde
+                        sr.sprite = s;
+                        sr.flipX = rng.Next(2) == 0;
+                        sr.sortingOrder = b.order;
+                    }
+                }
+            }
+
             void CliffEdge(float x, float top, int side, int order = 1, float bottom = GroundBottom)
             {
                 const float faceOffset = 0.375f; // görselde yamaç yüzeyi, ortanın bu kadar dışında
@@ -1590,22 +1653,150 @@ namespace DesertGecko.EditorTools
                 return sr;
             }
 
+            // Mağara toprak paketi (tools/magara_toprak_paketi_isle.py): arka duvar, toprak katmanları, sarkıtlar.
+            const string CaveBackArt = "mg_arka", RimArt = "mg_ust", SoilArt = "mg_toprak", DeepArt = "mg_derin",
+                FaceArt = "mg_kenar", FringeArt = "mg_sacak";
+
             /// <summary>Çarpışmasız mağara arka duvarı. Gökyüzünü kapatır, üstü kapalı hissi verir.</summary>
-            public void BackWall(float xMin, float xMax, float yMin, float yMax)
+            public void BackWall(float xMin, float xMax, float yMin, float yMax) =>
+                WallBase(Name("ArkaDuvar"), xMin + OriginX, xMax + OriginX, yMin, yMax);
+
+            // Uzak mağara sahnesi açık renkli boyanmış: oynanan katmanların arkasında kalsın diye koyulaştırılır.
+            static readonly Color CaveWallTint = new Color(0.5f, 0.46f, 0.5f);
+            // Uçurum, kuyu ve mağara ağzı karanlığıyla aynı renk (Pit): yan yana gelince arada çizgi görünmesin.
+            static readonly Color CaveWallDark = new Color32(0x1A, 0x0C, 0x09, 0xFF);
+
+            readonly List<(float xMin, float xMax, float bottom, float top)> walls = new List<(float, float, float, float)>();
+
+            /// <summary>Yer altının arka duvarı: uçurumların dibine kadar iner, üstü çukurun ağzında biter.</summary>
+            public void CaveWall(float xMin, float xMax, float top) =>
+                WallBase(Name("MagaraDuvar"), xMin + OriginX, xMax + OriginX, GroundBottom, top);
+
+            // Duvarın düz karanlık zemini. Sahne resmi DressCaveWalls'ta her odanın tabanına bant olarak oturur:
+            // tek resim üst üste tekrar edince aynı merdiven ve şelale bir kat yukarıda yine görünüyordu.
+            void WallBase(string name, float xMin, float xMax, float bottom, float top)
             {
-                indoors.Add((xMin + OriginX, xMax + OriginX));
-                TiledArt(geometry, Name("ArkaDuvar"), LayerArt("kaya_arka"), new Vector2((xMin + xMax) / 2f + OriginX, yMax),
-                    new Vector2(xMax - xMin, yMax - yMin), -40);
+                indoors.Add((xMin, xMax));
+                walls.Add((xMin, xMax, bottom, top));
+                var sr = new GameObject(name).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.sprite = ctx.Solid;
+                Vector2 unit = ctx.Solid.bounds.size;
+                sr.transform.localScale = new Vector3((xMax - xMin) / unit.x, (top - bottom) / unit.y, 1f);
+                sr.transform.position = new Vector3((xMin + xMax) / 2f, (bottom + top) / 2f, 0f);
+                sr.color = CaveWallDark;
+                sr.sortingOrder = -41;
             }
 
-            static readonly Color CaveWallTint = new Color(0.62f, 0.62f, 0.68f); // açık havadan belirgin biçimde karanlık
-
-            /// <summary>Yer altının koyu arka duvarı: uçurumların dibine kadar iner, üstü çukurun ağzında biter.</summary>
-            public void CaveWall(float xMin, float xMax, float top)
+            /// <summary>
+            /// Mağara duvarlarına sahne resmini döşer: her tabanın üstüne bir bant, alt kenarı tabanın biraz altında.
+            /// Taban olmayan aralıklar (uçurum) iki komşu arasında ortadan bölünür; farklı yükseklikteki bantların
+            /// birleştiği yere koyu kaya sütunu konur. Tabanı olmayan duvar (baca) dibine tek bant alır.
+            /// </summary>
+            public void DressCaveWalls()
             {
-                indoors.Add((xMin + OriginX, xMax + OriginX));
-                SpriteRenderer sr = TiledArt(geometry, Name("MagaraDuvar"), LayerArt("kaya_arka"), new Vector2((xMin + xMax) / 2f + OriginX, top),
-                    new Vector2(xMax - xMin, top - GroundBottom), -40);
+                const float sink = 1.2f, eps = 0.01f;
+                Sprite art = LayerArt(CaveBackArt);
+                float bandHeight = art.bounds.size.y;
+                var floors = grounds.Concat(caveFloors).ToList();
+
+                // Yan yana iki duvar (ör. mağara ağzı ile içerisi) ayrı bant alır: aralarındaki sınır da karanlığa söner.
+                foreach (var a in walls)
+                    foreach (var b in walls.Where(b => Mathf.Abs(b.xMin - a.xMax) < 0.05f))
+                    {
+                        float bottom = Mathf.Max(a.bottom, b.bottom), top = Mathf.Min(a.top, b.top);
+                        if (top - bottom < 1f)
+                            continue;
+                        WallShade(a.xMax, bottom, top, Mathf.Min(JoinShade, (a.xMax - a.xMin) / 2f), -1);
+                        WallShade(a.xMax, bottom, top, Mathf.Min(JoinShade, (b.xMax - b.xMin) / 2f), 1);
+                    }
+                foreach (var w in walls)
+                {
+                    var under = floors.Where(f => f.xMax > w.xMin + 0.5f && f.xMin < w.xMax - 0.5f && f.top < w.top - 2f && f.top > w.bottom).ToList();
+                    if (under.Count == 0)
+                    {
+                        WallBand(w.xMin, w.xMax, w.bottom + 0.5f, w.top, bandHeight);
+                        continue;
+                    }
+
+                    // Duvarı tabanların kenarlarından aralıklara böl; her aralık altındaki en alçak tabana ait.
+                    var cuts = under.SelectMany(f => new[] { f.xMin, f.xMax }).Append(w.xMin).Append(w.xMax)
+                        .Where(x => x >= w.xMin - eps && x <= w.xMax + eps).Distinct().OrderBy(x => x).ToList();
+                    var spans = new List<(float x0, float x1, float floor)>();
+                    for (int i = 0; i + 1 < cuts.Count; i++)
+                    {
+                        float mid = (cuts[i] + cuts[i + 1]) / 2f;
+                        var cover = under.Where(f => f.xMin <= mid && f.xMax >= mid).ToList();
+                        spans.Add((cuts[i], cuts[i + 1], cover.Count > 0 ? cover.Min(f => f.top) : float.NaN));
+                    }
+                    // Tabansız aralık (uçurum, kuyu): yarısı soldakine, yarısı sağdakine.
+                    for (int i = 0; i < spans.Count; i++)
+                    {
+                        if (!float.IsNaN(spans[i].floor))
+                            continue;
+                        float left = i > 0 ? spans[i - 1].floor : float.NaN, right = float.NaN;
+                        for (int j = i + 1; j < spans.Count && float.IsNaN(right); j++)
+                            right = spans[j].floor;
+                        if (float.IsNaN(left) && float.IsNaN(right))
+                            continue;
+                        if (float.IsNaN(left) || float.IsNaN(right))
+                        {
+                            spans[i] = (spans[i].x0, spans[i].x1, float.IsNaN(left) ? right : left);
+                            continue;
+                        }
+                        float half = (spans[i].x0 + spans[i].x1) / 2f;
+                        spans.Insert(i + 1, (half, spans[i].x1, right));
+                        spans[i] = (spans[i].x0, half, left);
+                        i++;
+                    }
+                    // Aynı yükseklikteki komşuları birleştir, her birine bir bant.
+                    var merged = new List<(float x0, float x1, float floor)>();
+                    foreach (var s in spans.Where(s => !float.IsNaN(s.floor)))
+                    {
+                        if (merged.Count > 0 && Mathf.Abs(merged[^1].floor - s.floor) < 0.6f && Mathf.Abs(merged[^1].x1 - s.x0) < eps)
+                            merged[^1] = (merged[^1].x0, s.x1, merged[^1].floor);
+                        else
+                            merged.Add(s);
+                    }
+                    for (int i = 0; i < merged.Count; i++)
+                    {
+                        var m = merged[i];
+                        WallBand(m.x0, m.x1, m.floor - sink, w.top, bandHeight);
+                        if (i > 0)
+                        {
+                            // Ek yeri: farklı yükseklikteki iki sahne çizgiyle birleşmesin. Her iki yandan karanlığa
+                            // yumuşakça söner, sınırda tümüyle koyu: araya derin bir kaya girintisi gibi okunur.
+                            float span = Mathf.Min(JoinShade, (m.x1 - m.x0) / 2f, (merged[i - 1].x1 - merged[i - 1].x0) / 2f);
+                            WallShade(m.x0, w.bottom, w.top, span, 1);
+                            WallShade(m.x0, w.bottom, w.top, span, -1);
+                        }
+                    }
+                }
+            }
+
+            const float JoinShade = 3f;
+
+            // Duvarın karanlık zemin rengiyle basamaklı geçiş: x'te tümüyle koyu, dir yönünde width kadar ötede saydam.
+            void WallShade(float x, float bottom, float top, float width, int dir)
+            {
+                var sr = new GameObject(Name("DuvarGecisi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.sprite = pitSprite;
+                sr.sortingOrder = -39;
+                // Görsel: pivot üstte, üstü saydam, aşağı doğru koyulaşır. -90° dönünce sola, +90° dönünce sağa uzanır.
+                sr.transform.rotation = Quaternion.Euler(0f, 0f, dir > 0 ? -90f : 90f);
+                sr.transform.position = new Vector3(x + dir * width, (bottom + top) / 2f, 0f);
+                Vector2 unit = pitSprite.bounds.size;
+                sr.transform.localScale = new Vector3((top - bottom) / unit.x, width / unit.y, 1f);
+            }
+
+            void WallBand(float x0, float x1, float bottom, float wallTop, float bandHeight)
+            {
+                float height = Mathf.Min(bandHeight, wallTop - bottom);
+                if (height <= 0.5f || x1 - x0 <= 0.1f)
+                    return;
+                SpriteRenderer sr = TiledArt(geometry, Name("DuvarResmi"), LayerArt(CaveBackArt), new Vector2((x0 + x1) / 2f, bottom),
+                    new Vector2(x1 - x0, height), -40);
                 sr.color = CaveWallTint;
             }
 
@@ -1615,18 +1806,29 @@ namespace DesertGecko.EditorTools
             /// </summary>
             public void CaveMouth(float xMin, float xMax, float top, float fade)
             {
-                const int bands = 7;
+                const float lip = 2.5f; // ağzın altında duvarın üstüne düşen gölge
                 float solidTop = top - fade;
                 CaveWall(xMin, xMax, solidTop);
-                float bandHeight = fade / bands;
-                for (int i = 0; i < bands; i++)
-                {
-                    SpriteRenderer sr = TiledArt(geometry, Name("MagaraAgzi"), LayerArt("kaya_arka"),
-                        new Vector2((xMin + xMax) / 2f + OriginX, solidTop + (i + 1) * bandHeight), new Vector2(xMax - xMin, bandHeight), -40);
-                    Color c = CaveWallTint;
-                    c.a = 1f - (i + 1f) / (bands + 1f);
-                    sr.color = c;
-                }
+                // Arka duvar bir sahne resmi: saydam şeritlere bölününce kayıp çizgili görünüyordu. Onun yerine
+                // gökyüzü aşağı doğru kararır, duvar da bu karanlığın altından açılır.
+                float cx = (xMin + xMax) / 2f + OriginX;
+                MouthShade(cx, top, xMax - xMin, fade, false);
+                MouthShade(cx, solidTop, xMax - xMin, lip, true);
+            }
+
+            // Basamaklı karanlık geçişi. Düz: üstü saydam, altı koyu. Ters: tepesi koyu, aşağı doğru söner.
+            void MouthShade(float centerX, float edgeY, float width, float height, bool downward)
+            {
+                var sr = new GameObject(Name("MagaraAgzi")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(geometry);
+                sr.sprite = pitSprite;
+                sr.sortingOrder = downward ? -39 : -40;
+                Vector2 unit = pitSprite.bounds.size;
+                sr.transform.localScale = new Vector3(width / unit.x, height / unit.y, 1f);
+                // Görselin pivotu üst kenarda; ters çevrilince pivot alt kenara geçer.
+                sr.transform.position = new Vector3(centerX, downward ? edgeY - height : edgeY, 0f);
+                if (downward)
+                    sr.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
             }
 
             /// <summary>
@@ -1665,7 +1867,7 @@ namespace DesertGecko.EditorTools
                 {
                     float near = wallX, far = wallX - wallSide * width * reach;
                     float a = Mathf.Min(near, far), b = Mathf.Max(near, far);
-                    SpriteRenderer belly = TiledArt(geometry, Name("RafKarni"), LayerArt("kaya_kutle"), new Vector2((a + b) / 2f, y),
+                    SpriteRenderer belly = TiledArt(geometry, Name("RafKarni"), LayerArt(DeepArt), new Vector2((a + b) / 2f, y),
                         new Vector2(b - a, depth), 2);
                     Fringe(belly.transform, a, b, y - depth);
                     CliffEdge(far, y, -wallSide, 3, y - depth - 0.1f);
@@ -1681,14 +1883,17 @@ namespace DesertGecko.EditorTools
                 Slab(xMin, xMax, top, top - GroundBottom, register: true);
             }
 
-            /// <summary>Kayanın dik yüzüne pürüzlü kenar: cetvelle kesilmiş görünmesin. side: yüzün baktığı yön. Yalnızca görsel.</summary>
+            /// <summary>
+            /// Kaya kütlesinin dik yüzü: toprak katmanlarını kesen çerçeveli kenar (cetvelle kesilmiş görünmesin).
+            /// Görsel kütlenin içine doğru uzanır, yüzü tam x'te. side: yüzün baktığı yön. Yalnızca görsel.
+            /// </summary>
             public void RockEdge(float x, float yTop, float yBottom, int side)
             {
-                const float faceOffset = 0.375f;
-                Sprite face = LayerArt("zemin_yamac");
-                SpriteRenderer sr = TiledArt(geometry, Name("KayaKenar"), face, new Vector2(x + OriginX - side * faceOffset, yTop),
-                    new Vector2(face.bounds.size.x, yTop - yBottom), 3);
-                sr.flipX = side > 0;
+                Sprite face = LayerArt(FaceArt);
+                float width = face.bounds.size.x;
+                SpriteRenderer sr = TiledArt(geometry, Name("KayaKenar"), face, new Vector2(x + OriginX - side * width / 2f, yTop),
+                    new Vector2(width, yTop - yBottom), 3);
+                sr.flipX = side < 0; // görsel sağa bakar
             }
 
             /// <summary>Yer altı uçurumu: dipsiz görünsün diye arka duvarın önüne karanlık koyar.</summary>
@@ -1707,18 +1912,91 @@ namespace DesertGecko.EditorTools
                 xMin += OriginX;
                 xMax += OriginX;
                 var size = new Vector2(xMax - xMin, yMax - yMin);
-                SpriteRenderer sr = TiledArt(geometry, Name("Kaya"), LayerArt("kaya_kutle"),
+                SpriteRenderer sr = TiledArt(geometry, Name("Kaya"), LayerArt(DeepArt),
                     new Vector2((xMin + xMax) / 2f, yMax), size, 2);
                 var col = sr.gameObject.AddComponent<BoxCollider2D>();
                 col.size = size;
                 col.offset = new Vector2(0f, -size.y / 2f);
+                Underside(sr.transform, xMin, xMax, yMin, size.y, 2);
                 Fringe(sr.transform, xMin, xMax, yMin);
+                rockMasses.Add((xMin, xMax, yMin, yMax));
+            }
+
+            /// <summary>Tavanın alt yüzü: katmanlı toprak ters çevrilir, açık kenarı aşağı, odaya bakar.</summary>
+            static void Underside(Transform parent, float xMin, float xMax, float yMin, float depth, int order)
+            {
+                Sprite soil = LayerArt(SoilArt);
+                float height = Mathf.Min(depth, soil.bounds.size.y);
+                // Üstten pivotlu görsel ters çevrilince pivotun üstüne uzanır: alt kenara konur.
+                SpriteRenderer sr = TiledArt(parent, "AltYuz", soil, new Vector2((xMin + xMax) / 2f, yMin), new Vector2(xMax - xMin, height), order);
+                sr.flipY = true;
+                sr.transform.position += Vector3.back * 0.01f; // aynı sıradaki kaya dolgusunun önünde
             }
 
             static void Fringe(Transform parent, float xMin, float xMax, float y)
             {
-                Sprite s = LayerArt("kaya_sacak");
+                Sprite s = LayerArt(FringeArt);
                 TiledArt(parent, "Sacak", s, new Vector2((xMin + xMax) / 2f, y), new Vector2(xMax - xMin, s.bounds.size.y), 2);
+            }
+
+            /// <summary>
+            /// Yürünen kaya/toprak gövdesi: topraklı kenar, altında bir kez katmanlı toprak, daha derini taşlı toprak.
+            /// Çarpışma ayrı kurulur; bu yalnızca görsel. order: gövdenin çizim sırası (kenar bir üstte).
+            /// </summary>
+            static SpriteRenderer SoilBody(Transform parent, string name, Vector2 topCenter, Vector2 size, int order)
+            {
+                Sprite soil = LayerArt(SoilArt), deep = LayerArt(DeepArt), rim = LayerArt(RimArt);
+                float soilHeight = Mathf.Min(size.y, soil.bounds.size.y);
+                SpriteRenderer body = TiledArt(parent, name, soil, topCenter, new Vector2(size.x, soilHeight), order);
+                if (size.y > soilHeight)
+                    TiledArt(body.transform, "Derin", deep, topCenter + Vector2.down * soilHeight, new Vector2(size.x, size.y - soilHeight), order);
+                // Pürüzlü kenarın taşları çarpışma çizgisinin biraz üstüne taşar (aracın yazdığı yüzey satırı).
+                TiledArt(body.transform, "Kenar", rim, topCenter + Vector2.up * RimRise, new Vector2(size.x, rim.bounds.size.y), order + 1);
+                return body;
+            }
+
+            const float RimRise = 3f / 32f;
+
+            /// <summary>
+            /// Yan yana iki tavan farklı yükseklikte bitiyorsa aşağı sarkanın yanına pürüzlü bir kaya yüzü ve yuvarlak
+            /// bir alt köşe koyar: katmanlı alt yüz ve sarkıtlar cetvelle kesilmiş gibi bitmesin. Yalnızca görsel.
+            /// </summary>
+            public void DressCeilings()
+            {
+                const float eps = 0.05f, minStep = 0.6f;
+                Sprite face = LayerArt("zemin_yamac"), cap = LayerArt("zemin_yamac_ust");
+                const float faceOffset = 0.375f;
+                foreach (var a in rockMasses)
+                {
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        float x = side < 0 ? a.xMin : a.xMax;
+                        var neighbours = rockMasses.Where(b => !b.Equals(a) && Mathf.Abs((side < 0 ? b.xMax : b.xMin) - x) < eps
+                            && b.yMin > a.yMin + minStep && b.yMin < a.yMax).ToList();
+                        if (neighbours.Count == 0)
+                            continue;
+                        float top = neighbours.Min(b => b.yMin) + 0.4f; // komşunun sarkıtlarının arkasından başlar
+                        float capHeight = cap.bounds.size.y;
+                        var position = new Vector2(x - side * faceOffset, a.yMin);
+
+                        // Alt köşe: yamacın omzu ters çevrilip tavanın altına konur.
+                        var capSr = new GameObject(Name("TavanKosesi")).AddComponent<SpriteRenderer>();
+                        capSr.transform.SetParent(geometry);
+                        capSr.transform.position = position;
+                        capSr.sprite = cap;
+                        capSr.flipX = side > 0;
+                        capSr.flipY = true;
+                        capSr.sortingOrder = 3;
+
+                        float faceBottom = a.yMin + capHeight;
+                        if (top > faceBottom)
+                        {
+                            SpriteRenderer sr = TiledArt(geometry, Name("TavanYuzu"), face, new Vector2(position.x, top),
+                                new Vector2(face.bounds.size.x, top - faceBottom), 3);
+                            sr.flipX = side > 0;
+                        }
+                    }
+                }
             }
 
             /// <summary>
@@ -1731,13 +2009,11 @@ namespace DesertGecko.EditorTools
                 xMax += OriginX;
                 var size = new Vector2(xMax - xMin, thickness);
                 var center = new Vector2((xMin + xMax) / 2f, top);
-                SpriteRenderer sr = TiledArt(geometry, Name("Doseme"), LayerArt("kaya_kutle"), center, size, 1);
+                SpriteRenderer sr = SoilBody(geometry, Name("Doseme"), center, size, 1);
                 sr.gameObject.layer = ctx.GroundLayer;
                 var col = sr.gameObject.AddComponent<BoxCollider2D>();
                 col.size = size;
                 col.offset = new Vector2(0f, -thickness / 2f);
-                Sprite rim = LayerArt("kaya_ust");
-                TiledArt(sr.transform, "Kenar", rim, center, new Vector2(size.x, rim.bounds.size.y), 2);
                 if (fringe)
                     Fringe(sr.transform, xMin, xMax, top - thickness);
                 if (register)
@@ -2671,7 +2947,7 @@ namespace DesertGecko.EditorTools
                 xMin += OriginX;
                 xMax += OriginX;
                 var size = new Vector2(xMax - xMin, yMax - yMin);
-                SpriteRenderer sr = TiledArt(geometry, Name("SahteKaya"), LayerArt("kaya_kutle"), new Vector2((xMin + xMax) / 2f, yMax), size, 4);
+                SpriteRenderer sr = TiledArt(geometry, Name("SahteKaya"), LayerArt(DeepArt), new Vector2((xMin + xMax) / 2f, yMax), size, 4);
                 var col = sr.gameObject.AddComponent<BoxCollider2D>();
                 col.isTrigger = true;
                 col.size = size;
@@ -2693,17 +2969,43 @@ namespace DesertGecko.EditorTools
                 var zone = go.AddComponent<BoxCollider2D>();
                 zone.isTrigger = true;
                 zone.size = new Vector2(1f, height);
-                go.AddComponent<ArenaGate>().Configure(Gate(xMin - 0.5f, floorY, height), Gate(xMax + 0.5f, floorY, height), height + 1f,
+                float doorHeight = height * GateDoorShare;
+                go.AddComponent<ArenaGate>().Configure(Gate(xMin - 0.5f, floorY, height), Gate(xMax + 0.5f, floorY, height), doorHeight + 0.4f,
                     new Vector2(xMin, xMax), new Vector2(floorY - 1f, roofY));
             }
 
-            // Ahşap kapı: Default katmanında, Gila yapışamaz. Açılınca tavanın arkasına kalkar.
+            const float GateDoorShare = 0.5f; // odanın alt yarısı ahşap kanat, üst yarısı tavandan sarkan taş
+
+            // Tavandan inen kapı: üst yarısı tavandan sarkan sabit taş sütun, alt yarısı dikenli ahşap kanat.
+            // Kanat açıkken taşın arkasına çekilir; altından geçilir. Default katmanında, Gila yapışamaz.
             Transform Gate(float x, float floorY, float height)
             {
-                SpriteRenderer sr = TiledArt(geometry, Name("Kapi"), LayerArt("merdiven"), new Vector2(x, floorY + height), new Vector2(1f, height), 1);
+                const float hidden = 1f, sink = 2f / 32f; // kanadın üstü hep taşın arkasında; alt dikenler zemine hafif gömülü
+                float roofY = floorY + height;
+                float doorHeight = height * GateDoorShare;
+                float stoneBottom = floorY + doorHeight;
+
+                // Taş sütun kayanın ve kanadın önünde: kanat açıkken arkasında saklanır, inerken altından çıkar.
+                Sprite stoneSprite = TestSceneBuilder.Prop("tavan_kapi_ust");
+                float stoneWidth = stoneSprite.rect.width / stoneSprite.pixelsPerUnit;
+                SpriteRenderer stone = TiledArt(geometry, Name("KapiTasi"), stoneSprite, new Vector2(x, roofY + 0.15f),
+                    new Vector2(stoneWidth, roofY + 0.15f - stoneBottom), 3);
+                var stoneCol = stone.gameObject.AddComponent<BoxCollider2D>();
+                stoneCol.size = new Vector2(stoneWidth - 0.2f, roofY - stoneBottom);
+                stoneCol.offset = new Vector2(0f, -0.15f - stoneCol.size.y / 2f);
+
+                Sprite wing = TestSceneBuilder.Prop("tavan_kapi_kanat");
+                float width = wing.rect.width / wing.pixelsPerUnit;
+                SpriteRenderer sr = TiledArt(geometry, Name("Kapi"), wing, new Vector2(x, stoneBottom + hidden), new Vector2(width, doorHeight + hidden + sink), 1);
                 var col = sr.gameObject.AddComponent<BoxCollider2D>();
-                col.size = new Vector2(1f, height);
-                col.offset = new Vector2(0f, -height / 2f);
+                col.size = new Vector2(width - 0.3f, doorHeight);
+                col.offset = new Vector2(0f, -hidden - doorHeight / 2f);
+
+                var gate = sr.gameObject.AddComponent<CeilingGate>();
+                TestSceneBuilder.SetField(gate, "releaseSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kapi_zincir.wav"));
+                TestSceneBuilder.SetField(gate, "slamSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kapi_carpma.wav"));
+                TestSceneBuilder.SetField(gate, "riseSound", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kapi_kalkma.wav"));
+                TestSceneBuilder.SetField(gate, "dustSprite", TestSceneBuilder.Prop("kapi_toz"));
                 return sr.transform;
             }
 

@@ -7,8 +7,8 @@ using UnityEngine;
 namespace DesertGecko.Environment
 {
     /// <summary>
-    /// Dövüş odası: oyuncu içeri girince arkadaki kapı iner, bölgedeki düşmanlar ölünce kapılar açılır.
-    /// Oyuncu ölürse her şey başa döner (düşmanlar zaten kendini sıfırlar).
+    /// Dövüş odası: oyuncu içeri girince arkadaki tavan kapısı çakılır, bölgedeki düşmanlar ölünce kapılar kalkar.
+    /// Oyuncu ölürse her şey başa döner (düşmanlar zaten kendini sıfırlar). Kapıların hareketi ve efektleri CeilingGate'te.
     /// </summary>
     [RequireComponent(typeof(BoxCollider2D))]
     public class ArenaGate : MonoBehaviour
@@ -17,7 +17,6 @@ namespace DesertGecko.Environment
         [SerializeField] Transform exit;
         [Tooltip("Açılınca kapının yukarı kalktığı mesafe")]
         [SerializeField] float openHeight = 6f;
-        [SerializeField] float moveSpeed = 9f;
         [Tooltip("Bu dünyadaki bölgede başlayan düşmanlar sayılır: x en az, x en çok")]
         [SerializeField] Vector2 enemyRangeX;
         [SerializeField] Vector2 enemyRangeY;
@@ -27,7 +26,7 @@ namespace DesertGecko.Environment
         public bool IsCleared => cleared;
 
         readonly List<EnemyBase> enemies = new List<EnemyBase>();
-        Vector3 entranceDown, exitDown;
+        CeilingGate entranceGate, exitGate;
         bool locked, cleared;
 
         public void Configure(Transform entranceGate, Transform exitGate, float height, Vector2 rangeX, Vector2 rangeY)
@@ -41,10 +40,21 @@ namespace DesertGecko.Environment
 
         void Awake()
         {
-            entranceDown = entrance.position;
-            exitDown = exit.position;
-            entrance.position = entranceDown + Vector3.up * openHeight; // giriş başta açık
+            entranceGate = GateOf(entrance);
+            exitGate = GateOf(exit);
+            entranceGate.Snap(true); // giriş başta açık
+            exitGate.Snap(false);
             PlayerHealth.PlayerRespawned += ResetRoom;
+        }
+
+        CeilingGate GateOf(Transform door)
+        {
+            // Eski kurulmuş sahnelerde kapıda bileşen yok: efektsiz de olsa çalışsın.
+            var gate = door.GetComponent<CeilingGate>();
+            if (gate == null)
+                gate = door.gameObject.AddComponent<CeilingGate>();
+            gate.SetOpenHeight(openHeight);
+            return gate;
         }
 
         void OnDestroy()
@@ -67,30 +77,27 @@ namespace DesertGecko.Environment
             if (locked && !cleared && enemies.TrueForAll(e => !e.IsAlive))
             {
                 cleared = true;
-                PixelBurst.Spawn(exitDown + Vector3.up * 1.5f, burstColor, 14, 5f, 0.6f);
+                PixelBurst.Spawn(exit.position + Vector3.down * (openHeight / 2f), burstColor, 14, 5f, 0.6f);
+                entranceGate.Open();
+                exitGate.Open();
             }
-
-            bool entranceOpen = !locked || cleared;
-            Slide(entrance, entranceDown, entranceOpen);
-            Slide(exit, exitDown, cleared);
-        }
-
-        void Slide(Transform gate, Vector3 down, bool open)
-        {
-            Vector3 target = open ? down + Vector3.up * openHeight : down;
-            gate.position = Vector3.MoveTowards(gate.position, target, moveSpeed * Time.deltaTime);
         }
 
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!locked && other.GetComponentInParent<PlayerHealth>() != null)
+            {
                 locked = true;
+                entranceGate.Close();
+            }
         }
 
         void ResetRoom()
         {
             locked = false;
             cleared = false;
+            entranceGate.Snap(true);
+            exitGate.Snap(false);
         }
     }
 }

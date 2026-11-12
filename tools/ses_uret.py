@@ -17,6 +17,9 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/silah_al.wav       silah alma: kavrama ve madeni şıkırtı
   Assets/Audio/savurma.wav        savurma: dinamit atma, kazma sallama
   Assets/Audio/fitil.wav          dinamit fitili: çıtırdayan cızırtı (1,3 sn)
+  Assets/Audio/kapi_zincir.wav    tavan kapısının zinciri boşalır (kapı inmeden hemen önce)
+  Assets/Audio/kapi_carpma.wav    ağır ahşap kapı yere çakılır, mağarada gümbürtü
+  Assets/Audio/kapi_kalkma.wav    kapı kalkarken makara takırtısı (döngü)
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -219,6 +222,46 @@ def fuse_hiss(rng, seconds=1.3):
     return (hiss * 0.25 + crackle * 0.4) * envelope
 
 
+def chain_release(rng, seconds=0.35):
+    """Kapı zinciri boşalır: hızla akan madeni şıkırtılar ve tavandan dökülen taş tıkırtısı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(t.size)
+    for i in range(14):
+        start = i * 0.018 + rng.uniform(0.0, 0.008)
+        u = np.clip(t - start, 0.0, None)
+        pitch = rng.uniform(1700.0, 2900.0)
+        out += (np.sin(2 * np.pi * pitch * u) * 0.5 + rng.normal(0.0, 1.0, t.size) * 0.4) * np.exp(-u * 70.0) * (t >= start)
+    pebbles = (rng.random(t.size) < 0.002) * rng.normal(0.0, 2.0, t.size)
+    pebbles = np.convolve(pebbles, np.exp(-np.arange(60) / 10.0), mode="same")
+    return (out * 0.35 + pebbles * 0.3) * np.minimum((seconds - t) / 0.05, 1.0)
+
+
+def gate_slam(rng, seconds=1.4):
+    """Ağır ahşap kapı yere çakılır: tok gövde darbesi, çatırdayan tahta, derin gümbürtü, dökülen taşlar."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.normal(0.0, 1.0, t.size)
+    thud = np.convolve(noise, np.ones(60) / 60, mode="same") * 9.0 * np.exp(-t * 9.0)       # tok gövde
+    knock = np.sin(2 * np.pi * (70.0 * t - 25.0 * t ** 2)) * np.exp(-t * 6.0)                # yer sarsılır
+    wood = sum(np.sin(2 * np.pi * f * t) * a for f, a in ((180.0, 0.5), (310.0, 0.35), (470.0, 0.2))) * np.exp(-t * 22.0)
+    crack = noise * np.exp(-t * 45.0)
+    rumble = np.convolve(noise, np.ones(200) / 200, mode="same") * 14.0 * np.exp(-t * 2.2)  # mağarada yankı
+    pebbles = (rng.random(t.size) < 0.0015 * np.exp(-t * 2.0)) * rng.normal(0.0, 2.0, t.size)
+    pebbles = np.convolve(pebbles, np.exp(-np.arange(70) / 9.0), mode="same") * (t > 0.08)
+    attack = np.minimum(t / 0.003, 1.0)
+    return (thud * 0.8 + knock * 0.9 + wood * 0.5 + crack * 0.4 + rumble * 0.6 + pebbles * 0.35) * attack * 0.75
+
+
+def gate_grind(rng, seconds=1.0):
+    """Kapı kalkar: zincir makarasının düzenli takırtısı ve taşa sürtünen ahşap. Döngüye girer (uçları yumuşak değil)."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    noise = rng.normal(0.0, 1.0, t.size)
+    grind = np.convolve(noise, np.ones(30) / 30, mode="same") * 4.0 * (0.75 + 0.25 * np.sin(2 * np.pi * 3.0 * t))
+    phase = (t * 9.0) % 1.0  # saniyede 9 makara dişi; 1 sn'de tam döner, döngü dikişsiz
+    ratchet = (rng.normal(0.0, 1.0, t.size) * 0.6 + np.sin(2 * np.pi * 1400.0 * t) * 0.4) * np.exp(-phase * 25.0)
+    hum = np.sin(2 * np.pi * 55.0 * t) * 0.3
+    return (grind * 0.45 + ratchet * 0.4 + hum) * 0.6
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -239,6 +282,9 @@ def main():
     save("silah_al.wav", weapon_pickup(np.random.default_rng(16)))
     save("savurma.wav", whoosh(np.random.default_rng(17)))
     save("fitil.wav", fuse_hiss(np.random.default_rng(18)))
+    save("kapi_zincir.wav", chain_release(np.random.default_rng(19)))
+    save("kapi_carpma.wav", gate_slam(np.random.default_rng(20)))
+    save("kapi_kalkma.wav", gate_grind(np.random.default_rng(21)))
 
 
 if __name__ == "__main__":

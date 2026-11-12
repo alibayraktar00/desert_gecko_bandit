@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.EnemyBullet
   damage: 1
+  enemyDamage: 2
   speed: 8
   lifetime: 1.6
   radius: 0.08

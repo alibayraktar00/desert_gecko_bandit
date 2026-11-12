@@ -290,6 +290,8 @@ MonoBehaviour:
   recoverTime: 0.14
   thrownDamage: 1
   maxShotDamage: 0
+  breaksRocks: 1
+  alwaysDrops: 0
   throwVelocity: {x: 8, y: 6}
   fuseTime: 1.3
   blastRadius: 1.7

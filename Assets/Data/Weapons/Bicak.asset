@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f500203e0f0cb4499715eeef47384b9, type: 3}
   m_Name: Bicak
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Weapons.WeaponData
-  displayName: "B\u0131\u00E7ak"
+  displayName: "B\u0131\xE7ak"
   icon: {fileID: 21300000, guid: d58ed635b3f545e29a26b45612ec62eb, type: 3}
   forwardFrames:
   - {fileID: 21300000, guid: 2d0424a115d14f4daec1ca609fc15da5, type: 3}
