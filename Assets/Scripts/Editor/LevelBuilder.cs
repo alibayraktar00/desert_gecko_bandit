@@ -65,6 +65,9 @@ namespace DesertGecko.EditorTools
         [MenuItem("Desert Gecko/Levelleri Kur/Level 3")]
         public static string BuildLevel3() => BuildSingleLevel(2, Level_3);
 
+        [MenuItem("Desert Gecko/Levelleri Kur/Level 4")]
+        public static string BuildLevel4() => BuildSingleLevel(3, Level_4);
+
         /// <summary>EditorBridge için: menü, level ve sahne listesi; bağlantı noktalarının görüntüsüyle.</summary>
         public static string BuildAllWithShots() => BuildAll("Temp/Screenshots") + " tasarım uyarısı";
 
@@ -176,7 +179,7 @@ namespace DesertGecko.EditorTools
             if (shotDir != null)
                 SceneCapture.Capture(Path.Combine(shotDir, "menu.png"), new Vector3(0f, 1.5f, -10f));
 
-            var definitions = new System.Action<LevelPainter>[] { Level_1, Level_2, Level_3 };
+            var definitions = new System.Action<LevelPainter>[] { Level_1, Level_2, Level_3, Level_4 };
             for (int i = 0; i < definitions.Length; i++)
             {
                 LevelCatalog.LevelInfo info = LevelCatalog.Levels[i];
@@ -1400,6 +1403,318 @@ namespace DesertGecko.EditorTools
         }
 
         // =====================================================================
+        // Level 4: Tozlu Dere. Çölden gelinir, kasaba yavaş yavaş belirir: önce yol kenarı, sonra çiftlikler, sonra
+        // ana cadde. Trenle kasabadan çıkılır, tren raydan çıkar, çölde yürünüp ikinci kasabaya (Gümüş Vadi) varılır.
+        // Gün batımında başlar, istasyonda gece olur, ikinci kasabaya yaklaşırken şafak söker.
+        // Düşmanlar şimdilik akrep: insan düşmanlar gelince onların yerini alacak.
+        // Tren kısmı kutularla kurulu: hareketli tren ayrı bölüm olarak sonra yapılacak.
+        // Binaların yüzeyleri (balkon, saçak, çatı) görselin sol alt köşesinden piksel olarak yazılır (1x görsel).
+        // =====================================================================
+        const float CiftlikX = 120f, CaddeX = 240f, MadenOcagiX = 375f, IstasyonX = 470f, KazaX = 598f, ColYuruyusX = 650f, GumusVadiX = 765f;
+
+        static void Level_4(LevelPainter p)
+        {
+            p.Spawn = new Vector2(0f, 0f);
+            p.Boundary(-9f);
+            p.Night = true;
+            p.Cold = false;
+            p.DuskStartX = -300f; // level gün batımının ortasında açılır
+            p.DuskEndX = IstasyonX - 10f; // istasyonda gece
+            p.DawnStartX = ColYuruyusX + 40f;
+            p.DawnEndX = GumusVadiX + 35f;
+            p.Veins = new[] { "fosil", "kemik", "kok", "kok_ag", "kaya", "kaya_iri", "yarik", "harabe" };
+            p.LedgeStyles = new[] { "plat_tahta", "plat_kok", "plat_cakil" };
+
+            Kasaba_ColYolu(p);
+            p.OriginX = CiftlikX;
+            Kasaba_Ciftlikler(p);
+            p.OriginX = CaddeX;
+            Kasaba_AnaCadde(p);
+            p.OriginX = MadenOcagiX;
+            Kasaba_MadenOcagi(p);
+            p.OriginX = IstasyonX;
+            Kasaba_IstasyonVeTren(p);
+            p.OriginX = KazaX;
+            Kasaba_KazaYeri(p);
+            p.OriginX = ColYuruyusX;
+            Kasaba_ColYuruyusu(p);
+            p.OriginX = GumusVadiX;
+            Kasaba_GumusVadiGirisi(p);
+
+            p.OriginX = 0f;
+            p.ShotPoints.AddRange(new[]
+            {
+                new Vector2(8f, 3f), new Vector2(60f, 6f), new Vector2(98f, 7f), new Vector2(140f, 4f), new Vector2(185f, 4f),
+                new Vector2(222f, 4f), new Vector2(255f, 5f), new Vector2(272f, 5f), new Vector2(295f, 5f), new Vector2(320f, 7f),
+                new Vector2(350f, 8f), new Vector2(395f, 6f), new Vector2(420f, 5f), new Vector2(482f, 4f), new Vector2(520f, 5f),
+                new Vector2(565f, 5f), new Vector2(605f, 2f), new Vector2(630f, 2f), new Vector2(690f, 4f), new Vector2(735f, 3f),
+                new Vector2(785f, 4f), new Vector2(805f, 4f),
+            });
+        }
+
+        // Çöl Yolu: kasabaya giden yol. Önce çıplak çöl, sonra yolun kenarında posta direği, tuvalet, tepede darağacı.
+        static void Kasaba_ColYolu(LevelPainter p)
+        {
+            p.Ground(-8f, 22f, 0f);
+            p.Sign(3f, 0f, "Tozlu Dere Kasabası 3 mil\nGün batmadan varmalı");
+            p.Plant("kaktus_07", -4f, 0f);
+            p.Plant("kaktus_21", 10f, 0f);
+            p.CrystalLine(6f, 0.7f, 3, 1f);
+            p.Scorpion(16f, 0f);
+
+            p.Ground(26f, 42f, 1.5f);
+            p.TownDeco("kasaba_posta_diregi", 30f, 1.5f); // kasabanın ilk izi: yol kenarında posta kutusu
+            p.Scorpion(37f, 1.5f);
+            p.Crystal(24f, 3.5f);
+
+            p.Ground(46f, 62f, 3f);
+            p.Plant("kaktus_12", 50f, 3f);
+            p.TownDeco("kasaba_tabela_sandik", 58f, 3f);
+            p.Crystal(44f, 5f);
+
+            p.Ground(66f, 80f, 1f);
+            p.TownDeco("kasaba_tuvalet", 71f, 1f);
+            p.Scorpion(76f, 1f);
+
+            // Tepede darağacı: kasabanın sınırı, uzaktan görünür
+            p.Ground(85f, 104f, 4f);
+            p.Checkpoint(87f, 4f);
+            p.TownDeco("kasaba_daragaci", 97f, 4f);
+            p.CrystalArc(100f, 6f, 108f, 3f, 3);
+
+            p.Ground(108f, 118f, 0f);
+            p.Plant("kaktus_16", 112f, 0f);
+        }
+
+        // Çiftlikler: kasabanın kenarı. Kuyu, kümes, bostan, çiftlik evi; kuru derenin üstünde çürük tahtalar,
+        // yel değirmeni, ambar ve saman yığınından ahırın yanına.
+        static void Kasaba_Ciftlikler(LevelPainter p)
+        {
+            p.Ground(0f, 40f, 0f);
+            p.Sign(2.5f, 0f, "Tozlu Dere çiftlikleri\nKasaba hemen ileride");
+            p.TownDeco("kasaba_kuyu", 9f, 0f);
+            p.TownDeco("kasaba_kumes", 14.5f, 0f);
+            p.TownDeco("kasaba_bostan", 20.5f, 0f);
+            p.Scorpion(18f, 0f);
+            p.Building("kasaba_ev", 29.5f, 0f);
+            p.Lamp(28.4f, 3.2f, 2f);
+            p.TownDeco("kasaba_camasir", 37f, 0f);
+
+            // Kuru dere: çürük tahtadan köprü
+            p.Crumble(41.33f, 0f, "tahta_ray");
+            p.Crumble(44f, 0f, "tahta_ray");
+            p.Crumble(46.67f, 0f, "tahta_ray");
+            p.Crystal(44f, 1.5f);
+
+            p.Ground(48f, 120f, 0f);
+            p.Checkpoint(50f, 0f);
+            p.Building("kasaba_degirmen", 56.5f, 0f);
+            p.Building("kasaba_ambar", 65f, 0f);
+            // Saman yığını: ahırın çatısına basamak
+            p.Table(71.5f, 0f, "kasaba_saman");
+            p.Table(72.8f, 1.85f, "kasaba_saman");
+            p.Crystal(72.8f, 4.6f);
+            p.Building("kasaba_ahir", 82f, 0f);
+            p.Scorpion(79f, 0f);
+            p.Table(91f, 0f, "kasaba_araba");
+            p.Crystal(91f, 3f);
+            p.TownDeco("kasaba_odun", 95.5f, 0f);
+            p.TownDeco("kasaba_kutuk", 99f, 0f);
+            p.Scorpion(102f, 0f);
+            p.TownDeco("kasaba_kopek_kulubesi", 104f, 0f);
+            p.TownDeco("kasaba_firin", 108.5f, 0f);
+            p.TownDeco("kasaba_el_arabasi", 113f, 0f);
+            p.TownDeco("kasaba_cit", 117.5f, 0f);
+        }
+
+        // Ana Cadde: kasaba. Altta sokak, üstte balkonlar ve çatılar: iki yol yan yana gider, çatılarda kristal.
+        // Ortada merdivenle üst sokağa çıkılır (banka, silahçı, cenazeci, kilise).
+        static void Kasaba_AnaCadde(LevelPainter p)
+        {
+            const float street = 1f, upper = 3.5f;
+
+            p.Ground(0f, 72f, street);
+            p.Sign(1.5f, street, "Tozlu Dere\nNüfus: 112");
+            p.Checkpoint(3f, street);
+
+            p.Building("kasaba_dukkan", 9f, street, (15f, 180f, 78f), (22f, 165f, 122f));
+            p.Table(8.5f, street, "kasaba_sandiklar"); // dükkânın önünde sandıklar: saçağa basamak
+            p.Building("kasaba_saloon", 20f, street, (15f, 175f, 68f), (25f, 168f, 124f));
+            p.Lamp(17.6f, street + 4.4f);
+            p.Lamp(22.3f, street + 4.4f);
+            p.TownDeco("kasaba_yalak_2", 20f, street, 0.8f, -8);
+            p.Scorpion(19f, street + 3.2f); // balkonda
+            p.Building("kasaba_otel", 31f, street, (5f, 200f, 68f), (30f, 175f, 121f));
+            p.Lamp(28.5f, street + 1.9f, 2f);
+            p.Lamp(33.2f, street + 1.9f, 2f);
+            p.Scorpion(28f, street);
+            p.Table(36f, street, "kasaba_araba");
+            p.Building("kasaba_berber", 42f, street, (22f, 177f, 74f), (30f, 170f, 122f));
+            p.Building("kasaba_serif", 53f, street, (28f, 105f, 65f), (25f, 120f, 110f));
+            p.Scorpion(48f, street);
+            p.Building("kasaba_hapishane", 64f, street, (20f, 160f, 62f), (30f, 165f, 124f));
+            p.TownDeco("kasaba_ficilar", 70.5f, street, 1f, -8);
+
+            // Çatı yolu: kristaller balkondan çatıya, çatıdan çatıya
+            p.CrystalLine(17f, street + 7.8f, 4, 1.4f);
+            p.CrystalArc(23.5f, street + 7.8f, 27.5f, street + 7.6f, 3);
+            p.CrystalLine(40f, street + 7.7f, 3, 1.4f);
+            p.CrystalArc(55f, street + 7.4f, 60f, street + 7.8f, 3);
+
+            // Üst sokak
+            p.Steps(72f, 78f, street, upper);
+            p.Ground(78f, 135f, upper);
+            p.Checkpoint(79f, upper);
+            p.Building("kasaba_banka", 84f, upper, (2f, 171f, 125f));
+            p.Building("kasaba_silahci", 95f, upper, (20f, 185f, 80f), (30f, 175f, 124f));
+            p.Scorpion(92f, upper);
+            p.Building("kasaba_cenazeci", 106f, upper, (30f, 165f, 124f));
+            p.Scorpion(99f, upper + 3.75f); // silahçının saçağında
+            p.Building("kasaba_kilise", 118f, upper);
+            p.Lamp(115.5f, upper + 2.4f, 2f);
+            p.CrystalLine(81f, upper + 7f, 4, 1.4f);
+            p.TownDeco("kasaba_kuyu_tas", 125.5f, upper);
+            p.TownDeco("kasaba_ilan_tahtasi", 130.5f, upper);
+            p.Scorpion(128f, upper);
+        }
+
+        // Maden ocağı: kasabanın arka yüzü. Maden ofisi, demirci, sandık yığını ve su kulesi; sonra raylara iniş.
+        static void Kasaba_MadenOcagi(LevelPainter p)
+        {
+            const float yard = 1.5f;
+
+            p.Ground(0f, 44f, yard);
+            p.Building("kasaba_maden_ofisi", 7f, yard, (2f, 182f, 70f), (25f, 173f, 110f));
+            p.Scorpion(12f, yard);
+            p.Building("kasaba_demirci", 19f, yard);
+            p.Lamp(18.4f, yard + 1.9f, 2.4f); // ocağın ateşi
+            // Maden iskelesi: ofisin saçağından süzülüp iki tahtadan su kulesinin güvertesine
+            p.Ledge(19f, 23f, yard + 2.7f, register: true);
+            p.Ledge(26.5f, 30f, yard + 3.4f, register: true);
+            p.TownDeco("kasaba_sandiklar", 27f, yard, 0.7f, -8);
+            p.Scorpion(24f, yard);
+            p.Building("kasaba_su_kulesi", 36f, yard, (37f, 112f, 67f), (45f, 104f, 115f));
+            p.Crystal(34.5f, yard + 6.4f); // tankın tepesinde
+            p.TownDeco("kasaba_fici_teker", 41.5f, yard, 1f, -8);
+
+            p.Ground(50f, 95f, 0f);
+            p.Sign(52f, 0f, "İstasyon ileride\nSon tren kalkıyor!");
+            p.Rails(56f, 95f, 0f);
+            p.TownDeco("kasaba_odun", 60f, 0f);
+            p.Scorpion(68f, 0f);
+            p.TownDeco("kasaba_tabela_sandik", 76f, 0f);
+            p.Scorpion(84f, 0f);
+            p.Crystal(88f, 1.5f);
+        }
+
+        // İstasyon ve tren. Tren şimdilik kutu: vagonların üstünden lokomotife koşulur. Rayın sonunda köprü yıkık:
+        // tren burada raydan çıktı, aşağıdaki enkaza inilir. (Hareketli tren gelince bu kısım yeniden yapılacak.)
+        static void Kasaba_IstasyonVeTren(LevelPainter p)
+        {
+            const float platform = 0.8f;
+
+            p.Ground(0f, 26f, platform);
+            p.Checkpoint(2f, platform);
+            p.Building("kasaba_istasyon", 11f, platform, (4f, 184f, 70f), (29f, 177f, 110f), (85f, 120f, 138f));
+            p.Lamp(7f, platform + 2.3f, 2f);
+            p.Lamp(14.7f, platform + 2.3f, 2f);
+            p.TownDeco("kasaba_bank_sandalye", 20f, platform);
+            p.TownDeco("kasaba_erzak", 24f, platform, 1f, -8);
+            p.Sign(22.5f, platform, "Tren kalkıyor!\nVagonların üstünden lokomotife koş");
+
+            p.Ground(26f, 120f, 0f);
+            p.Rails(26f, 120f, 0f);
+            p.TrainCar(28f, 38f, 0f, "yolcu");
+            p.TrainCar(39.5f, 49.5f, 0f, "yolcu");
+            p.Scorpion(45f, 3.55f);
+            p.TrainCar(51f, 61f, 0f, "yolcu");
+            p.TrainCar(62.5f, 72.5f, 0f, "yolcu");
+            p.Scorpion(68f, 3.55f);
+            p.TrainCar(74f, 84f, 0f, "yolcu");
+            p.TrainCar(85.5f, 95.5f, 0f, "yolcu");
+            p.Scorpion(91f, 3.55f);
+            p.TrainCar(97f, 104f, 0f, "komur");
+            p.TrainCar(105.5f, 118f, 0f, "lokomotif");
+            p.CrystalLine(30f, 4.4f, 6, 1.5f);
+            p.CrystalLine(64f, 4.4f, 6, 1.5f);
+            p.Lamp(107.5f, 3.7f, 2.2f); // kabinin ışığı
+        }
+
+        // Kaza yeri: köprünün altı. Devrilmiş vagonlar, yanan enkaz, saçılmış yük.
+        static void Kasaba_KazaYeri(LevelPainter p)
+        {
+            const float floor = -2f;
+
+            p.Ground(0f, 48f, floor);
+            p.TrainCar(3f, 15f, floor, "lokomotif", 16f);
+            p.TrainCar(17f, 25f, floor, "komur", -24f);
+            p.TrainCar(27f, 37f, floor, "yolcu", 9f);
+            p.Fire(11f, floor, 2.6f); // yanan lokomotif
+            p.TownDeco("kasaba_sandiklar", 21f, floor, 0.8f, -8);
+            p.TownDeco("kasaba_ficilar", 26f, floor, 1f, -8, true);
+            p.TownDeco("kasaba_erzak", 40f, floor, 1f, -8);
+            p.Checkpoint(42.5f, floor);
+            p.Sign(45.5f, floor, "Tren raydan çıktı!\nGümüş Vadi'ye yürü →");
+            p.Scorpion(33f, floor);
+        }
+
+        // Çöl yürüyüşü: telgraf direklerini izle. Kuru dere, çürük tahtalar, sıra sıra tepeler. Şafak burada söker.
+        static void Kasaba_ColYuruyusu(LevelPainter p)
+        {
+            p.Ground(0f, 18f, -2f);
+            p.Pole(5f, -2f, 6f);
+            p.Scorpion(12f, -2f);
+
+            p.Ground(23f, 40f, 0f);
+            p.Pole(30f, 0f, 6f);
+            p.Wire(5f, 4f, 30f, 6f);
+            p.Plant("kaktus_05", 36f, 0f);
+            p.Crystal(20.5f, 1.5f);
+
+            p.Ground(44f, 60f, 2f);
+            p.Checkpoint(46f, 2f);
+            p.Pole(55f, 2f, 6f);
+            p.Wire(30f, 6f, 55f, 8f);
+            p.Scorpion(52f, 2f);
+
+            // Kuru dere: çürük tahtalar
+            p.Crumble(61.33f, 2f, "tahta_ray");
+            p.Crumble(64f, 2f, "tahta_ray");
+            p.Crumble(66.67f, 2f, "tahta_ray");
+            p.Crumble(69.33f, 2f, "tahta_ray");
+            p.CrystalArc(61f, 3.5f, 70f, 3.5f, 3);
+
+            p.Ground(72f, 92f, 2f);
+            p.Pole(80f, 2f, 6f);
+            p.Wire(55f, 8f, 80f, 8f);
+            p.Scorpion(86f, 2f);
+            p.Plant("kaktus_28", 90f, 2f);
+
+            p.Ground(96f, 112f, 0f);
+            p.Pole(104f, 0f, 6f);
+            p.Wire(80f, 8f, 104f, 6f);
+            p.Plant("kaktus_17", 108f, 0f);
+        }
+
+        // Gümüş Vadi girişi: ikinci kasabanın kenarı (yarım; kasabanın kendisi sonraki bölümde).
+        static void Kasaba_GumusVadiGirisi(LevelPainter p)
+        {
+            p.Ground(0f, 60f, 0f);
+            p.Sign(3f, 0f, "Gümüş Vadi\nNüfus: 340");
+            p.TownDeco("kasaba_cit", 8f, 0f);
+            p.TownDeco("kasaba_yalak", 15f, 0f, 0.7f);
+            p.Scorpion(14f, 0f);
+            p.Building("kasaba_demirci_2", 22f, 0f);
+            p.Building("kasaba_banka_2", 30f, 0f);
+            p.TownDeco("kasaba_pazar", 36f, 0f);
+            p.Building("kasaba_su_kulesi", 44f, 0f, (37f, 112f, 67f), (45f, 104f, 115f));
+            p.Crystal(42.5f, 6.4f);
+            p.Scorpion(40f, 0f);
+            p.Goal(55f, 0f);
+            p.Boundary(60f);
+        }
+
+        // =====================================================================
         // Level çizim aracı
         // =====================================================================
 
@@ -2247,6 +2562,8 @@ namespace DesertGecko.EditorTools
             /// <summary>Bu level gece: arka plan, ışıklar, vücut ısısı ve ısı çubuğu kurulur.</summary>
             public bool Night;
             public float DawnStartX, DawnEndX;
+            /// <summary>Gün batımıyla açılan level: DuskStartX'ten DuskEndX'e kararır (ikisi de 0 ise yok).</summary>
+            public float DuskStartX, DuskEndX;
 
             const string UnlitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";
             static readonly Color FireLight = new Color(1f, 0.62f, 0.3f);
@@ -2905,16 +3222,178 @@ namespace DesertGecko.EditorTools
             public void FinishNight(GameObject player)
             {
                 SpriteRenderer[] nightLayers = BackgroundBuilder.BuildNight();
-                var heat = player.AddComponent<BodyHeat>();
-                CombatSetupBuilder.BuildHeatBar(heat, ctx.Solid, TestSceneBuilder.Prop("gece_alev_simge"));
+                if (Cold)
+                {
+                    var heat = player.AddComponent<BodyHeat>();
+                    CombatSetupBuilder.BuildHeatBar(heat, ctx.Solid, TestSceneBuilder.Prop("gece_alev_simge"));
+                }
 
                 // Gila'nın çevresi soluk aydınlık: gece karanlığında kaybolmasın.
                 Light2D aura = PointLight(player.transform, player.transform.position + Vector3.up * 0.6f, new Color(0.85f, 0.88f, 1f), 7f, 0.5f);
 
                 var sun = GameObject.Find("Global Light 2D").GetComponent<Light2D>();
-                new GameObject("Gece").AddComponent<NightSky>().Configure(player.transform, sun, nightLayers, new[] { aura }, DawnStartX, DawnEndX, Camera.main,
+                var sky = new GameObject("Gece").AddComponent<NightSky>();
+                sky.Configure(player.transform, sun, nightLayers, new[] { aura }, DawnStartX, DawnEndX, Camera.main,
                     new Color32(22, 17, 53, 255)); // gökyüzü görselinin en üst rengi
+                if (DuskEndX > DuskStartX)
+                    sky.SetDusk(DuskStartX, DuskEndX);
             }
+
+            // --- Kasaba (Level 4 ve 5): tools/kasaba_paketi_isle.py görselleri ---
+
+            /// <summary>Kasaba binalarının büyütmesi: saloon kapısı Gila'dan biraz uzun olsun.</summary>
+            const float TownScale = 1.5f;
+            /// <summary>Bina görselinin bir pikseli kaç birim (yüzey ölçüleri görselin kendi pikseliyle yazılır).</summary>
+            const float TownPixel = TownScale / 32f;
+            const int BuildingOrder = -12; // uzak serpintinin (-25) önünde, eşyaların (-10) ve çalıların (-9) arkasında
+
+            /// <summary>
+            /// Kasaba binası: oyuncunun arkasında duran büyük görsel. Balkon, veranda saçağı ve çatı gibi yüzeyleri tek
+            /// yönlü platformdur: alttan zıplanıp üstüne çıkılır, S + Space ile inilir. surfaces: görselin sol alt
+            /// köşesinden piksel olarak (x0, x1, y). Önüne çalı serpilmez.
+            /// </summary>
+            public void Building(string sprite, float x, float groundTop, params (float x0, float x1, float y)[] surfaces)
+            {
+                Sprite s = TestSceneBuilder.Prop(sprite);
+                float wx = x + OriginX;
+                float width = s.bounds.size.x * TownScale;
+                var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(decor);
+                sr.transform.position = new Vector3(wx, groundTop - 0.08f, 0f); // alt kenarı toprağa hafifçe girsin
+                sr.transform.localScale = Vector3.one * TownScale;
+                sr.sprite = s;
+                sr.sortingOrder = BuildingOrder;
+                occupied.Add((wx, width / 2f));
+                bareGround.Add((wx - width / 2f, wx + width / 2f));
+                float left = wx - width / 2f;
+                foreach (var f in surfaces)
+                    RoofEdge(left + f.x0 * TownPixel, left + f.x1 * TownPixel, groundTop + f.y * TownPixel);
+            }
+
+            /// <summary>Görünmez tek yönlü yüzey (dünya koordinatı): binanın kendi görselinde çizili saçak ya da çatı.</summary>
+            void RoofEdge(float wx0, float wx1, float top)
+            {
+                var go = new GameObject(Name("Cati")) { layer = ctx.GroundLayer };
+                go.transform.SetParent(geometry);
+                go.transform.position = new Vector2((wx0 + wx1) / 2f, top);
+                AddOneWayCollider(go, wx1 - wx0, 0.3f, new Vector2(0f, -0.15f));
+                platforms.Add((wx0, wx1, top));
+            }
+
+            /// <summary>Kasaba eşyası (kuyu, yalak, çamaşır ipi...): zemine oturan süs, istenirse küçültülür.</summary>
+            public void TownDeco(string sprite, float x, float groundTop, float scale = 1f, int order = -10, bool flip = false)
+            {
+                Sprite s = TestSceneBuilder.Prop(sprite);
+                float wx = x + OriginX;
+                var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(decor);
+                sr.transform.position = new Vector3(wx, groundTop - 0.06f, 0f);
+                sr.transform.localScale = Vector3.one * scale;
+                sr.sprite = s;
+                sr.flipX = flip;
+                sr.sortingOrder = order;
+                float half = s.bounds.size.x * scale / 2f;
+                occupied.Add((wx, half));
+                bareGround.Add((wx - half, wx + half));
+            }
+
+            /// <summary>Yanan pencere ya da fener: akşam karardıkça belirginleşen sıcak ışık.</summary>
+            public void Lamp(float x, float y, float radius = 2.6f)
+            {
+                Glow(x, y, LampLight, radius, 0.3f);
+                PointLight(decor, new Vector2(x + OriginX, y), FireLight, radius * 2f, 0.9f, 0.08f);
+            }
+
+            /// <summary>Ray: zeminin üstünde traversler ve iki demir çizgi. Yalnızca görsel.</summary>
+            public void Rails(float xMin, float xMax, float groundTop)
+            {
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
+                SolidRect(decor, "Ray", wx0, wx1, groundTop + 0.12f, groundTop + 0.2f, new Color32(0x4A, 0x40, 0x3C, 0xFF), -7);
+                for (float x = wx0 + 0.3f; x < wx1; x += 0.9f)
+                    SolidRect(decor, "Travers", x - 0.3f, x + 0.3f, groundTop - 0.02f, groundTop + 0.12f, new Color32(0x5C, 0x3A, 0x24, 0xFF), -8);
+            }
+
+            /// <summary>
+            /// Tren vagonu, şimdilik kutularla (tren bölümü ayrıca çizilecek): gövde, çatı, pencereler, tekerlekler.
+            /// Gövde katı zemin: üstüne çıkılır, yanına yapışılır. kind: "yolcu", "komur" ya da "lokomotif".
+            /// angle verilirse devrilmiş enkazdır: çarpışmasız, sadece görsel.
+            /// </summary>
+            public void TrainCar(float xMin, float xMax, float groundTop, string kind, float angle = 0f)
+            {
+                float wx0 = xMin + OriginX, wx1 = xMax + OriginX;
+                float wheelTop = groundTop + 0.7f;
+                float bodyTop = wheelTop + (kind == "komur" ? 2f : 2.6f);
+                var root = new GameObject(Name("Vagon")).transform;
+                root.SetParent(angle == 0f ? geometry : decor);
+                root.position = new Vector2((wx0 + wx1) / 2f, groundTop);
+
+                Color body = kind == "lokomotif" ? new Color32(0x2E, 0x2A, 0x2C, 0xFF) : kind == "komur" ? new Color32(0x3A, 0x30, 0x2A, 0xFF) : new Color32(0x7A, 0x2E, 0x22, 0xFF);
+                Color trim = new Color32(0xC8, 0x9A, 0x4A, 0xFF), dark = new Color32(0x1E, 0x18, 0x18, 0xFF);
+                // Alt şasi ve tekerlekler
+                SolidRect(root, "Sasi", wx0 + 0.2f, wx1 - 0.2f, wheelTop - 0.25f, wheelTop, dark, -6);
+                for (float x = wx0 + 1.2f; x < wx1 - 0.6f; x += Mathf.Max(1.6f, (wx1 - wx0 - 2.4f) / 3f))
+                    SolidRect(root, "Teker", x - 0.45f, x + 0.45f, groundTop + 0.05f, wheelTop - 0.1f, dark, -6);
+
+                if (kind == "lokomotif")
+                {
+                    // Kazan (önde, alçak), kabin (arkada, yüksek), baca, mahmuz
+                    float cabX = wx0 + (wx1 - wx0) * 0.3f;
+                    SolidRect(root, "Kabin", wx0, cabX, wheelTop, bodyTop + 1.2f, body, -6);
+                    SolidRect(root, "KabinCati", wx0 - 0.2f, cabX + 0.2f, bodyTop + 1.2f, bodyTop + 1.45f, dark, -5);
+                    SolidRect(root, "KabinCam", wx0 + 0.5f, cabX - 0.5f, bodyTop - 0.2f, bodyTop + 0.8f, new Color32(0xF2, 0xC0, 0x5C, 0xFF), -5);
+                    SolidRect(root, "Kazan", cabX, wx1 - 0.6f, wheelTop + 0.3f, bodyTop - 0.4f, body, -6);
+                    SolidRect(root, "KazanSerit", cabX, wx1 - 0.6f, bodyTop - 0.75f, bodyTop - 0.6f, trim, -5);
+                    SolidRect(root, "Baca", wx1 - 2.2f, wx1 - 1.4f, bodyTop - 0.4f, bodyTop + 1.3f, dark, -5);
+                    SolidRect(root, "Mahmuz", wx1 - 0.6f, wx1 + 0.4f, groundTop + 0.2f, wheelTop + 0.6f, new Color32(0x8A, 0x22, 0x1A, 0xFF), -5);
+                    if (angle == 0f)
+                    {
+                        Solid(root, wx0, cabX, wheelTop, bodyTop + 1.45f);
+                        Solid(root, cabX, wx1 - 0.6f, wheelTop, bodyTop - 0.4f);
+                        platforms.Add((wx0, cabX, bodyTop + 1.45f));
+                    }
+                }
+                else
+                {
+                    SolidRect(root, "Govde", wx0, wx1, wheelTop, bodyTop, body, -6);
+                    SolidRect(root, "Cati", wx0 - 0.15f, wx1 + 0.15f, bodyTop, bodyTop + 0.25f, dark, -5);
+                    SolidRect(root, "Serit", wx0, wx1, wheelTop + 0.35f, wheelTop + 0.5f, trim, -5);
+                    if (kind == "yolcu")
+                        for (float x = wx0 + 0.9f; x < wx1 - 0.9f; x += 1.6f)
+                            SolidRect(root, "Pencere", x, x + 0.9f, bodyTop - 1.4f, bodyTop - 0.5f, new Color32(0xF2, 0xC0, 0x5C, 0xFF), -5);
+                    else
+                        SolidRect(root, "Komur", wx0 + 0.3f, wx1 - 0.3f, bodyTop, bodyTop + 0.5f, new Color32(0x14, 0x12, 0x12, 0xFF), -5);
+                    if (angle == 0f)
+                    {
+                        Solid(root, wx0, wx1, wheelTop, bodyTop + 0.25f);
+                        platforms.Add((wx0, wx1, bodyTop + 0.25f));
+                    }
+                }
+                if (angle != 0f)
+                    root.rotation = Quaternion.Euler(0f, 0f, angle);
+            }
+
+            void SolidRect(Transform parent, string name, float x0, float x1, float y0, float y1, Color color, int order)
+            {
+                var sr = new GameObject(name).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(parent);
+                sr.sprite = ctx.Solid;
+                Vector2 unit = ctx.Solid.bounds.size;
+                sr.transform.position = new Vector2((x0 + x1) / 2f, (y0 + y1) / 2f);
+                sr.transform.localScale = new Vector3((x1 - x0) / unit.x, (y1 - y0) / unit.y, 1f);
+                sr.color = color;
+                sr.sortingOrder = order;
+            }
+
+            void Solid(Transform parent, float x0, float x1, float y0, float y1)
+            {
+                var go = new GameObject("Carpisma") { layer = ctx.GroundLayer };
+                go.transform.SetParent(parent);
+                go.transform.position = new Vector2((x0 + x1) / 2f, (y0 + y1) / 2f);
+                go.AddComponent<BoxCollider2D>().size = new Vector2(x1 - x0, y1 - y0);
+            }
+
+            /// <summary>Gece kipinde vücut ısısı (Level 3). Kasaba akşamı ve kaza gecesi soğuk değil.</summary>
+            public bool Cold = true;
 
             // --- Dekor (çarpışmasız) ---
 

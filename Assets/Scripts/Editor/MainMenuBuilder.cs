@@ -47,16 +47,16 @@ namespace DesertGecko.EditorTools
             Text total = UiKit.Label("ToplamKristal", main, "", new Vector2(0f, -80f), new Vector2(190f, 18f), 13, UiKit.LightText);
 
             // Level seçimi
-            RectTransform levelsPanel = UiKit.Panel("LevelPaneli", root, new Vector2(140f, -10f), new Vector2(270f, 230f));
-            UiKit.Shadowed(UiKit.Label("Baslik", levelsPanel, "Kızgın Kum Vadisi", new Vector2(0f, 92f), new Vector2(250f, 24f), 18, UiKit.ButtonHighlight));
+            RectTransform levelsPanel = UiKit.Panel("LevelPaneli", root, new Vector2(140f, -10f), new Vector2(270f, 250f));
+            UiKit.Shadowed(UiKit.Label("Baslik", levelsPanel, "Kızgın Kum Vadisi", new Vector2(0f, 102f), new Vector2(250f, 24f), 18, UiKit.ButtonHighlight));
             var levelButtons = new Button[LevelCatalog.Count];
             var levelLabels = new Text[LevelCatalog.Count];
             for (int i = 0; i < LevelCatalog.Count; i++)
             {
                 levelButtons[i] = UiKit.Button($"Level_{i + 1}", levelsPanel, LevelCatalog.Levels[i].Title,
-                    new Vector2(0f, 48f - i * 48f), new Vector2(230f, 40f), out levelLabels[i], 15);
+                    new Vector2(0f, 62f - i * 42f), new Vector2(230f, 36f), out levelLabels[i], 15);
             }
-            Button levelsBack = UiKit.Button("Geri", levelsPanel, "Geri", new Vector2(0f, -92f), new Vector2(120f, 28f), out _);
+            Button levelsBack = UiKit.Button("Geri", levelsPanel, "Geri", new Vector2(0f, -102f), new Vector2(120f, 28f), out _);
 
             // Ayarlar
             RectTransform settingsPanel = UiKit.Panel("AyarPaneli", root, new Vector2(150f, -10f), new Vector2(250f, 220f));

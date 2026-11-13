@@ -53,10 +53,26 @@ namespace DesertGecko.Environment
             Apply(0f);
         }
 
+        /// <summary>
+        /// Gün batımından başlayan level (Level 4): duskStartX'ten duskEndX'e doğru kararır, dawnStartX'ten sonra
+        /// şafak söker. duskStartX levelin başlangıcının gerisinde verilirse level gün batımının ortasında açılır.
+        /// </summary>
+        public void SetDusk(float startX, float endX)
+        {
+            duskStartX = startX;
+            duskEndX = endX;
+            hasDusk = true;
+        }
+
+        [SerializeField] bool hasDusk;
+        [SerializeField] float duskStartX, duskEndX;
+
         void Update()
         {
-            if (player != null)
-                Apply(Mathf.InverseLerp(dawnStartX, dawnEndX, player.position.x));
+            if (player == null)
+                return;
+            float x = player.position.x;
+            Apply(hasDusk && x < dawnStartX ? Mathf.InverseLerp(duskEndX, duskStartX, x) : Mathf.InverseLerp(dawnStartX, dawnEndX, x));
         }
 
         /// <summary>Editörde şafağı önizlemek için.</summary>
