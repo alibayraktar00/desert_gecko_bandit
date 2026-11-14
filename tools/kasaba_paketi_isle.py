@@ -20,6 +20,14 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE_DIR = ROOT / "Assets" / "Sprites" / "_Gelen"
 PROPS = ROOT / "Assets" / "Sprites" / "Environment" / "Props"
 PIXEL = 2
+# Part 2 sayfasının üst sırasındaki binalar (dördü yan yana) öbür sayfaların yarı boyunda çizilmiş: küçültülmezler,
+# yoksa ambar Gila'nın yanında kulübe gibi kalıyordu.
+FULL_SIZE = {"kasaba_demirci_2", "kasaba_banka_2", "kasaba_ambar", "kasaba_degirmen"}
+# Banka öbür binalarla aynı boyda (2) iri, ızgarasıyla (3) fazla küçük kalıyordu: arası (2.5).
+SMALL = {"kasaba_banka"}
+BUILDINGS = {"kasaba_saloon", "kasaba_serif", "kasaba_dukkan", "kasaba_ev", "kasaba_banka", "kasaba_demirci", "kasaba_silahci",
+             "kasaba_su_kulesi", "kasaba_cenazeci", "kasaba_istasyon", "kasaba_otel", "kasaba_kilise", "kasaba_hapishane",
+             "kasaba_maden_ofisi", "kasaba_berber", "kasaba_ahir"} | FULL_SIZE
 
 # ad: (kaynak, kutu x0 y0 x1 y1). Kutunun alt kenarı nesnenin altındaki toprak çizgisinin biraz altında.
 PIECES = {
@@ -118,7 +126,44 @@ def components(m):
     return out
 
 
-def cut(sheet, box, erase=()):
+def fill_holes(keep, rgb, blocks, bg, strict):
+    """
+    Nesnenin içinde kalan boşluklar (zemin grisine benzeyen pencere, kapı camı, gölge) şeffaf kalırsa arkadaki gökyüzü
+    görünür. Kenardan ulaşılamayan her boşluk kaynaktaki rengiyle doldurulur. Sadece rengi zeminin tam kendisi olan
+    boşluklar (tekerlek parmaklarının arası gibi gerçekten açık yerler) şeffaf kalır.
+    """
+    h, w = keep.shape
+    outside = np.zeros_like(keep)
+    q = deque()
+    for y in range(h):
+        for x in (0, w - 1):
+            if not keep[y, x] and not outside[y, x]:
+                outside[y, x] = True
+                q.append((y, x))
+    for x in range(w):
+        for y in (0, h - 1):
+            if not keep[y, x] and not outside[y, x]:
+                outside[y, x] = True
+                q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+            if 0 <= ny < h and 0 <= nx < w and not keep[ny, nx] and not outside[ny, nx]:
+                outside[ny, nx] = True
+                q.append((ny, nx))
+    holes = ~keep & ~outside
+    for comp in components(holes):
+        colors = np.array([np.median(blocks[y, x], axis=0) for y, x in comp])
+        diff = np.median(np.abs(colors - bg).sum(1))
+        # Eşyalarda (tabela ile direği, sandıkların arası) iç boşluklar çoğunlukla gerçekten açık: daha kolay şeffaf kalır.
+        if diff < (12 if strict else 6) or (len(comp) >= 60 and diff < 10):
+            continue  # gerçekten açık (veranda altı, çamaşır ipinin arkası): zeminin ta kendisi
+        for (y, x), c in zip(comp, colors):
+            rgb[y, x] = c
+            keep[y, x] = True
+
+
+def cut(sheet, box, erase=(), pixel=PIXEL, strict=False):
     x0, y0, x1, y1 = box
     region = sheet[y0:y1, x0:x1].copy()
     for ex0, ey0, ex1, ey1 in erase:
@@ -129,26 +174,35 @@ def cut(sheet, box, erase=()):
     m &= ~((lo > 150) & (hi - lo < 28))  # açık gri etiket yazıları
     line = ground_line(m)
     m[line:] = False
-    h, w = line // PIXEL, region.shape[1] // PIXEL
-    blocks = region[:h * PIXEL, :w * PIXEL].reshape(h, PIXEL, w, PIXEL, 3).transpose(0, 2, 1, 3, 4).reshape(h, w, -1, 3)
-    mblocks = m[:h * PIXEL, :w * PIXEL].reshape(h, PIXEL, w, PIXEL).transpose(0, 2, 1, 3).reshape(h, w, -1)
+    k = PIXEL / pixel  # eşikler küçültülmüş ölçeğe göre yazıldı
+    if pixel != int(pixel):
+        # Kesirli küçültme (2.5 gibi): kaynak iki katına çıkarılıp tam sayıyla küçültülür, her çıktı pikseli kaynağın
+        # 2.5 pikselinin ortancası olur.
+        region = np.repeat(np.repeat(region, 2, axis=0), 2, axis=1)
+        m = np.repeat(np.repeat(m, 2, axis=0), 2, axis=1)
+        line *= 2
+        pixel = int(pixel * 2)
+    h, w = line // pixel, region.shape[1] // pixel
+    blocks = region[:h * pixel, :w * pixel].reshape(h, pixel, w, pixel, 3).transpose(0, 2, 1, 3, 4).reshape(h, w, -1, 3)
+    mblocks = m[:h * pixel, :w * pixel].reshape(h, pixel, w, pixel).transpose(0, 2, 1, 3).reshape(h, w, -1)
     small = mblocks.mean(2) >= 0.5
     keep = np.zeros_like(small)
     rgb = np.zeros((h, w, 3))
     for y, x in zip(*np.nonzero(small)):
         rgb[y, x] = np.median(blocks[y, x][mblocks[y, x]], axis=0)
     for comp in components(small):
-        if len(comp) < 12:  # toz kırıntıları
+        if len(comp) < 12 * k * k:  # toz kırıntıları
             continue
         colors = np.array([rgb[y, x] for y, x in comp])
         lum, sat = colors.mean(), (colors.max(1) - colors.min(1)).mean()
-        if len(comp) < 400 and lum > 105 and sat < 22:  # açık gri renksiz parça: etiket yazısı
+        if len(comp) < 400 * k * k and lum > 105 and sat < 22:  # açık gri renksiz parça: etiket yazısı
             continue
         ys = [y for y, _ in comp]
-        if max(ys) - min(ys) <= 7 and max(ys) < h * 0.22:  # tepede alçak ayrık şerit: nesnenin adı (building_04 gibi)
+        if max(ys) - min(ys) <= 7 * k and max(ys) < h * 0.22:  # tepede alçak ayrık şerit: nesnenin adı (building_04 gibi)
             continue
         for y, x in comp:
             keep[y, x] = True
+    fill_holes(keep, rgb, blocks, bg, strict)
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
     rgba[keep, :3] = rgb[keep]
     rgba[keep, 3] = 255
@@ -166,7 +220,7 @@ def main():
     for name, (src, box) in PIECES.items():
         if src not in sheets:
             sheets[src] = np.array(Image.open(SOURCE_DIR / f"{src}.webp").convert("RGB")).astype(float)
-        rgba = cut(sheets[src], box, ERASE.get(name, ()))
+        rgba = cut(sheets[src], box, ERASE.get(name, ()), 1 if name in FULL_SIZE else 2.5 if name in SMALL else PIXEL, name not in BUILDINGS)
         out = PROPS / f"{name}.png"
         Image.fromarray(rgba).save(out)
         made.append(out)

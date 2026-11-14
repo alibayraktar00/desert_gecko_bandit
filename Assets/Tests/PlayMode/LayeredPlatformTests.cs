@@ -200,6 +200,58 @@ namespace DesertGecko.Tests
             Assert.IsTrue(player.IsGrounded);
         }
 
+        void Slope(Vector2 a, Vector2 b)
+        {
+            var go = new GameObject("Egim");
+            go.AddComponent<RoofSlope>().Configure(a, b);
+            created.Add(go);
+        }
+
+        [UnityTest]
+        public IEnumerator Egim_CaprazCikilir_TepedeDurulur()
+        {
+            // Zeminden başlayan rampa: yürüyerek çıkılır, tepede çizginin üstünde durulur.
+            Slope(new Vector2(1f, 0f), new Vector2(5f, 2f));
+            yield return SpawnPlayer(0f, 0f);
+
+            yield return Hold(0.7f, Key.D);
+            Assert.IsTrue(player.IsGrounded, "rampada yürürken yerde sayılmalı");
+            float x = player.transform.position.x;
+            Assert.Greater(x, 1.5f, "rampaya girmiş olmalı");
+            Assert.AreEqual(Mathf.Clamp((x - 1f) * 0.5f, 0f, 2f), Feet, 0.12f, "ayaklar rampanın çizgisinde olmalı");
+            Assert.AreNotEqual(PlayerController.MoveState.WallCling, player.State, "rampaya yapışmamalı");
+        }
+
+        [UnityTest]
+        public IEnumerator Egim_CaprazInilir()
+        {
+            Slope(new Vector2(-1f, 2f), new Vector2(4f, 0.5f));
+            yield return SpawnPlayer(-0.5f, 2.3f);
+            Assert.IsTrue(player.IsGrounded, "rampanın tepesine konmalı");
+
+            yield return Hold(0.4f, Key.D);
+            float x = player.transform.position.x;
+            Assert.Less(x, 4f, "rampanın içinde kalmalı");
+            Assert.AreEqual(2f - (x + 1f) * 0.3f, Feet, 0.12f, "inerken çizgiyi izlemeli, havaya fırlamamalı");
+            Assert.IsTrue(player.IsGrounded);
+        }
+
+        [UnityTest]
+        public IEnumerator Egim_AlttanGecilir_AsagiArtiZiplamaylaInilir()
+        {
+            Slope(new Vector2(-3f, 2f), new Vector2(3f, 2.5f));
+            yield return SpawnPlayer(0f, 0f);
+
+            yield return Hold(0.75f, Key.Space);
+            yield return Hold(0.5f);
+            Assert.AreEqual(2.25f, Feet, 0.1f, "alttan zıplayınca eğimin üstüne çıkmalı");
+
+            yield return Hold(0.1f, Key.S);
+            yield return Hold(0.1f, Key.S, Key.Space);
+            yield return Hold(0.6f);
+            Assert.AreEqual(0f, Feet, 0.05f, "S + Space ile eğimden aşağı inmeli");
+        }
+
         [UnityTest]
         public IEnumerator TekYonluPlatform_DuvarSayilmaz()
         {

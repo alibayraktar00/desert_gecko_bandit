@@ -1,11 +1,12 @@
 using System;
+using DesertGecko.Environment;
 using UnityEngine;
 
 namespace DesertGecko.Player
 {
     /// <summary>
     /// Gila'nın hareketi: koşma, zıplama + çift zıplama (kuyruk itişi), süzülme,
-    /// duvara yapışma / tırmanma / duvar zıplaması.
+    /// duvara yapışma / tırmanma / duvar zıplaması, eğimli çatılarda çapraz yürüme.
     /// Girdi Update'te okunur, fizik FixedUpdate'te uygulanır.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D), typeof(BoxCollider2D), typeof(PlayerInputReader))]
@@ -116,6 +117,11 @@ namespace DesertGecko.Player
         Collider2D standingOneWay; // üstünde durulan tek yönlü platform
         Collider2D droppedThrough; // aşağı inerken çarpışması kapatılan platform
         float dropThroughUntil;
+        RoofSlope standingSlope; // üstünde yürünen eğim (çatı, merdiven)
+        float slopeSurfaceY;
+        RoofSlope droppedSlope;
+        float droppedSlopeUntil;
+        const float SlopeSnapAbove = 0.2f, SlopeSnapBelow = 0.35f; // inişte bir adımlık iniş, düşüşte bir adımlık düşüş payı
 
         float thermalUntil, thermalSpeed;
 
@@ -338,6 +344,24 @@ namespace DesertGecko.Player
                 }
             }
 
+            // Eğim: yükselmiyorsa ayakların altındaki çizgiye oturulur. Zeminden başlayan rampada çizgi zeminin üstüne
+            // çıktığı an eğime geçilir; eğim zeminin altında kalıyorsa zemin geçerli.
+            standingSlope = null;
+            if (body.linearVelocity.y <= 0.01f)
+            {
+                RoofSlope ignore = Time.time < droppedSlopeUntil ? droppedSlope : null;
+                RoofSlope slope = RoofSlope.Under(b.center.x, b.min.y, SlopeSnapAbove, SlopeSnapBelow, ignore, out float y);
+                if (slope != null && (!solidUnderfoot || y > b.min.y + 0.01f)
+                    && (standingOneWay == null || y > standingOneWay.bounds.max.y))
+                {
+                    standingSlope = slope;
+                    slopeSurfaceY = y;
+                    standingOneWay = null;
+                    solidUnderfoot = false;
+                    groundContact = true;
+                }
+            }
+
             Vector2 sideSize = new Vector2(probeDepth, b.size.y * 0.7f);
             Vector2 rightCenter = new Vector2(b.max.x + probeDepth * 0.5f, b.center.y);
             Vector2 leftCenter = new Vector2(b.min.x - probeDepth * 0.5f, b.center.y);
@@ -357,9 +381,17 @@ namespace DesertGecko.Player
 
         void BeginDropThrough()
         {
-            droppedThrough = standingOneWay;
-            dropThroughUntil = Time.time + dropThroughTime;
-            Physics2D.IgnoreCollision(box, droppedThrough, true);
+            if (standingSlope != null)
+            {
+                droppedSlope = standingSlope;
+                droppedSlopeUntil = Time.time + dropThroughTime;
+            }
+            else
+            {
+                droppedThrough = standingOneWay;
+                dropThroughUntil = Time.time + dropThroughTime;
+                Physics2D.IgnoreCollision(box, droppedThrough, true);
+            }
             // Hafif aşağı itiş: süzülme hemen başlasa da platformun içinde asılı kalmasın.
             body.linearVelocity = new Vector2(body.linearVelocity.x, Mathf.Min(body.linearVelocity.y, -dropThroughKick));
             State = MoveState.Airborne;
@@ -465,7 +497,7 @@ namespace DesertGecko.Player
             if (MovementLocked || Time.time - lastJumpPressTime > jumpBufferTime)
                 return;
 
-            if (State == MoveState.Grounded && standingOneWay != null && input.Move.y < -0.5f)
+            if (State == MoveState.Grounded && (standingOneWay != null || standingSlope != null) && input.Move.y < -0.5f)
             {
                 BeginDropThrough();
                 return;
@@ -577,6 +609,14 @@ namespace DesertGecko.Player
                     return;
 
                 case MoveState.Grounded:
+                    if (standingSlope != null)
+                    {
+                        // Eğimde ayaklar çizgiye oturtulur: yürürken çizgiyi izler, çapraz çıkar ve iner.
+                        body.gravityScale = 0f;
+                        body.position += Vector2.up * (slopeSurfaceY + SurfaceSkin - box.bounds.min.y);
+                        body.linearVelocity = new Vector2(v.x, 0f);
+                        return;
+                    }
                     if (standingOneWay != null && !solidUnderfoot)
                     {
                         // Yandan gelindiğinde fizik motoru tek yönlü temasını kapatır (ayrılana kadar).

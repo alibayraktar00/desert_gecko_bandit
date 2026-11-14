@@ -894,7 +894,7 @@ namespace DesertGecko.EditorTools
             p.Boundary(-9f);
             // Sıcak su kaynakları: lav ve su cepleri, balçık, sızıntılar.
             p.Veins = new[] { "lav", "su_cebi", "balcik", "sizinti", "kristal", "kok_ag", "kaya_iri", "kirik", "fosil" };
-            p.LedgeStyles = new[] { "plat_bitki", "plat_tas", "plat_sarmasik", "plat_cakil" }; // nemli kaplıca: bitki ve sarmaşık
+            p.LedgeStyles = new[] { "plat_tas", "plat_cakil", "plat_kok" }; // mağarada taş ve kök: sarmaşıklı platform yok
 
             Ayaz_Kamp(p);
             p.OriginX = TelgrafX;
@@ -912,7 +912,7 @@ namespace DesertGecko.EditorTools
             p.ShotPoints.AddRange(new[]
             {
                 new Vector2(5f, 3f), new Vector2(40f, 5f), new Vector2(56f, 5f), new Vector2(112f, 7f), new Vector2(135f, 8f),
-                new Vector2(160f, 8f), new Vector2(190f, 12f), new Vector2(212f, 11f), new Vector2(262f, 8f), new Vector2(285f, 12f),
+                new Vector2(160f, 8f), new Vector2(190f, 12f), new Vector2(212f, 11f), new Vector2(228f, 12f), new Vector2(267f, 15f), new Vector2(334f, 26f), new Vector2(262f, 8f), new Vector2(285f, 12f),
                 new Vector2(315f, 13f), new Vector2(345f, 26f), new Vector2(395f, 22f), new Vector2(450f, 18f), new Vector2(480f, 18f), new Vector2(500f, 21f),
             });
         }
@@ -1015,15 +1015,15 @@ namespace DesertGecko.EditorTools
             const float roofA = 15f, roofB = 23f, roofShaft = 30f, doorY = 24f;
 
             // Kaya kütlesi: tünel, sonra yükselen tavan
-            p.CaveWall(24f, 125f, 40f);
+            p.CaveWall(27.5f, 121f, 40f); // iki ağızda da içeriden başlar: karanlık ağza doğru yumuşakça açılır (DoorFade)
             p.RockMass(24f, 44f, 15f, 60f);
-            p.RockEdge(24f, 15f, 9f, -1);
+            p.MountainFace(24f, 60f, 15f, -1); // dağın pürüzlü yüzü tünelin üstünde biter: kapının önüne şerit inmesin
             p.DoorFade(24f, -1, 4f, 9f, 15f);
             p.RockMass(44f, 62f, roofA, 60f);
             p.RockMass(62f, 100f, roofB, 60f);
-            p.RockEdge(62f, roofB, roofA, -1);
+            p.RockEdge(62f, roofB, roofA, 1); // alçak tavanın ucu odaya bakar: odaya sarkan ince sütun gibi durmasın
             p.RockMass(100f, 125f, roofShaft, 60f);
-            p.RockEdge(100f, roofShaft, roofB, -1);
+            p.RockEdge(100f, roofShaft, roofB, 1);
 
             p.HotZone(26f, 125f, -5f, 40f);
             p.Sign(28f, 9f, "Kaplıcanın sıcağı içine işler:\nburada daha hızlısın");
@@ -1081,7 +1081,8 @@ namespace DesertGecko.EditorTools
             p.RockMass(118f, 125f, GroundBottom, doorY);
             p.RockMass(118f, 125f, doorY + 4f, roofShaft);
             p.RockEdge(118f, doorY, 6f, -1);
-            p.RockEdge(125f, doorY, GroundBottom, 1);
+            // Kapının altı dışarıdaki zeminle aynı hizada sürer: arada dikey kaya yüzü olmaz. Üstündeki dağın yüzü pürüzlü.
+            p.MountainFace(125f, 60f, doorY + 4f, 1);
             p.DoorFade(125f, 1, 4.5f, doorY - 0.5f, doorY + 4f);
             p.Ledge(106f, 126f, doorY, register: true);
         }
@@ -1093,6 +1094,8 @@ namespace DesertGecko.EditorTools
                 p.SpringGlow(x, y, radius, 1.9f);
 
             p.InCave = true;
+            p.Hang("tavan_kok", 25.5f, 15f);
+            p.Hang("tavan_sarkit_1", 28f, 15f);
             p.Deco("mgr_mantar_kutuk", 31f, 9f);
             p.Deco("mgr_cevher_turuncu", 34f, 9f);
             p.Deco("mgr_cevher_turuncu", 46.5f, 3f);
@@ -1480,6 +1483,7 @@ namespace DesertGecko.EditorTools
             p.Ground(85f, 104f, 4f);
             p.Checkpoint(87f, 4f);
             p.TownDeco("kasaba_daragaci", 97f, 4f);
+            p.Crystal(96f, 5.7f); // güvertede
             p.CrystalArc(100f, 6f, 108f, 3f, 3);
 
             p.Ground(108f, 118f, 0f);
@@ -1487,18 +1491,20 @@ namespace DesertGecko.EditorTools
         }
 
         // Çiftlikler: kasabanın kenarı. Kuyu, kümes, bostan, çiftlik evi; kuru derenin üstünde çürük tahtalar,
-        // yel değirmeni, ambar ve saman yığınından ahırın yanına.
+        // yel değirmeni, ambar, saman yığınından ahırın katı çatısına (ya da ahırın içinden yürüyerek).
         static void Kasaba_Ciftlikler(LevelPainter p)
         {
             p.Ground(0f, 40f, 0f);
             p.Sign(2.5f, 0f, "Tozlu Dere çiftlikleri\nKasaba hemen ileride");
-            p.TownDeco("kasaba_kuyu", 9f, 0f);
-            p.TownDeco("kasaba_kumes", 14.5f, 0f);
-            p.TownDeco("kasaba_bostan", 20.5f, 0f);
-            p.Scorpion(18f, 0f);
-            p.Building("kasaba_ev", 29.5f, 0f);
-            p.Lamp(28.4f, 3.2f, 2f);
-            p.TownDeco("kasaba_camasir", 37f, 0f);
+            p.TownDeco("kasaba_kuyu", 8f, 0f);
+            p.TownDeco("kasaba_kumes", 12.5f, 0f);
+            p.TownDeco("kasaba_bostan", 17.5f, 0f);
+            p.Scorpion(16f, 0f);
+            p.TownDeco("kasaba_kopek_kulubesi", 22.5f, 0f);
+            p.Building("kasaba_ev", 29f, 0f);
+            p.Lamp(27.6f, 1.2f, 1.8f);
+            p.Crystal(27.5f, 2.6f);
+            p.TownDeco("kasaba_odun", 35.5f, 0f);
 
             // Kuru dere: çürük tahtadan köprü
             p.Crumble(41.33f, 0f, "tahta_ray");
@@ -1508,94 +1514,111 @@ namespace DesertGecko.EditorTools
 
             p.Ground(48f, 120f, 0f);
             p.Checkpoint(50f, 0f);
-            p.Building("kasaba_degirmen", 56.5f, 0f);
-            p.Building("kasaba_ambar", 65f, 0f);
-            // Saman yığını: ahırın çatısına basamak
-            p.Table(71.5f, 0f, "kasaba_saman");
-            p.Table(72.8f, 1.85f, "kasaba_saman");
-            p.Crystal(72.8f, 4.6f);
+            p.Building("kasaba_degirmen", 54f, 0f);
+            p.Building("kasaba_ambar", 63.5f, 0f);
+            p.Crystal(63.6f, 4.6f); // samanlıkta
+            p.TownDeco("kasaba_el_arabasi", 70f, 0f, 1f, -8);
+            // Saman yığını: ahırın sundurmasına basamak, oradan çatının yamaçlarında çapraz yürünür
+            p.TownDeco("kasaba_saman", 74f, 0f);
+            p.Crystal(73.6f, 2.4f);
             p.Building("kasaba_ahir", 82f, 0f);
-            p.Scorpion(79f, 0f);
-            p.Table(91f, 0f, "kasaba_araba");
-            p.Crystal(91f, 3f);
-            p.TownDeco("kasaba_odun", 95.5f, 0f);
-            p.TownDeco("kasaba_kutuk", 99f, 0f);
-            p.Scorpion(102f, 0f);
-            p.TownDeco("kasaba_kopek_kulubesi", 104f, 0f);
-            p.TownDeco("kasaba_firin", 108.5f, 0f);
-            p.TownDeco("kasaba_el_arabasi", 113f, 0f);
-            p.TownDeco("kasaba_cit", 117.5f, 0f);
+            p.Crystal(80.6f, 3.4f); // çatının yamacında
+            p.Crystal(82f, 4.4f); // sırtında
+            p.Crystal(83.6f, 3.6f);
+            p.Scorpion(82f, 0f); // ahırın içinde
+            p.TownDeco("kasaba_araba", 89.5f, 0f);
+            p.Crystal(88.8f, 2.4f);
+            p.TownDeco("kasaba_kutuk", 93.5f, 0f);
+            p.Scorpion(95f, 0f);
+            p.TownDeco("kasaba_firin", 98f, 0f);
+            p.TownDeco("kasaba_camasir", 102f, 0f);
+            p.TownDeco("kasaba_saman", 107f, 0f, 0.8f);
+            p.TownDeco("kasaba_cit", 114f, 0f);
         }
 
-        // Ana Cadde: kasaba. Altta sokak, üstte balkonlar ve çatılar: iki yol yan yana gider, çatılarda kristal.
-        // Ortada merdivenle üst sokağa çıkılır (banka, silahçı, cenazeci, kilise).
+        // Ana Cadde: kasaba. Altta sokak, üstte verandalar, balkonlar ve çatılar: iki yol yan yana gider, çatılarda kristal.
+        // Hapishanenin alt katı ve bankanın kasası katı: tırmanılarak aşılır. Merdivenle üst sokağa çıkılır.
         static void Kasaba_AnaCadde(LevelPainter p)
         {
             const float street = 1f, upper = 3.5f;
 
-            p.Ground(0f, 72f, street);
+            p.Ground(0f, 68f, street);
             p.Sign(1.5f, street, "Tozlu Dere\nNüfus: 112");
-            p.Checkpoint(3f, street);
+            p.Checkpoint(3.5f, street);
+            p.TownDeco("kasaba_posta_diregi", 5.8f, street, 1f, -11);
+            p.Lamp(6.1f, street + 2.6f, 1.6f);
 
-            p.Building("kasaba_dukkan", 9f, street, (15f, 180f, 78f), (22f, 165f, 122f));
-            p.Table(8.5f, street, "kasaba_sandiklar"); // dükkânın önünde sandıklar: saçağa basamak
-            p.Building("kasaba_saloon", 20f, street, (15f, 175f, 68f), (25f, 168f, 124f));
-            p.Lamp(17.6f, street + 4.4f);
-            p.Lamp(22.3f, street + 4.4f);
-            p.TownDeco("kasaba_yalak_2", 20f, street, 0.8f, -8);
-            p.Scorpion(19f, street + 3.2f); // balkonda
-            p.Building("kasaba_otel", 31f, street, (5f, 200f, 68f), (30f, 175f, 121f));
-            p.Lamp(28.5f, street + 1.9f, 2f);
-            p.Lamp(33.2f, street + 1.9f, 2f);
-            p.Scorpion(28f, street);
-            p.Table(36f, street, "kasaba_araba");
-            p.Building("kasaba_berber", 42f, street, (22f, 177f, 74f), (30f, 170f, 122f));
-            p.Building("kasaba_serif", 53f, street, (28f, 105f, 65f), (25f, 120f, 110f));
-            p.Scorpion(48f, street);
-            p.Building("kasaba_hapishane", 64f, street, (20f, 160f, 62f), (30f, 165f, 124f));
-            p.TownDeco("kasaba_ficilar", 70.5f, street, 1f, -8);
+            p.Building("kasaba_dukkan", 10.5f, street);
+            p.Scorpion(12.5f, street);
+            p.TownDeco("kasaba_pazar", 15.6f, street, 1f, -8);
+            p.Building("kasaba_saloon", 21.3f, street);
+            p.Lamp(19.4f, street + 3f, 1.8f);
+            p.Lamp(22.7f, street + 3f, 1.8f);
+            p.TownDeco("kasaba_yalak_2", 21.3f, street, 0.8f, -8);
+            p.Scorpion(20.5f, street + 2.12f); // balkonda
+            p.TownDeco("kasaba_ficilar", 25.7f, street, 1f, -8);
+            p.Building("kasaba_otel", 30.1f, street);
+            p.Lamp(28.3f, street + 1.3f, 1.6f);
+            p.Lamp(31.9f, street + 1.3f, 1.6f);
+            p.Scorpion(32f, street);
+            p.TownDeco("kasaba_araba", 36.4f, street, 1f, -9); // otelden berbere geçerken basamak
+            p.Building("kasaba_berber", 41.6f, street);
+            p.TownDeco("kasaba_fici_teker", 46.3f, street, 1f, -8);
+            p.Scorpion(46f, street);
+            p.Building("kasaba_serif", 51.4f, street);
+            p.TownDeco("kasaba_ilan_tahtasi", 57.5f, street, 0.8f, -11);
+            p.Building("kasaba_hapishane", 63.4f, street);
+            p.Scorpion(62.5f, street + 1.94f); // hapishanenin pervazında
 
-            // Çatı yolu: kristaller balkondan çatıya, çatıdan çatıya
-            p.CrystalLine(17f, street + 7.8f, 4, 1.4f);
-            p.CrystalArc(23.5f, street + 7.8f, 27.5f, street + 7.6f, 3);
-            p.CrystalLine(40f, street + 7.7f, 3, 1.4f);
-            p.CrystalArc(55f, street + 7.4f, 60f, street + 7.8f, 3);
+            // Çatı yolu: kristaller
+            p.CrystalLine(8.5f, street + 4.7f, 3, 1.4f);
+            p.CrystalLine(19.2f, street + 4.8f, 3, 1.5f);
+            p.CrystalLine(28.4f, street + 4.7f, 3, 1.5f);
+            p.CrystalLine(39.8f, street + 4.7f, 3, 1.5f);
+            p.CrystalLine(61.2f, street + 4.8f, 3, 1.4f);
 
-            // Üst sokak
-            p.Steps(72f, 78f, street, upper);
-            p.Ground(78f, 135f, upper);
-            p.Checkpoint(79f, upper);
-            p.Building("kasaba_banka", 84f, upper, (2f, 171f, 125f));
-            p.Building("kasaba_silahci", 95f, upper, (20f, 185f, 80f), (30f, 175f, 124f));
-            p.Scorpion(92f, upper);
-            p.Building("kasaba_cenazeci", 106f, upper, (30f, 165f, 124f));
-            p.Scorpion(99f, upper + 3.75f); // silahçının saçağında
-            p.Building("kasaba_kilise", 118f, upper);
-            p.Lamp(115.5f, upper + 2.4f, 2f);
-            p.CrystalLine(81f, upper + 7f, 4, 1.4f);
-            p.TownDeco("kasaba_kuyu_tas", 125.5f, upper);
-            p.TownDeco("kasaba_ilan_tahtasi", 130.5f, upper);
-            p.Scorpion(128f, upper);
+            // Üst sokak: banka kasası katı, üstünden aşılır
+            p.Steps(68f, 73f, street, upper);
+            p.Ground(73f, 135f, upper);
+            p.Checkpoint(74f, upper);
+            p.Building("kasaba_banka", 79.5f, upper);
+            p.CrystalLine(78f, upper + 4f, 3, 1.4f);
+            p.Building("kasaba_silahci", 87.5f, upper);
+            p.Scorpion(86f, upper);
+            p.Scorpion(88f, upper + 2.5f); // tentede
+            p.Building("kasaba_cenazeci", 95f, upper);
+            p.TownDeco("kasaba_kuyu_tas", 101f, upper);
+            p.TownDeco("kasaba_bank_sandalye", 105.3f, upper, 1f, -8);
+            p.Scorpion(104f, upper);
+            p.TownDeco("kasaba_posta_diregi", 108.6f, upper, 1f, -11);
+            p.Lamp(108.9f, upper + 2.6f, 1.6f);
+            p.Building("kasaba_kilise", 113.5f, upper);
+            p.Lamp(111.2f, upper + 1.2f, 1.6f);
+            p.Crystal(113.6f, upper + 4f); // çatının sırtında
+            // Kilisenin arkasında mezarlık
+            p.Deco("yuz_mezar", 119.5f, upper);
+            p.Deco("yuz_kurukafa", 122f, upper);
+            p.Deco("yuz_mezar", 124.5f, upper);
+            p.Scorpion(126f, upper);
+            p.TownDeco("kasaba_cit", 131f, upper);
         }
 
-        // Maden ocağı: kasabanın arka yüzü. Maden ofisi, demirci, sandık yığını ve su kulesi; sonra raylara iniş.
+        // Maden ocağı: kasabanın arka yüzü. Maden ofisi, demirci, iskele ve su kulesi; sonra raylara iniş.
         static void Kasaba_MadenOcagi(LevelPainter p)
         {
             const float yard = 1.5f;
 
             p.Ground(0f, 44f, yard);
-            p.Building("kasaba_maden_ofisi", 7f, yard, (2f, 182f, 70f), (25f, 173f, 110f));
-            p.Scorpion(12f, yard);
-            p.Building("kasaba_demirci", 19f, yard);
-            p.Lamp(18.4f, yard + 1.9f, 2.4f); // ocağın ateşi
-            // Maden iskelesi: ofisin saçağından süzülüp iki tahtadan su kulesinin güvertesine
-            p.Ledge(19f, 23f, yard + 2.7f, register: true);
-            p.Ledge(26.5f, 30f, yard + 3.4f, register: true);
-            p.TownDeco("kasaba_sandiklar", 27f, yard, 0.7f, -8);
-            p.Scorpion(24f, yard);
-            p.Building("kasaba_su_kulesi", 36f, yard, (37f, 112f, 67f), (45f, 104f, 115f));
-            p.Crystal(34.5f, yard + 6.4f); // tankın tepesinde
-            p.TownDeco("kasaba_fici_teker", 41.5f, yard, 1f, -8);
+            p.Building("kasaba_maden_ofisi", 7f, yard);
+            p.Scorpion(11.5f, yard);
+            p.Building("kasaba_demirci", 18f, yard);
+            p.Lamp(17.6f, yard + 1.1f, 2.2f); // ocağın ateşi
+            p.Scorpion(22f, yard);
+            // Demircinin sundurmasından sandık yığınına, oradan su kulesinin güvertesine
+            p.TownDeco("kasaba_sandiklar", 25.5f, yard, 1f, -9);
+            p.Building("kasaba_su_kulesi", 33f, yard);
+            p.Crystal(32.3f, yard + 4.4f); // tankın tepesinde
+            p.TownDeco("kasaba_fici_teker", 39.5f, yard, 1f, -8);
 
             p.Ground(50f, 95f, 0f);
             p.Sign(52f, 0f, "İstasyon ileride\nSon tren kalkıyor!");
@@ -1615,10 +1638,10 @@ namespace DesertGecko.EditorTools
 
             p.Ground(0f, 26f, platform);
             p.Checkpoint(2f, platform);
-            p.Building("kasaba_istasyon", 11f, platform, (4f, 184f, 70f), (29f, 177f, 110f), (85f, 120f, 138f));
-            p.Lamp(7f, platform + 2.3f, 2f);
-            p.Lamp(14.7f, platform + 2.3f, 2f);
-            p.TownDeco("kasaba_bank_sandalye", 20f, platform);
+            p.Building("kasaba_istasyon", 11f, platform);
+            p.Lamp(8.3f, platform + 1.6f, 1.6f);
+            p.Lamp(13.7f, platform + 1.6f, 1.6f);
+            p.TownDeco("kasaba_bank_sandalye", 18f, platform, 1f, -8);
             p.TownDeco("kasaba_erzak", 24f, platform, 1f, -8);
             p.Sign(22.5f, platform, "Tren kalkıyor!\nVagonların üstünden lokomotife koş");
 
@@ -1705,10 +1728,10 @@ namespace DesertGecko.EditorTools
             p.TownDeco("kasaba_yalak", 15f, 0f, 0.7f);
             p.Scorpion(14f, 0f);
             p.Building("kasaba_demirci_2", 22f, 0f);
-            p.Building("kasaba_banka_2", 30f, 0f);
-            p.TownDeco("kasaba_pazar", 36f, 0f);
-            p.Building("kasaba_su_kulesi", 44f, 0f, (37f, 112f, 67f), (45f, 104f, 115f));
-            p.Crystal(42.5f, 6.4f);
+            p.Building("kasaba_banka_2", 31f, 0f);
+            p.TownDeco("kasaba_pazar", 37f, 0f);
+            p.Building("kasaba_su_kulesi", 43f, 0f);
+            p.Crystal(42.3f, 4.4f);
             p.Scorpion(40f, 0f);
             p.Goal(55f, 0f);
             p.Boundary(60f);
@@ -1959,6 +1982,12 @@ namespace DesertGecko.EditorTools
                 sr.flipX = side > 0;
                 sr.sortingOrder = 3;
             }
+
+            /// <summary>
+            /// Dağın açık havaya bakan pürüzlü yüzü (mağara ağzının üstü): zemin kenarlarındaki yamaç görseli,
+            /// cetvelle kesilmiş düz kaya yüzü yerine. side: yüzün baktığı yön.
+            /// </summary>
+            public void MountainFace(float x, float yTop, float yBottom, int side) => CliffEdge(x + OriginX, yTop, side, 3, yBottom);
 
             /// <summary>Duvara dayalı ahşap merdiven. Görseldir; tırmanma duvar tırmanışıyla olur.</summary>
             public void Ladder(float x, float yMin, float yMax) =>
@@ -3241,33 +3270,143 @@ namespace DesertGecko.EditorTools
 
             // --- Kasaba (Level 4 ve 5): tools/kasaba_paketi_isle.py görselleri ---
 
-            /// <summary>Kasaba binalarının büyütmesi: saloon kapısı Gila'dan biraz uzun olsun.</summary>
-            const float TownScale = 1.5f;
-            /// <summary>Bina görselinin bir pikseli kaç birim (yüzey ölçüleri görselin kendi pikseliyle yazılır).</summary>
-            const float TownPixel = TownScale / 32f;
+            /// <summary>
+            /// Kasaba binaları 1:1 çizilir: görselin bir pikseli bir oyun pikseli (1/32 birim). Büyütülünce pikseller
+            /// eşit büyümüyor, satırlar yer yer kalınlaşıp bozuk görünüyordu.
+            /// </summary>
+            const float TownPixel = 1f / 32f;
             const int BuildingOrder = -12; // uzak serpintinin (-25) önünde, eşyaların (-10) ve çalıların (-9) arkasında
 
+            /// <summary>Bina parçası, görselin sol alt köşesinden piksel olarak. Eğimde (X0, Y0) ile (X1, Y1) iki uçtur.</summary>
+            readonly struct BuildingPart
+            {
+                public readonly float X0, X1, Y0, Y1;
+                public readonly bool Solid, Slope;
+
+                public BuildingPart(float x0, float x1, float y0, float y1, bool solid, bool slope = false)
+                {
+                    X0 = x0; X1 = x1; Y0 = y0; Y1 = y1; Solid = solid; Slope = slope;
+                }
+            }
+
+            /// <summary>Geçilebilir yüzey: veranda tabanı, saçak, balkon, çatı. Tek yönlü: alttan zıplanıp üstüne çıkılır.</summary>
+            static BuildingPart Gecit(float x0, float x1, float y) => new BuildingPart(x0, x1, y, y, false);
+            /// <summary>Katı blok: içinden geçilmez, duvarına yapışıp tırmanılır, tepesinde yürünür.</summary>
+            static BuildingPart Blok(float x0, float x1, float y0, float y1) => new BuildingPart(x0, x1, y0, y1, true);
+            /// <summary>Eğimli yüzey (çatı yamacı, merdiven): üstünde çapraz yürünür. (x0, y0) bir uç, (x1, y1) öbür uç.</summary>
+            static BuildingPart Egim(float x0, float y0, float x1, float y1) => new BuildingPart(x0, x1, y0, y1, false, true);
+
+            // Her binanın kendi tasarımı (görseller tools/kasaba_paketi_isle.py çıktısı, ölçüler görselin pikseliyle).
+            static readonly Dictionary<string, BuildingPart[]> BuildingParts = new Dictionary<string, BuildingPart[]>
+            {
+                // Saloon: veranda, balkon, saçaklı çatı
+                { "kasaba_saloon", new[] { Gecit(12, 180, 10), Gecit(15, 175, 68), Gecit(25, 168, 124) } },
+                // Otel: saloonun ikizi, balkonu daha geniş
+                { "kasaba_otel", new[] { Gecit(8, 200, 10), Gecit(5, 200, 68), Gecit(30, 175, 121) } },
+                // Dükkân, silahçı, berber: veranda, tente, çatı
+                { "kasaba_dukkan", new[] { Gecit(10, 185, 10), Gecit(15, 180, 78), Gecit(22, 165, 122) } },
+                { "kasaba_silahci", new[] { Gecit(10, 190, 10), Gecit(20, 185, 80), Gecit(30, 175, 124) } },
+                { "kasaba_berber", new[] { Gecit(15, 185, 10), Gecit(22, 177, 74), Gecit(30, 170, 122) } },
+                // Şerif: alçak veranda ve küçük tente, üstte tabelalı cephe
+                { "kasaba_serif", new[] { Gecit(35, 160, 8), Gecit(28, 105, 65), Gecit(25, 120, 110), Egim(120, 78, 205, 68) } }, // yan ek binanın eğik çatısı
+                // Hapishane: alt kat taş ve demir, içinden geçilmez; tırmanılıp pervaza çıkılır, pencerelerin önünden
+                // yürünür, çatıya ya da yandaki ek binanın çatısına atlanır
+                { "kasaba_hapishane", new[] { Blok(22, 158, 0, 62), Gecit(30, 165, 124), Egim(152, 76, 200, 63) } },
+                // Banka (öbür binalardan biraz küçük çıkarılır): tuğla kasa, içinden geçilmez; duvarından tırmanılıp üstünden
+                // aşılır. Yanındaki sandıklar basamak.
+                { "kasaba_banka", new[] { Blok(12, 144, 0, 100), Gecit(144, 160, 31) } },
+                // Cenazeci: veranda ve düz çatı
+                { "kasaba_cenazeci", new[] { Gecit(20, 180, 10), Gecit(30, 165, 124), Egim(165, 72, 210, 55) } },
+                // Maden ofisi: veranda, tente, çatı
+                { "kasaba_maden_ofisi", new[] { Gecit(5, 185, 10), Gecit(2, 182, 70), Gecit(25, 173, 110) } },
+                // İstasyon: peron verandası, tente, çatı, saat kulesi
+                { "kasaba_istasyon", new[] { Gecit(0, 195, 12), Gecit(4, 184, 70), Gecit(29, 177, 110), Gecit(85, 120, 138) } },
+                // Ahır: içinden yürünerek geçilir; çatısının iki yamacında ve sundurmasında çapraz yürünür
+                { "kasaba_ahir", new[] { Egim(38, 80, 118, 121), Egim(118, 121, 222, 80), Egim(6, 54, 38, 64) } },
+                // Çiftlik evi: veranda tabanı ve veranda çatısı
+                { "kasaba_ev", new[] { Gecit(5, 110, 6), Gecit(8, 100, 56) } },
+                // Kilise: giriş merdiveni, çatının sırtı
+                { "kasaba_kilise", new[] { Gecit(0, 60, 8), Gecit(65, 150, 100) } },
+                // Demirci: açık ocağın sundurma çatısı
+                { "kasaba_demirci", new[] { Egim(4, 57, 40, 68), Gecit(40, 170, 108), Egim(170, 104, 198, 72) } }, // iki yanda eğik çatılar
+                // Su kulesi: güverte; tank katı, tepesine güverteden tırmanılır
+                { "kasaba_su_kulesi", new[] { Gecit(37, 112, 67), Blok(47, 103, 70, 113) } },
+                // Ambar (tam boy): yan sundurma ve samanlık kapısının eşiği
+                { "kasaba_ambar", new[] { Gecit(5, 40, 68), Gecit(120, 158, 120) } }, // samanlık: sadece kapının açıklığı
+                // Eşyalar
+                { "kasaba_daragaci", new[] { Gecit(15, 100, 31), Egim(100, 31, 128, 4), Gecit(20, 68, 97) } }, // güverte, merdiven, kiriş
+                // Yığınlar: yalnızca görünen tepeler (yaba, arabanın oku, tekerlek boşluğu üstünde durulmaz)
+                { "kasaba_saman", new[] { Gecit(24, 78, 52), Gecit(4, 24, 30) } },
+                { "kasaba_araba", new[] { Gecit(2, 83, 33), Gecit(19, 41, 52) } },
+                { "kasaba_sandiklar", new[] { Gecit(4, 20, 32), Gecit(20, 46, 62), Gecit(116, 156, 55), Gecit(158, 176, 22) } },
+                { "kasaba_kuyu", new[] { Gecit(22, 85, 32) } }, // kuyunun ağzı
+                { "kasaba_tuvalet", new[] { Gecit(30, 95, 80) } }, // tuvaletin çatısı
+                { "kasaba_pazar", new[] { Gecit(10, 65, 58) } }, // tezgâhın tentesi
+                { "kasaba_ilan_tahtasi", new[] { Gecit(15, 135, 72) } }, // tahtanın üstü
+            };
+
             /// <summary>
-            /// Kasaba binası: oyuncunun arkasında duran büyük görsel. Balkon, veranda saçağı ve çatı gibi yüzeyleri tek
-            /// yönlü platformdur: alttan zıplanıp üstüne çıkılır, S + Space ile inilir. surfaces: görselin sol alt
-            /// köşesinden piksel olarak (x0, x1, y). Önüne çalı serpilmez.
+            /// Kasaba binası: oyuncunun arkasında duran görsel, üstünde BuildingParts'taki geçilebilir yüzeyler ve katı
+            /// bloklar. Önüne çalı serpilmez.
             /// </summary>
-            public void Building(string sprite, float x, float groundTop, params (float x0, float x1, float y)[] surfaces)
+            public void Building(string sprite, float x, float groundTop)
             {
                 Sprite s = TestSceneBuilder.Prop(sprite);
                 float wx = x + OriginX;
-                float width = s.bounds.size.x * TownScale;
+                float width = s.bounds.size.x;
                 var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
                 sr.transform.SetParent(decor);
-                sr.transform.position = new Vector3(wx, groundTop - 0.08f, 0f); // alt kenarı toprağa hafifçe girsin
-                sr.transform.localScale = Vector3.one * TownScale;
+                sr.transform.position = new Vector3(wx, groundTop - 1f / 32f, 0f); // alttaki toprak çizgisi zemine gömülsün
                 sr.sprite = s;
                 sr.sortingOrder = BuildingOrder;
                 occupied.Add((wx, width / 2f));
                 bareGround.Add((wx - width / 2f, wx + width / 2f));
-                float left = wx - width / 2f;
-                foreach (var f in surfaces)
-                    RoofEdge(left + f.x0 * TownPixel, left + f.x1 * TownPixel, groundTop + f.y * TownPixel);
+                PlaceParts(sprite, wx - width / 2f, groundTop, 1f, 0f);
+            }
+
+            /// <summary>BuildingParts'taki yüzey ve blokları yerleştirir. mirrorWidth > 0 ise görsel yatay çevrilmiştir.</summary>
+            void PlaceParts(string sprite, float left, float groundTop, float scale, float mirrorWidth)
+            {
+                if (!BuildingParts.TryGetValue(sprite, out BuildingPart[] parts))
+                    return;
+                float unit = TownPixel * scale;
+                foreach (BuildingPart part in parts)
+                {
+                    float x0 = part.X0 * unit, x1 = part.X1 * unit;
+                    if (part.Slope)
+                    {
+                        if (mirrorWidth > 0f)
+                            (x0, x1) = (mirrorWidth - x0, mirrorWidth - x1);
+                        SlopeLine(left + x0, groundTop + part.Y0 * unit, left + x1, groundTop + part.Y1 * unit);
+                        continue;
+                    }
+                    if (mirrorWidth > 0f)
+                        (x0, x1) = (mirrorWidth - x1, mirrorWidth - x0);
+                    if (part.Solid)
+                        WallBlock(left + x0, left + x1, groundTop + part.Y0 * unit, groundTop + part.Y1 * unit);
+                    else
+                        RoofEdge(left + x0, left + x1, groundTop + part.Y0 * unit);
+                }
+            }
+
+            /// <summary>Görünmez eğim (dünya koordinatı): binanın kendi görselinde çizili çatı yamacı ya da merdiven.</summary>
+            void SlopeLine(float wx0, float wy0, float wx1, float wy1)
+            {
+                var go = new GameObject(Name("Egim"));
+                go.transform.SetParent(geometry);
+                go.transform.position = new Vector2((wx0 + wx1) / 2f, (wy0 + wy1) / 2f);
+                go.AddComponent<RoofSlope>().Configure(new Vector2(wx0, wy0), new Vector2(wx1, wy1));
+                platforms.Add((Mathf.Min(wx0, wx1), Mathf.Max(wx0, wx1), Mathf.Max(wy0, wy1)));
+            }
+
+            /// <summary>Görünmez katı blok (dünya koordinatı): binanın kendi görselinde çizili duvar ya da çatı.</summary>
+            void WallBlock(float wx0, float wx1, float bottom, float top)
+            {
+                var go = new GameObject(Name("BinaDuvar")) { layer = ctx.GroundLayer };
+                go.transform.SetParent(geometry);
+                go.transform.position = new Vector2((wx0 + wx1) / 2f, (bottom + top) / 2f);
+                go.AddComponent<BoxCollider2D>().size = new Vector2(wx1 - wx0, top - bottom);
+                platforms.Add((wx0, wx1, top));
             }
 
             /// <summary>Görünmez tek yönlü yüzey (dünya koordinatı): binanın kendi görselinde çizili saçak ya da çatı.</summary>
@@ -3285,6 +3424,7 @@ namespace DesertGecko.EditorTools
             {
                 Sprite s = TestSceneBuilder.Prop(sprite);
                 float wx = x + OriginX;
+                PlaceParts(sprite, wx - s.bounds.size.x * scale / 2f, groundTop, scale, flip ? s.bounds.size.x * scale : 0f);
                 var sr = new GameObject(sprite).AddComponent<SpriteRenderer>();
                 sr.transform.SetParent(decor);
                 sr.transform.position = new Vector3(wx, groundTop - 0.06f, 0f);
@@ -4031,6 +4171,9 @@ namespace DesertGecko.EditorTools
                         || (rise <= DoubleJumpRise && gap <= DoubleJumpGap)
                         || (rise > 0f && gap <= ClingGap && grounds.Contains(next)) // platformun yüzüne yapışılmaz
                         || (rise <= 0f && gap <= MaxApexRun + (MaxApexRise - rise) * GlideRunPerDrop); // çift zıpla + süzül
+                    // Çatıdan atlanamıyorsa altındaki zemine inilir; o zeminin devamı kendi sırasında denetlenir.
+                    if (!reachable)
+                        reachable = surfaces.Any(g => g.xMin <= a.xMax && g.xMax >= a.xMax && g.top < a.top - 0.01f);
                     if (!reachable)
                         Warn($"x={a.xMax:0.#}→{next.xMin:0.#} arası {gap:0.#} birimlik boşluk ({rise:+0.#;-0.#;0} yükseklik) Gila'nın menzili dışında.");
                 }
