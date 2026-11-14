@@ -266,6 +266,10 @@ MonoBehaviour:
   blastSpreadAngle: 30
   recoilDistance: 0.4
   pelletColor: {r: 1, g: 0.8156863, b: 0.3137255, a: 1}
+  overheadRange: 6
+  overheadLean: 35
+  overheadAimDuration: 0.45
+  overheadSpreadAngle: 20
   pelletSprite: {fileID: 21300000, guid: ed139a9ddbf39cb4d9b2b3a568ec544d, type: 3}
   visiblePellets: 7
   hurtDuration: 0.3

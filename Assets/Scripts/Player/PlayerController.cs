@@ -477,8 +477,11 @@ namespace DesertGecko.Player
             Vector2 origin = new Vector2(wallContact > 0 ? b.max.x : b.min.x, b.min.y + minClingHeight);
             int count = Physics2D.Raycast(origin, Vector2.right * wallContact, GroundFilter, castHits, probeDepth + 0.02f);
             for (int i = 0; i < count; i++)
-                if (!IsOneWay(castHits[i].collider))
+            {
+                Collider2D hit = castHits[i].collider;
+                if (!IsOneWay(hit) && !hit.TryGetComponent(out NoClimbSurface _))
                     return true;
+            }
             return false;
         }
 

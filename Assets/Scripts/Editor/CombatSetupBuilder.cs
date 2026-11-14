@@ -28,6 +28,8 @@ namespace DesertGecko.EditorTools
             public EnemyBullet EnemyBullet;
             public Rattlesnake Rattlesnake;
             public Jackal Jackal;
+            public Deputy Deputy;
+            public Barman Barman;
             public Armadillo Armadillo;
             public TumbleweedMouse TumbleweedMouse;
             public BanditBat BanditBat;
@@ -55,6 +57,8 @@ namespace DesertGecko.EditorTools
             a.EnemyBullet = BuildEnemyBullet(PlaceholderArt.Bullet());
             a.Rattlesnake = BuildRattlesnake(a.EnemyBullet, a.Crystal);
             a.Jackal = BuildJackal(a.Crystal);
+            a.Deputy = BuildDeputy(a.EnemyBullet, a.Crystal);
+            a.Barman = BuildBarman(a.EnemyBullet, a.Crystal);
             a.Armadillo = BuildArmadillo(a.Crystal);
             a.TumbleweedMouse = BuildTumbleweedMouse(a.Crystal);
             a.BanditBat = BuildBanditBat(a.Crystal);
@@ -350,6 +354,180 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<Jackal>(root, "Jackal");
+        }
+
+        // Kare sırası (tools/gemini_serif_isle.py): 0 bekleme, 1-5 yürüyüş, 6 şapkayı itme, 7 silah çekme, 8 nişan,
+        // 9 ateş, 10 geri tepme, 11 duman, 12-20 doldurma, 21 tetikte, 22-26 hasar, 27-28 kahkaha,
+        // 29-31 ölüm havada (sarsılma, geriye yatış, devrilme), 32-35 ölüm yerde (çarpma, sarsıntı, serilme, hareketsiz).
+        static Deputy BuildDeputy(EnemyBullet bulletPrefab, Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("serif", 36);
+            string hatPath = SpriteImportRules.EnemiesFolder + "serif/serif_sapka.png";
+            AssetDatabase.ImportAsset(hatPath, ImportAssetOptions.ForceSynchronousImport);
+
+            var root = new GameObject("Deputy") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            // 47 piksel boy: Gila'dan (34) iri, çakaldan (44) bir tık uzun.
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.7f, 1.3f);
+            box.offset = new Vector2(0f, 0.65f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var deputy = root.AddComponent<Deputy>();
+            SetField(deputy, "spriteRenderer", sr);
+            SetMask(deputy, "groundMask", GameLayers.GroundMask);
+            SetField(deputy, "bulletPrefab", Fresh(bulletPrefab));
+            SetField(deputy, "audioSource", audio);
+            SetField(deputy, "drawClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/silah_al.wav"));
+            SetField(deputy, "shotClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/silah.wav"));
+            SetField(deputy, "idleFrame", f[0]);
+            SetArray(deputy, "walkFrames", new Object[] { f[1], f[2], f[3], f[4], f[5] });
+            SetField(deputy, "hatTipFrame", f[6]);
+            SetField(deputy, "drawFrame", f[7]);
+            SetField(deputy, "aimFrame", f[8]);
+            SetField(deputy, "fireFrame", f[9]);
+            SetField(deputy, "recoilFrame", f[10]);
+            SetField(deputy, "smokeFrame", f[11]);
+            SetArray(deputy, "reloadFrames", new Object[] { f[12], f[13], f[14], f[15], f[16], f[17], f[18], f[19], f[20] });
+            SetField(deputy, "guardFrame", f[21]);
+            SetArray(deputy, "hurtFrames", new Object[] { f[22], f[23], f[24], f[25], f[26] });
+            SetArray(deputy, "victoryFrames", new Object[] { f[27], f[28] });
+            SetArray(deputy, "fallFrames", new Object[] { f[29], f[30], f[31] });
+            SetArray(deputy, "landFrames", new Object[] { f[32], f[33], f[34], f[35] });
+            SetField(deputy, "hatFrame", AssetDatabase.LoadAssetAtPath<Sprite>(hatPath));
+
+            // Kareler sağa bakar. Kendinden emin devriye; kovalamaz, yerinden vurur.
+            var so = new SerializedObject(deputy);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 1.8f;
+            so.FindProperty("maxHealth").intValue = 6;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Deputy>(root, "Deputy");
+        }
+
+        // Kare sırası (tools/gemini_barmen_isle.py): 0-1 bekleme, 2-7 yürüyüş (fıçılı), 8-11 fıçıyı kaldırma, 12 savurma,
+        // 13 takip, 14 denge (fıçısız), 15-18 tüfeği çekme, 19 ateş, 20 geri tepme, 21 kurma, 22 tetikte,
+        // 23-25 sevinç, 26-27 ölüm havada (sarsılma, devrilme), 28-31 ölüm yerde, 32-37 hasar (tüfekli),
+        // 38-43 tüfekli yürüyüş (üretilmiş: tetikteki gövde + yürüyüş bacakları),
+        // 44-46 yukarı nişan, ateş, geri tepme (üretilmiş: belden yukarısı geriye yatık),
+        // 47-48 dik yukarı nişan ve ateş (üretilmiş: tüfek ayrıca kalkar, namlu dimdik).
+        static Barman BuildBarman(EnemyBullet pelletPrefab, Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("barmen", 49);
+            Object[] Range(int from, int to)
+            {
+                var frames = new Object[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            var root = new GameObject("Barman") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            // 56 piksel boy, geniş gövde: Gila'nın (34) 1.65 katı, şerifin (47) üstünde.
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(1f, 1.6f);
+            box.offset = new Vector2(0f, 0.8f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var barman = root.AddComponent<Barman>();
+            SetField(barman, "spriteRenderer", sr);
+            SetMask(barman, "groundMask", GameLayers.GroundMask);
+            SetField(barman, "barrelPrefab", BuildBarmanBarrel());
+            SetField(barman, "pelletPrefab", Fresh(pelletPrefab));
+            SetField(barman, "audioSource", audio);
+            SetField(barman, "throwClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/savurma.wav"));
+            SetField(barman, "shotClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/pompali.wav"));
+            SetField(barman, "pumpClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/pompa.wav"));
+            SetArray(barman, "idleFrames", Range(0, 1));
+            SetArray(barman, "walkFrames", Range(2, 7));
+            SetArray(barman, "windupFrames", Range(8, 11));
+            SetField(barman, "swingFrame", f[12]);
+            SetField(barman, "followFrame", f[13]);
+            SetField(barman, "unarmedFrame", f[14]);
+            SetArray(barman, "drawFrames", Range(15, 18));
+            SetField(barman, "aimFrame", f[18]);
+            SetField(barman, "fireFrame", f[19]);
+            SetField(barman, "recoilFrame", f[20]);
+            SetField(barman, "upAimFrame", f[44]);
+            SetField(barman, "upFireFrame", f[45]);
+            SetField(barman, "upRecoilFrame", f[46]);
+            SetField(barman, "steepAimFrame", f[47]);
+            SetField(barman, "steepFireFrame", f[48]);
+            SetField(barman, "pumpFrame", f[21]);
+            SetField(barman, "readyFrame", f[22]);
+            SetArray(barman, "hurtFrames", Range(32, 37));
+            SetArray(barman, "gunWalkFrames", Range(38, 43));
+            SetArray(barman, "victoryFrames", Range(23, 25));
+            SetArray(barman, "fallFrames", Range(26, 27));
+            SetArray(barman, "landFrames", Range(28, 31));
+
+            // Kareler sağa bakar. Fıçıyla Gila'nın üstüne kararlı adımlarla yürür, tüfekle peşini bırakmaz (oyuncu 5.5).
+            var so = new SerializedObject(barman);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 2.2f;
+            so.FindProperty("chaseSpeed").floatValue = 4.4f;
+            so.FindProperty("detectRange").floatValue = 12f;
+            so.FindProperty("loseRange").floatValue = 16f;
+            so.FindProperty("maxHealth").intValue = 10;
+            so.FindProperty("contactDamage").intValue = 2; // iri gövde: çarpması bir kalp
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Barman>(root, "Barman");
+        }
+
+        // Fıçı ve kırılma kareleri (tools/gemini_barmen_isle.py): fici.png, fici_kirilma_0..6 (çatlama -> kalıntılar).
+        static BarmanBarrel BuildBarmanBarrel()
+        {
+            Sprite Load(string file)
+            {
+                string path = $"{SpriteImportRules.EnemiesFolder}barmen/{file}.png";
+                var loaded = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                if (loaded == null)
+                {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                    loaded = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                }
+                return loaded;
+            }
+            Sprite sprite = Load("fici");
+            var breakFrames = new Object[7];
+            for (int i = 0; i < breakFrames.Length; i++)
+                breakFrames[i] = Load("fici_kirilma_" + i);
+
+            var root = new GameObject("BarmanBarrel");
+            // Dönme ekseni fıçının ortası olsun: alt-orta pivotlu sprite yarı boyu kadar aşağıda.
+            var pivot = new GameObject("Visual").transform;
+            pivot.SetParent(root.transform, false);
+            SpriteRenderer sr = AddSprite(pivot, "Sprite", sprite, 12);
+            if (sprite != null)
+                sr.transform.localPosition = new Vector3(0f, -sprite.bounds.size.y * 0.5f, 0f);
+
+            var barrel = root.AddComponent<BarmanBarrel>();
+            SetField(barrel, "visual", pivot);
+            SetField(barrel, "spriteRenderer", sr);
+            SetArray(barrel, "breakFrames", breakFrames);
+            SetField(barrel, "breakClip", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/kapi_carpma.wav"));
+            return Save<BarmanBarrel>(root, "BarmanBarrel");
         }
 
         // Kare sırası (tools/gemini_armadillo_isle.py): 0-6 bekleme, 7-13 devriye, 14-20 fark, 21-23 kapanma,

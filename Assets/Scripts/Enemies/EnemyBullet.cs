@@ -51,6 +51,10 @@ namespace DesertGecko.Enemies
         /// <param name="checkFrom">İlk denetimin başlayacağı nokta (yılanın gövdesi).</param>
         /// <summary>Mermiyi atan düşman: kendi gövdesine çarpmaz.</summary>
         public EnemyBase Owner { get; set; }
+        /// <summary>Atan düşman kendi namlu hızını verebilir (şerifin mermisi yılanınkinden hızlı).</summary>
+        public float Speed { get => speed; set => speed = value; }
+        /// <summary>Menzil = hız x ömür. Launch'tan önce verilir (barmenin saçması kısa menzilli).</summary>
+        public float Lifetime { get => lifetime; set => lifetime = value; }
 
         public void Launch(int dir, Vector2 checkFrom) => Launch(new Vector2(dir < 0 ? -1f : 1f, 0f), checkFrom);
 

@@ -24,9 +24,11 @@ namespace DesertGecko.EditorTools
         {
             WeaponData revolver = BuildRevolver();
             SetEnemyDrop("Assets/Prefabs/Rattlesnake.prefab", revolver);
+            SetEnemyDrop("Assets/Prefabs/Deputy.prefab", revolver);
             WeaponData shotgun = BuildShotgun();
             SetEnemyDrop("Assets/Prefabs/Jackal.prefab", shotgun, so =>
                 so.FindProperty("pelletSprite").objectReferenceValue = Sprite(ItemFolder + "sacma.png"));
+            SetEnemyDrop("Assets/Prefabs/Barman.prefab", shotgun);
             SetEnemyDrop("Assets/Prefabs/BanditBat.prefab", BuildDynamite());
             SetEnemyDrop("Assets/Prefabs/Armadillo.prefab", BuildPickaxe());
             SetEnemyDrop("Assets/Prefabs/SpikeMutant.prefab", BuildSpikes());

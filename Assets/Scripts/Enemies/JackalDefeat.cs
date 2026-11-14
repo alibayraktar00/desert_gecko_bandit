@@ -1,10 +1,11 @@
 using DesertGecko.Core;
+using DesertGecko.Effects;
 using UnityEngine;
 
 namespace DesertGecko.Enemies
 {
     /// <summary>
-    /// Çakalın komik yenilgisi: gövde geriye doğru uçup yere kapaklanır, dev sombrero havada asılı kalıp
+    /// Çakalın (ve şerifin) komik yenilgisi: gövde geriye doğru uçup yere kapaklanır, dev sombrero havada asılı kalıp
     /// sallanarak yavaşça düşer. Düşman kapanmış olduğu için kendi başına yaşar ve süresi bitince silinir.
     /// </summary>
     public class JackalDefeat : MonoBehaviour
@@ -14,21 +15,48 @@ namespace DesertGecko.Enemies
 
         Transform bodyPart, hatPart;
         Vector2 bodyVelocity;
-        float hatVelocityY, hatStartX, age, landedAt = -1f;
+        float hatVelocityY, hatStartX, age, landedAt = -1f, bodyLandedAt;
+        SpriteRenderer bodyRenderer;
+        Sprite[] fallFrames, groundFrames;
+        float frameRate;
         bool bodyLanded, hatLanded;
 
         /// <summary>Gövde yere oturup yenilgi bittiğinde, gövdenin yattığı yer. Uçuruma düşerse çağrılmaz.</summary>
         public event System.Action<Vector2> Finished;
 
-        public static JackalDefeat Spawn(Vector2 position, Sprite defeat, Sprite hat, bool flipX, int order, int knockDirection)
+        public static JackalDefeat Spawn(Vector2 position, Sprite defeat, Sprite hat, bool flipX, int order, int knockDirection, float hatHeight = 0.95f)
         {
             var effect = new GameObject("CakalYenilgi").AddComponent<JackalDefeat>();
             effect.bodyPart = Part(effect.transform, "Govde", defeat, flipX, order, position);
-            effect.hatPart = Part(effect.transform, "Sapka", hat, flipX, order + 1, position + Vector2.up * 0.95f);
+            effect.bodyRenderer = effect.bodyPart.GetComponent<SpriteRenderer>();
+            effect.hatPart = Part(effect.transform, "Sapka", hat, flipX, order + 1, position + Vector2.up * hatHeight);
             effect.bodyVelocity = new Vector2(knockDirection * 7f, 6f);
             effect.hatVelocityY = HatPopSpeed;
             effect.hatStartX = position.x;
+            effect.hatLanded = hat == null; // şapkasız yenilgi (barmen): beklenecek şapka yok
             return effect;
+        }
+
+        /// <summary>
+        /// Gövdeyi kare kare oynatır (şerif): havadayken <paramref name="fall"/>, yere değince <paramref name="ground"/>;
+        /// ikisi de son karesinde kalır. Savrulma hızı da buradan yumuşatılabilir.
+        /// </summary>
+        public void Animate(Sprite[] fall, Sprite[] ground, float fps, Vector2 knockSpeed)
+        {
+            fallFrames = fall;
+            groundFrames = ground;
+            frameRate = fps;
+            bodyVelocity = new Vector2(Mathf.Sign(bodyVelocity.x) * knockSpeed.x, knockSpeed.y);
+            ShowFrame();
+        }
+
+        void ShowFrame()
+        {
+            Sprite[] frames = bodyLanded ? groundFrames : fallFrames;
+            if (frames == null || frames.Length == 0)
+                return;
+            float since = bodyLanded ? age - bodyLandedAt : age;
+            bodyRenderer.sprite = frames[Mathf.Min(Mathf.FloorToInt(since * frameRate), frames.Length - 1)];
         }
 
         static Transform Part(Transform parent, string name, Sprite sprite, bool flipX, int order, Vector2 position)
@@ -48,6 +76,7 @@ namespace DesertGecko.Enemies
             age += dt;
             MoveBody(dt);
             MoveHat(dt);
+            ShowFrame();
 
             if (bodyLanded && hatLanded && landedAt < 0f)
                 landedAt = age;
@@ -74,6 +103,9 @@ namespace DesertGecko.Enemies
             {
                 bodyPart.position = new Vector2(p.x + step.x, ground);
                 bodyLanded = true;
+                bodyLandedAt = age;
+                if (groundFrames != null)
+                    PixelBurst.Spawn(bodyPart.position, new Color32(0xB0, 0x92, 0x6A, 0xFF), 6, 2.5f, 0.35f); // yere çarpma tozu
                 return;
             }
             bodyPart.position = p + step;

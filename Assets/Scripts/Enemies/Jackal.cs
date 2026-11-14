@@ -11,7 +11,8 @@ namespace DesertGecko.Enemies
     /// koşarak üstüne atılır. Yakına gelince fren yapar, çiftesini doğrultur ve kısa menzilli, geniş açılı
     /// bir saçma atar; geri tepmeyle yarım adım kayar ve tüfeğini doldururken savunmasız kalır.
     /// Havada süzülen Gila'ya da namlusunu kaldırır: doğrulttuğu anda Gila'nın olduğu yere nişan kilitlenir,
-    /// oyuncu doğrultma süresinde koniden çıkarak kaçabilir.
+    /// oyuncu doğrultma süresinde koniden çıkarak kaçabilir. Tam tepesinden süzülen Gila'ya gövdesini geriye
+    /// yatırıp çifteyi yukarı kaldırır: tepesi artık güvenli değil.
     /// Kareler sağa bakar; sola bakarken EnemyBase sprite'ı aynalar.
     /// </summary>
     public class Jackal : EnemyBase
@@ -44,6 +45,15 @@ namespace DesertGecko.Enemies
         [SerializeField] float blastSpreadAngle = 30f;
         [SerializeField] float recoilDistance = 0.4f;
         [SerializeField] Color pelletColor = new Color32(0xFF, 0xD0, 0x50, 0xFF);
+
+        [Header("Tepeye atış")]
+        [Tooltip("Tam tepesinden (maxAimAngle'dan dik) geçen Gila'ya ateş menzili")]
+        [SerializeField] float overheadRange = 6f;
+        [Tooltip("Tepeye nişan alırken gövdesini geriye yatırma açısı (derece); çifte namlusu yukarı bakar")]
+        [SerializeField] float overheadLean = 35f;
+        [Tooltip("Tepeye doğrultma süresi: süzülen Gila'nın kaçma penceresi")]
+        [SerializeField] float overheadAimDuration = 0.45f;
+        [SerializeField] float overheadSpreadAngle = 20f;
         [Tooltip("Görünen saçma taneleri (yalnız görsel; hasarı koni hesabı verir). Boşsa kıvılcım öbekleri")]
         [SerializeField] Sprite pelletSprite;
         [SerializeField] int visiblePellets = 7;
@@ -80,6 +90,7 @@ namespace DesertGecko.Enemies
         float hurtUntil;
         float reloadStartedAt;
         Vector2 aimDirection = Vector2.right;
+        bool overhead; // bu atış tepeye: gövde geriye yatık, namlu yukarıda
 
         int lifeId; // dirilince artar: önceki ölümün yenilgi animasyonu silah bırakmasın
 
@@ -133,11 +144,37 @@ namespace DesertGecko.Enemies
             Vector2 toTarget = PlayerTarget - Eye;
             bool air = toTarget.magnitude <= airAttackRange
                 && Mathf.Atan2(Mathf.Abs(toTarget.y), Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg <= maxAimAngle;
-            return (ground || air) && !SolidBetween(Eye, PlayerTarget);
+            return (ground || air || PlayerOverhead()) && !SolidBetween(Eye, PlayerTarget);
+        }
+
+        /// <summary>Gila tepesinde: normal namlu açısından dik, yukarıda ve tepe menzilinde.</summary>
+        bool PlayerOverhead()
+        {
+            Vector2 toTarget = PlayerTarget - Eye;
+            return toTarget.y > 0.5f && toTarget.magnitude <= overheadRange
+                && Mathf.Atan2(toTarget.y, Mathf.Abs(toTarget.x)) * Mathf.Rad2Deg > maxAimAngle;
         }
 
         Vector2 Eye => (Vector2)transform.position + Vector2.up * muzzleOffset.y;
-        Vector2 Muzzle => (Vector2)transform.position + new Vector2(muzzleOffset.x * FacingDirection, muzzleOffset.y);
+
+        // Tepeye atışta gövde ayaklarının üstünde geriye yatar: namlu ucu da onunla döner.
+        Vector2 Muzzle
+        {
+            get
+            {
+                var offset = new Vector2(muzzleOffset.x * FacingDirection, muzzleOffset.y);
+                if (overhead)
+                    offset = Quaternion.Euler(0f, 0f, overheadLean * FacingDirection) * offset;
+                return (Vector2)transform.position + offset;
+            }
+        }
+
+        void SetLean(bool lean)
+        {
+            overhead = lean;
+            if (spriteRenderer != null && spriteRenderer.transform != transform)
+                spriteRenderer.transform.localRotation = lean ? Quaternion.Euler(0f, 0f, overheadLean * FacingDirection) : Quaternion.identity;
+        }
         Vector2 PlayerTarget => (Vector2)Player.transform.position + Vector2.up * targetHeight;
 
         int DirectionToPlayer => Player.transform.position.x >= transform.position.x ? 1 : -1;
@@ -155,16 +192,24 @@ namespace DesertGecko.Enemies
         {
             State = JackalState.Aim;
             TurnTowards(DirectionToPlayer);
+            bool alive = Player != null && Player.IsAlive;
+            // Tepedeki Gila: gövdesini geriye yatırıp çifteyi yukarı kaldırır, nişan doğrudan Gila'ya.
+            SetLean(alive && PlayerOverhead());
             // Doğrulttuğu anda nişan kilitlenir: Gila doğrultma süresinde yer değiştirip koniden çıkabilir.
-            aimDirection = Player != null && Player.IsAlive
-                ? EnemyBullet.AimDirection(Eye, Muzzle, PlayerTarget, FacingDirection, maxAimAngle)
-                : Vector2.right * FacingDirection;
-            yield return new WaitForSeconds(aimDuration);
+            if (!alive)
+                aimDirection = Vector2.right * FacingDirection;
+            else if (overhead)
+                aimDirection = (PlayerTarget - Muzzle).normalized;
+            else
+                aimDirection = EnemyBullet.AimDirection(Eye, Muzzle, PlayerTarget, FacingDirection, maxAimAngle);
+            yield return new WaitForSeconds(overhead ? overheadAimDuration : aimDuration);
 
             State = JackalState.Fire;
             FireBlast();
-            yield return Recoil();
+            if (!overhead)
+                yield return Recoil(); // yukarı atınca geri tepme onu aşağı bastırır, kaymaz
             yield return new WaitForSeconds(firePoseDuration);
+            SetLean(false);
 
             State = JackalState.Reload;
             reloadStartedAt = Time.time;
@@ -182,8 +227,10 @@ namespace DesertGecko.Enemies
 
             int dir = FacingDirection;
             Vector2 muzzle = Muzzle;
-            Vector2 aim = aimDirection.x * dir > 0f ? aimDirection : Vector2.right * dir; // geri dönmüşse düz atar
+            Vector2 aim = overhead || aimDirection.x * dir > 0f ? aimDirection : Vector2.right * dir; // geri dönmüşse düz atar
             float aimAngle = Mathf.Atan2(aim.y, aim.x);
+            float range = overhead ? overheadRange : blastRange;
+            float spread = overhead ? overheadSpreadAngle : blastSpreadAngle;
             if (pelletSprite != null)
             {
                 // Saçma görseli: koninin içinde dağılan taneler, menzilin sonunda söner.
@@ -191,9 +238,9 @@ namespace DesertGecko.Enemies
                 int order = spriteRenderer != null ? spriteRenderer.sortingOrder + 1 : 9;
                 for (int i = 0; i < visiblePellets; i++)
                 {
-                    float angle = aimAngle + Random.Range(-blastSpreadAngle, blastSpreadAngle) * 0.85f * Mathf.Deg2Rad;
+                    float angle = aimAngle + Random.Range(-spread, spread) * 0.85f * Mathf.Deg2Rad;
                     Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                    PlayerBullet.SpawnHarmless(pelletSprite, Random.Range(15f, 19f), blastRange * Random.Range(0.85f, 1.05f),
+                    PlayerBullet.SpawnHarmless(pelletSprite, Random.Range(15f, 19f), range * Random.Range(0.85f, 1.05f),
                         transform.position + Vector3.up * muzzleOffset.y, muzzle, direction, order);
                 }
             }
@@ -201,26 +248,26 @@ namespace DesertGecko.Enemies
             {
                 // Saçma görseli: namludan uzaklaştıkça genişleyen üç kıvılcım öbeği.
                 for (int i = 1; i <= 3; i++)
-                    PixelBurst.Spawn(muzzle + aim * (blastRange * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
+                    PixelBurst.Spawn(muzzle + aim * (range * i / 4f), pelletColor, 3 + i * 2, 1.5f + i, 0.2f);
             }
 
             if (Player == null || !Player.IsAlive)
                 return;
             Vector2 target = PlayerTarget;
-            if (InBlastCone(muzzle, target, aim) && !SolidBetween(Eye, target))
+            if (InBlastCone(muzzle, target, aim, range, spread) && !SolidBetween(Eye, target))
                 Player.TakeDamage(blastDamage, new Vector2(dir, 0f));
         }
 
         /// <summary>Nişan yönü ekseninde koni: ileri mesafe ve eksene dik sapma.</summary>
-        bool InBlastCone(Vector2 muzzle, Vector2 target, Vector2 aim)
+        bool InBlastCone(Vector2 muzzle, Vector2 target, Vector2 aim, float range, float spread)
         {
             Vector2 toTarget = target - muzzle;
             float forward = Vector2.Dot(toTarget, aim);
             // Namlu oyuncunun içinden geçebilir: gövdeye kadar olan yakın mesafe de vurulmuş sayılır.
-            if (forward < -muzzleOffset.x || forward > blastRange)
+            if (forward < -muzzleOffset.x || forward > range)
                 return false;
             float lateral = Mathf.Abs(toTarget.x * aim.y - toTarget.y * aim.x);
-            float halfWidth = 0.6f + Mathf.Max(0f, forward) * Mathf.Tan(blastSpreadAngle * Mathf.Deg2Rad);
+            float halfWidth = 0.6f + Mathf.Max(0f, forward) * Mathf.Tan(spread * Mathf.Deg2Rad);
             return lateral <= halfWidth;
         }
 
@@ -256,6 +303,7 @@ namespace DesertGecko.Enemies
                 StopCoroutine(routine);
             routine = null;
             State = JackalState.None;
+            SetLean(false);
         }
 
         // Obje kapanınca coroutine de durur; durum takılı kalırsa çakal yerinde donardı.
@@ -263,6 +311,7 @@ namespace DesertGecko.Enemies
         {
             routine = null;
             State = JackalState.None;
+            SetLean(false);
         }
 
         protected override void OnDamaged()
