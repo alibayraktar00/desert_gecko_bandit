@@ -33,6 +33,7 @@ namespace DesertGecko.EditorTools
             SetEnemyDrop("Assets/Prefabs/Armadillo.prefab", BuildPickaxe());
             SetEnemyDrop("Assets/Prefabs/SpikeMutant.prefab", BuildSpikes());
             SetEnemyDrop("Assets/Prefabs/TumbleweedMouse.prefab", BuildKnife());
+            SetEnemyDrop("Assets/Prefabs/Bard.prefab", BuildGuitar());
             AddPlayerWeapon(); // prefab yeniden kaydedilir: kaldırılmış eski alanlar düşer
             AssetDatabase.SaveAssets();
             return "silahlar kuruldu";
@@ -273,6 +274,37 @@ namespace DesertGecko.EditorTools
             so.FindProperty("windupTime").floatValue = 0.05f;
             so.FindProperty("strikeTime").floatValue = 0.08f;
             so.FindProperty("followTime").floatValue = 0.1f;
+            so.FindProperty("breaksRocks").boolValue = false;
+            so.FindProperty("alwaysDrops").boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(data);
+            return data;
+        }
+
+        /// <summary>
+        /// Gitar (Bard'dan): yakın dövüş. Sapından tutup gövdesiyle vurur: geniş alan, önündeki her düşmana 3 hasar,
+        /// her isabette akor patlar. 6 vuruşluk dayanıklılık. Taşa işlemez. Bard her ölüşünde bırakır.
+        /// </summary>
+        static WeaponData BuildGuitar()
+        {
+            WeaponData data = LoadOrCreate("Gitar");
+            var so = Begin(data, "Gitar", "gitar", "gitar", "gitar_ikon");
+            so.FindProperty("muzzleFlashFrames").arraySize = 0;
+            Set(so, "bulletSprite", null);
+            Set(so, "fireSound", Clip("gitar_akor"));
+            so.FindProperty("fireVolume").floatValue = 0.7f;
+            so.FindProperty("fireMode").enumValueIndex = (int)WeaponData.FireMode.Melee;
+            so.FindProperty("consumable").boolValue = true;
+            so.FindProperty("ammo").intValue = 6;
+            so.FindProperty("shake").floatValue = 0.2f;
+            Set(so, "swingSound", Clip("savurma"));
+            so.FindProperty("hitStop").floatValue = 0.05f;
+            so.FindProperty("damage").intValue = 3;
+            so.FindProperty("fireInterval").floatValue = 0.45f;
+            so.FindProperty("meleeArea").vector2Value = new Vector2(1.8f, 1.5f);
+            so.FindProperty("windupTime").floatValue = 0.09f;
+            so.FindProperty("strikeTime").floatValue = 0.12f;
+            so.FindProperty("followTime").floatValue = 0.14f;
             so.FindProperty("breaksRocks").boolValue = false;
             so.FindProperty("alwaysDrops").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();

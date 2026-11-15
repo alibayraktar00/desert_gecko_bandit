@@ -21,6 +21,8 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/kapi_carpma.wav    ağır ahşap kapı yere çakılır, mağarada gümbürtü
   Assets/Audio/kapi_kalkma.wav    kapı kalkarken makara takırtısı (döngü)
   Assets/Audio/sandik_acilma.wav  sandık açılır: sarsıntı, kilit, menteşe gıcırtısı, dökülen altın
+  Assets/Audio/gitar_akor.wav     Bard'ın yarasa çağıran akoru: distorsiyonlu elektro gitar güç akoru
+  Assets/Audio/bard_donusum.wav   Bard canavara dönüşür: yükselen hırıltı, gümbürtü, akor patlaması
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -294,6 +296,43 @@ def chest_open(rng, seconds=1.4):
     return out * 0.85
 
 
+def pluck(rng, frequency, seconds, damping=0.996):
+    """Karplus-Strong: gürültüyle dolu gecikme hattı tel gibi sönümlenir."""
+    period = int(RATE / frequency)
+    line = rng.uniform(-1.0, 1.0, period)
+    out = np.empty(int(RATE * seconds))
+    for i in range(len(out)):
+        out[i] = line[i % period]
+        line[i % period] = damping * 0.5 * (line[i % period] + line[(i + 1) % period])
+    return out
+
+
+def power_chord(rng, root=82.4, seconds=0.75, drive=6.0):
+    """Kök, beşli ve oktav; teller pena ile sırayla vurulur, sonra distorsiyon."""
+    out = np.zeros(int(RATE * seconds))
+    for n, ratio in enumerate((1.0, 1.5, 2.0)):
+        start = int(RATE * 0.012 * n)
+        note = pluck(rng, root * ratio, seconds)
+        out[start:] += note[:len(out) - start]
+    out = np.tanh(out * drive) * 0.6
+    t = np.arange(len(out)) / RATE
+    return out * np.minimum(1.0, t / 0.004) * np.exp(-t * 2.2)
+
+
+def monster_shift(rng, seconds=1.3):
+    """İnen hırıltı ve titreşen gümbürtü kabarır, doruk noktasında pes bir akor patlar."""
+    n = int(RATE * seconds)
+    t = np.arange(n) / RATE
+    pitch = 150.0 - 95.0 * (t / seconds)
+    growl = np.sign(np.sin(2 * np.pi * np.cumsum(pitch) / RATE)) * (0.5 + 0.5 * np.sin(2 * np.pi * 27.0 * t))
+    rumble = np.convolve(rng.uniform(-1.0, 1.0, n), np.ones(60) / 60, mode="same") * 4.0
+    swell = (t / seconds) ** 1.5
+    out = (growl * 0.35 + rumble * 0.5) * swell
+    chord = power_chord(rng, root=55.0, seconds=seconds * 0.45, drive=9.0)
+    out[n - len(chord):] += chord * 0.9
+    return np.tanh(out * 1.6) * 0.8
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -318,6 +357,8 @@ def main():
     save("kapi_carpma.wav", gate_slam(np.random.default_rng(20)))
     save("kapi_kalkma.wav", gate_grind(np.random.default_rng(21)))
     save("sandik_acilma.wav", chest_open(np.random.default_rng(22)))
+    save("gitar_akor.wav", power_chord(np.random.default_rng(23)))
+    save("bard_donusum.wav", monster_shift(np.random.default_rng(24)))
 
 
 if __name__ == "__main__":

@@ -104,8 +104,8 @@ namespace DesertGecko.Enemies
                 if (hits[i].collider.usedByEffector)
                     continue;
                 var enemy = hits[i].collider.GetComponentInParent<EnemyBase>();
-                if (enemy != null && (enemy == Owner || !enemy.IsAlive))
-                    continue; // atan kendisi ya da ölmüş düşman
+                if (enemy != null && (enemy == Owner || !enemy.IsAlive || enemy.IgnoresEnemyFire))
+                    continue; // atan kendisi, ölmüş düşman ya da dost ateşinden muaf olan (Bard ve yarasaları)
                 Hit(hits[i]);
                 return;
             }

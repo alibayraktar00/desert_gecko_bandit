@@ -33,6 +33,7 @@ namespace DesertGecko.EditorTools
             public Armadillo Armadillo;
             public TumbleweedMouse TumbleweedMouse;
             public BanditBat BanditBat;
+            public Bard Bard;
             public SpikeMutant SpikeMutant;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
@@ -62,6 +63,7 @@ namespace DesertGecko.EditorTools
             a.Armadillo = BuildArmadillo(a.Crystal);
             a.TumbleweedMouse = BuildTumbleweedMouse(a.Crystal);
             a.BanditBat = BuildBanditBat(a.Crystal);
+            a.Bard = BuildBard(a.Crystal); // yarasanın dinamitini kullanır: ondan sonra
             a.SpikeMutant = BuildSpikeMutant(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
@@ -696,6 +698,144 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<BanditBat>(root, "BanditBat");
+        }
+
+        // Kare sırası (tools/gemini_bard_isle.py). İnsan: 0-1 bekleme, 2-8 yürüyüş, 9-16 çalma, 17-23 hasar, 24-31 sevinç,
+        // 32-38 ölüm (darbe, dizlerin üstüne çöküş 1-2, öne eğilme, yere yığılma, serilme, hareketsiz).
+        // 39-45 dönüşüm (sarsıntı -> canavar). Canavar: 46-47 bekleme, 48-53 yürüyüş, 54-61 çalma, 62-69 hasar,
+        // 70-77 sevinç, 78-79 ölüm (darbe, dizlerin üstüne çöküş). 80-83 insan gitarla vurma (geriye çekme,
+        // yukarı kaldırma, iniş/savurma, duruş). 84-87 canavarın aynı vuruşu (insan karelerinden üretilmiş:
+        // mor palet, canavar boyu, canavarın başı).
+        // Canavarın ölümü kendi iki karesiyle başlar, insan formunun yığılma kareleriyle biter: ölürken insana döner.
+        static Bard BuildBard(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("bard", 88);
+            Object[] Range(int from, int to)
+            {
+                var frames = new Object[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+            AudioClip Clip(string file)
+            {
+                string path = "Assets/Audio/" + file;
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+                if (clip == null)
+                {
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                    clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+                }
+                return clip;
+            }
+
+            var root = new GameObject("Bard") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            // İnsan 50, canavar 56 piksel boy: şerifin (47) üstünde, barmenle (56) aynı sınıf.
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.8f, 1.5f);
+            box.offset = new Vector2(0f, 0.75f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var bard = root.AddComponent<Bard>();
+            SetField(bard, "spriteRenderer", sr);
+            SetMask(bard, "groundMask", GameLayers.GroundMask);
+            SetField(bard, "batPrefab", BuildBardBat());
+            SetField(bard, "audioSource", audio);
+            SetField(bard, "summonClip", Clip("gitar_akor.wav"));
+            SetField(bard, "bashClip", Clip("savurma.wav"));
+            SetField(bard, "transformClip", Clip("bard_donusum.wav"));
+            SetArray(bard, "idleFrames", Range(0, 1));
+            SetArray(bard, "walkFrames", Range(2, 8));
+            SetArray(bard, "playFrames", Range(9, 16));
+            SetArray(bard, "hurtFrames", Range(17, 23));
+            SetArray(bard, "victoryFrames", Range(24, 31));
+            SetArray(bard, "bashFrames", Range(80, 83));
+            SetArray(bard, "transformFrames", Range(39, 45));
+            SetArray(bard, "monsterIdleFrames", Range(46, 47));
+            SetArray(bard, "monsterWalkFrames", Range(48, 53));
+            SetArray(bard, "monsterPlayFrames", Range(54, 61));
+            SetArray(bard, "monsterHurtFrames", Range(62, 69));
+            SetArray(bard, "monsterVictoryFrames", Range(70, 77));
+            SetArray(bard, "monsterBashFrames", Range(84, 87));
+            SetArray(bard, "fallFrames", Range(78, 78));
+            SetArray(bard, "landFrames", new Object[] { f[79], f[34], f[35], f[36], f[37], f[38] });
+
+            // Kareler sağa bakar. Devriyesi ağır; Gila'yı uzaktan fark eder, yarasaları menzilde kalsın diye geç bırakır.
+            var so = new SerializedObject(bard);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 1.6f;
+            so.FindProperty("patrolDistance").floatValue = 2f;
+            so.FindProperty("detectRange").floatValue = 9f;
+            so.FindProperty("loseRange").floatValue = 16f;
+            so.FindProperty("maxHealth").intValue = 6; // insan formu; canavar formu Bard.monsterHealth
+            so.FindProperty("deathBurstColor").colorValue = new Color32(0x6A, 0x3F, 0xA8, 0xFF);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<Bard>(root, "Bard");
+        }
+
+        // Bard'ın çağırdığı yarasa: Haydut Yarasa'nın kareleri ve dinamiti (BuildBanditBat'ten sonra kurulur).
+        // Tek can, ödül yok. Arkasında hep yanan mor hale: gece gökyüzünde de, mağarada da seçilsin, büyülü dursun.
+        static BardBat BuildBardBat()
+        {
+            Sprite[] f = LoadEnemyFrames("yarasa", 72);
+            Object[] Range(int from, int to)
+            {
+                var frames = new Object[to - from + 1];
+                for (int i = from; i <= to; i++)
+                    frames[i - from] = f[i];
+                return frames;
+            }
+
+            var root = new GameObject("BardBat") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.8f, 0.75f);
+            box.offset = new Vector2(0f, -0.05f);
+
+            // Transform yarasanın ortası: kareler 64 px tuvalde ortalı, pivot alt orta -> Visual 1 birim aşağı.
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[8], 8);
+            sr.transform.localPosition = new Vector3(0f, -1f, 0f);
+
+            Sprite glowSprite = PlaceholderArt.Glow();
+            SpriteRenderer halo = AddSprite(root.transform, "Hale", glowSprite, 7);
+            halo.transform.localScale = Vector3.one * (1.9f / glowSprite.bounds.size.x);
+            halo.color = new Color(0.72f, 0.5f, 1f, 0.4f);
+            var haloMaterial = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+            if (haloMaterial != null)
+                halo.sharedMaterial = haloMaterial;
+
+            var bat = root.AddComponent<BardBat>();
+            SetField(bat, "spriteRenderer", sr);
+            SetMask(bat, "groundMask", GameLayers.GroundMask);
+            SetField(bat, "dynamitePrefab", AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabFolder}/BatDynamite.prefab").GetComponent<BatDynamite>());
+            SetArray(bat, "flyFrames", Range(8, 15));
+            SetArray(bat, "glideFrames", Range(16, 23));
+            SetArray(bat, "windupFrames", Range(24, 27));
+            SetArray(bat, "releaseFrames", Range(30, 31));
+            SetArray(bat, "tauntFrames", Range(32, 39));
+            SetArray(bat, "hurtFrames", Range(48, 55));
+            SetArray(bat, "defeatFrames", Range(64, 71));
+
+            var so = new SerializedObject(bat);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("maxHealth").intValue = 1;
+            so.FindProperty("killY").floatValue = -1000f; // uçar: yükseklik sınırı onu silmesin
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return Save<BardBat>(root, "BardBat");
         }
 
         static BatDynamite BuildBatDynamite()

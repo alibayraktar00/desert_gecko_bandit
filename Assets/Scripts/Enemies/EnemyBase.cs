@@ -90,6 +90,11 @@ namespace DesertGecko.Enemies
         protected virtual bool Invulnerable => false;
         /// <summary>Bu darbe boşa çıkar mı (zırh, savuşturma). Tür, miktar ve yön <paramref name="hit"/> içinde.</summary>
         protected virtual bool Deflects(in DamageInfo hit) => Invulnerable;
+        /// <summary>
+        /// true ise başka düşmanların mermisi ona işlemez, içinden geçer (Bard ve sürüsü: yılanın kurşunu
+        /// yarasaları biçmesin). Gila'nın saldırıları bundan etkilenmez.
+        /// </summary>
+        public virtual bool IgnoresEnemyFire => false;
         /// <summary>true ise darbe onu uçurumdan aşağı itmez (iri, ağır düşmanlar): kenardaysa yerinde sendeler.</summary>
         protected virtual bool KeepsFooting => false;
         protected PlayerHealth Player => player;
@@ -383,6 +388,14 @@ namespace DesertGecko.Enemies
 
             if (health == 0)
             {
+                // Faz geçişi: ölmek yerine yeni canla ayağa kalkar (Bard insan formundan canavara döner).
+                int revived = SecondWind();
+                if (revived > 0)
+                {
+                    health = revived;
+                    body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                    return true;
+                }
                 // Silahla öldürmek bir an durur: son mermi, saçma, kazma oturur. Dille öldürmede akış bozulmaz.
                 if (hit.Kind == DamageKind.Bullet || hit.Kind == DamageKind.Melee || hit.Kind == DamageKind.Thrown)
                     HitStop.Request(0.045f);
@@ -421,6 +434,12 @@ namespace DesertGecko.Enemies
             if (weaponDrop != null && weaponEarned)
                 WeaponPickup.Spawn(weaponDrop, weaponDrop.Ammo, position + Vector2.up * 0.3f, new Vector2(0f, 3.5f));
         }
+
+        /// <summary>
+        /// Canı biten düşman ölmek yerine bu kadar canla devam eder (ikinci faz); 0 ise ölür.
+        /// Geçişi (animasyon, dokunulmazlık) alt sınıf başlatır.
+        /// </summary>
+        protected virtual int SecondWind() => 0;
 
         protected virtual void OnDamaged() { }
         protected virtual void OnBlocked() { }

@@ -76,7 +76,7 @@ namespace DesertGecko.EditorTools
         {
             string previous = EditorSceneManager.GetActiveScene().path;
             EditorSceneManager.OpenScene($"{SceneFolder}/Level_3.unity");
-            foreach (float x in new[] { KaplicaX + 110f, KaplicaX + 118f, CepheX, CepheX + 6f })
+            foreach (float x in new[] { KaplicaX + BardRoom + 110f, KaplicaX + BardRoom + 118f, CepheX, CepheX + 6f })
                 SceneCapture.Capture($"Temp/Screenshots/L3cikis_{x:0}.png", new Vector3(x, 26f, -10f));
             // Level 2: derin galerinin sonundaki sıcak hava bacası
             EditorSceneManager.OpenScene($"{SceneFolder}/Level_2.unity");
@@ -894,7 +894,9 @@ namespace DesertGecko.EditorTools
 
         // Level 3: Ayaz Gecesi. Gila soğukkanlı: gece üşür, yavaşlar; ateşten ateşe ilerler.
         // Her bölümün kendi fikri var: ısı, dille sallanma, gayzer ve yükselen çamur, fırtınadan kaçış, şafak.
-        const float TelgrafX = 100f, KaplicaX = 205f, CepheX = 330f, SafakX = 455f;
+        // Bard'ın üç dövüş alanı BardRoom kadar genişletildi: sonraki bölümler o kadar sağa kaydı.
+        const float BardRoom = 8f;
+        const float TelgrafX = 100f, KaplicaX = 205f + 2f * BardRoom, CepheX = 330f + 3f * BardRoom, SafakX = 455f + 3f * BardRoom;
 
         static void Level_3(LevelPainter p)
         {
@@ -919,12 +921,12 @@ namespace DesertGecko.EditorTools
 
             // Botun durup bekleyeceği ya da sırayla tırmanacağı yerler; dünya koordinatı.
             p.OriginX = 0f;
-            p.Route(262f, 3f, 272f, 8.5f, 278f, 8.5f, 287f, 13.5f, 290f, 13.5f, 297f, 8f, 308f, 6f, 309f, 9.5f, 319f, 13f, 309f, 16.5f, 319f, 20f, 327f, 24f);
+            p.Route(286f, 3f, 296f, 8.5f, 302f, 8.5f, 311f, 13.5f, 314f, 13.5f, 321f, 8f, 332f, 6f, 333f, 9.5f, 343f, 13f, 333f, 16.5f, 343f, 20f, 351f, 24f);
             p.ShotPoints.AddRange(new[]
             {
                 new Vector2(5f, 3f), new Vector2(40f, 5f), new Vector2(56f, 5f), new Vector2(112f, 7f), new Vector2(135f, 8f),
-                new Vector2(160f, 8f), new Vector2(190f, 12f), new Vector2(212f, 11f), new Vector2(228f, 12f), new Vector2(267f, 15f), new Vector2(334f, 26f), new Vector2(262f, 8f), new Vector2(285f, 12f),
-                new Vector2(315f, 13f), new Vector2(345f, 26f), new Vector2(395f, 22f), new Vector2(450f, 18f), new Vector2(480f, 18f), new Vector2(500f, 21f),
+                new Vector2(160f, 8f), new Vector2(198f, 12f), new Vector2(220f, 11f), new Vector2(236f, 12f), new Vector2(291f, 15f), new Vector2(358f, 26f), new Vector2(280f, 8f), new Vector2(309f, 12f),
+                new Vector2(339f, 13f), new Vector2(369f, 26f), new Vector2(419f, 22f), new Vector2(474f, 18f), new Vector2(504f, 18f), new Vector2(524f, 21f),
             });
         }
 
@@ -993,13 +995,16 @@ namespace DesertGecko.EditorTools
             SwingCoins(p, 33f, 7.5f);
             p.Crystal(37.5f, 6.2f);
             SwingCoins(p, 42f, 7.5f);
-            p.Ground(50f, 62f, 3f);
+            // Bard'ın alanı: geniş zemin ve üstünde raf. Dalışlardan ve dinamitten kaçacak yer, iki kat.
+            p.Ground(50f, 62f + BardRoom, 3f);
             p.Checkpoint(52f, 3f);
-            p.Yarasa(54.5f, wireTop); // telgraf telinde baş aşağı uyur
             p.Pole(56f, 3f, 7f);
-            p.Snake(59f, 3f);
+            p.Snake(56.5f, 3f); // önde yılan ateş eder, arkasında Bard yarasalarını salar
+            p.Ledge(58f, 64f, 6f);
+            p.Bard(66f, 3f); // zincirden inen Gila'yı karşılar; köşeye sıkışınca gitarı savurur
 
             // Hareketli: hat üstünde makaralı fener
+            p.OriginX += BardRoom; // alan genişledi: bölümün kalanı o kadar sağda
             p.Pole(61f, 3f, 8f);
             p.Wire(61f, 11f, 86f, 11f);
             p.MovingHook(66f, 8f, 10f, 11f, 3f);
@@ -1016,12 +1021,13 @@ namespace DesertGecko.EditorTools
             SwingCoins(p, 95f, 11f);
             p.Crystal(99.5f, 10f);
             SwingCoins(p, 104f, 12.5f);
-            p.Ground(112f, 129f, 9f);
+            p.Ground(112f, 129f + BardRoom, 9f); // Bard'ın alanı: geniş, üstünde raf
             p.Checkpoint(113.5f, 9f);
-            p.Yarasa(116f, 14.95f); // eğik telin ucunda: zırhlıyla birlikte
             p.Altar(116f, 9f);
             p.Pole(118f, 9f, 6f);
             p.Armadillo(121f, 9f);
+            p.Ledge(123f, 129f, 12f);
+            p.Bard(133f, 9f); // zırhlının arkasında çalar: top yuvarlanırken tepeden yarasalar iner
         }
 
         // Fenerin altındaki sallanma yayına üç altın: dibinde ve iki yanında. Dil ipi 3.6 birim (TongueAttack.hookRopeLength),
@@ -1043,17 +1049,18 @@ namespace DesertGecko.EditorTools
             const float roofA = 15f, roofB = 23f, roofShaft = 30f, doorY = 24f;
 
             // Kaya kütlesi: tünel, sonra yükselen tavan
-            p.CaveWall(27.5f, 121f, 40f); // iki ağızda da içeriden başlar: karanlık ağza doğru yumuşakça açılır (DoorFade)
+            p.CaveWall(27.5f, 121f + BardRoom, 40f); // iki ağızda da içeriden başlar: karanlık ağza doğru yumuşakça açılır (DoorFade)
             p.RockMass(24f, 44f, 15f, 60f);
             p.MountainFace(24f, 60f, 15f, -1); // dağın pürüzlü yüzü tünelin üstünde biter: kapının önüne şerit inmesin
             p.DoorFade(24f, -1, 4f, 9f, 15f);
-            p.RockMass(44f, 62f, roofA, 60f);
-            p.RockMass(62f, 100f, roofB, 60f);
-            p.RockEdge(62f, roofB, roofA, 1); // alçak tavanın ucu odaya bakar: odaya sarkan ince sütun gibi durmasın
-            p.RockMass(100f, 125f, roofShaft, 60f);
-            p.RockEdge(100f, roofShaft, roofB, 1);
+            // Giriş odası (Bard'ın alanı) BardRoom kadar uzun: sonrası o kadar sağda.
+            p.RockMass(44f, 62f + BardRoom, roofA, 60f);
+            p.RockMass(62f + BardRoom, 100f + BardRoom, roofB, 60f);
+            p.RockEdge(62f + BardRoom, roofB, roofA, 1); // alçak tavanın ucu odaya bakar: odaya sarkan ince sütun gibi durmasın
+            p.RockMass(100f + BardRoom, 125f + BardRoom, roofShaft, 60f);
+            p.RockEdge(100f + BardRoom, roofShaft, roofB, 1);
 
-            p.HotZone(26f, 125f, -5f, 40f);
+            p.HotZone(26f, 125f + BardRoom, -5f, 40f);
             p.Sign(28f, 9f, "Kaplıcanın sıcağı içine işler:\nburada daha hızlısın");
             Dekor_Kaplica(p);
 
@@ -1061,12 +1068,14 @@ namespace DesertGecko.EditorTools
             p.CaveFloor(24f, 36f, 9f);
             p.CaveFloor(36f, 40f, 7.5f);
             p.CaveFloor(40f, 44f, 5.5f);
-            p.CaveFloor(44f, 62f, 3f);
+            p.CaveFloor(44f, 62f + BardRoom, 3f);
             p.Checkpoint(49f, 3f);
-            p.Yarasa(45.5f, 15f); // tünelden inen basamakların tavanında
+            p.Ledge(53f, 59f, 6.2f); // Bard'ın alanında ikinci kat: dalıştan kaçış
+            p.Bard(61f, 3f); // gayzerin önünde: alçak tavanda yarasalar sıkışık uçar, sıcakta Gila hızlı
             p.Firefly(52f, 4.6f);
 
             // Tanıtım: taş üstünde gayzer. Bekle, fışkırınca havalan.
+            p.OriginX += BardRoom; // giriş odası uzadı: bölümün kalanı o kadar sağda
             p.Sign(55f, 3f, "Gayzer kabarınca üstüne gel,\nseni yukarı fırlatır");
             p.Geyser(60f, 3f, 8f, 3.6f, 0f);
             p.BoilingPool(62f, 100f, 1.5f);
@@ -1118,7 +1127,9 @@ namespace DesertGecko.EditorTools
         // Sıcak ışıklar, kaynak çevresi mantar ve maden kalıntısı: dışarının mavisinden sonra içerisi turuncu olsun.
         static void Dekor_Kaplica(LevelPainter p)
         {
-            foreach (var (x, y, radius) in new[] { (32f, 12f, 11f), (50f, 9f, 14f), (66f, 14f, 15f), (82f, 17f, 15f), (95f, 16f, 13f), (109f, 11f, 15f), (109f, 23f, 15f) })
+            // Giriş odasından (x < 60) sonrası BardRoom kadar sağda: oda Bard için uzatıldı.
+            const float r = BardRoom;
+            foreach (var (x, y, radius) in new[] { (32f, 12f, 11f), (50f, 9f, 14f), (62f, 9f, 13f), (66f + r, 14f, 15f), (82f + r, 17f, 15f), (95f + r, 16f, 13f), (109f + r, 11f, 15f), (109f + r, 23f, 15f) })
                 p.SpringGlow(x, y, radius, 1.9f);
 
             p.InCave = true;
@@ -1129,20 +1140,21 @@ namespace DesertGecko.EditorTools
             p.Deco("mgr_cevher_turuncu", 46.5f, 3f);
             p.Deco("mgr_vagon", 53f, 3f);
             p.Deco("mgr_mantar", 57f, 3f);
-            p.Deco("mgr_varil", 103f, 6f);
-            p.Deco("mgr_cevher_mavi", 113.5f, 6f);
+            p.Deco("mgr_varil", 103f + r, 6f);
+            p.Deco("mgr_cevher_mavi", 113.5f + r, 6f);
             p.Hang("tavan_sarkit_2", 48f, 15f);
             p.Hang("tavan_kok", 54f, 15f);
             p.Hang("tavan_sarkit_1", 59f, 15f);
-            p.Hang("tavan_kristal", 68f, 23f);
-            p.Hang("tavan_sarkit_3", 74f, 23f);
-            p.Hang("tavan_sarkit_2", 83f, 23f);
-            p.Hang("tavan_damla", 91f, 23f);
-            p.Hang("tavan_zincir", 96f, 23f);
-            p.Hang("tavan_sarkit_2", 104f, 30f);
-            p.Hang("tavan_kok", 113f, 30f);
+            p.Hang("tavan_sarkit_2", 65f, 15f);
+            p.Hang("tavan_kristal", 68f + r, 23f);
+            p.Hang("tavan_sarkit_3", 74f + r, 23f);
+            p.Hang("tavan_sarkit_2", 83f + r, 23f);
+            p.Hang("tavan_damla", 91f + r, 23f);
+            p.Hang("tavan_zincir", 96f + r, 23f);
+            p.Hang("tavan_sarkit_2", 104f + r, 30f);
+            p.Hang("tavan_kok", 113f + r, 30f);
             p.Drip(54f, 15f, 3.3f);
-            p.Drip(83f, 23f, 14f);
+            p.Drip(83f + r, 23f, 14f);
             p.InCave = false;
         }
 
@@ -4015,6 +4027,8 @@ namespace DesertGecko.EditorTools
             }
 
             public void Scorpion(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Scorpion, actors, Name("Akrep"), x + OriginX, groundTop);
+            /// <summary>Bard: yarasa çağıran gitarist. Yarasalarını kendi getirir; yanına ayrıca Yarasa koyma.</summary>
+            public void Bard(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Bard, actors, Name("Bard"), x + OriginX, groundTop);
             public void Barmen(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Barman, actors, Name("Barmen"), x + OriginX, groundTop);
             public void Serif(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Deputy, actors, Name("Serif"), x + OriginX, groundTop);
             public void Jackal(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.Jackal, actors, Name("Cakal"), x + OriginX, groundTop);

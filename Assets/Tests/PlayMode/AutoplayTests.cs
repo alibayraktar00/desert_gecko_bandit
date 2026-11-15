@@ -94,8 +94,8 @@ namespace DesertGecko.Tests
             var follow = Object.FindAnyObjectByType<CameraFollow>();
             var points = new[]
             {
-                new Vector2(3f, 0.1f), new Vector2(55f, 3f), new Vector2(130f, 4f), new Vector2(230f, 9.1f), new Vector2(255f, 3.1f),
-                new Vector2(265f, 3.1f), new Vector2(283f, 13.6f), new Vector2(308f, 16f), new Vector2(345f, 24.1f), new Vector2(170f, 4f), new Vector2(456f, 16.1f), new Vector2(480f, 18.1f),
+                new Vector2(3f, 0.1f), new Vector2(55f, 3f), new Vector2(130f, 4f), new Vector2(238f, 9.1f), new Vector2(271f, 3.1f),
+                new Vector2(289f, 3.1f), new Vector2(307f, 13.6f), new Vector2(332f, 16f), new Vector2(369f, 24.1f), new Vector2(178f, 4f), new Vector2(480f, 16.1f), new Vector2(504f, 18.1f),
             };
             string dir = Path.Combine(Application.dataPath, "..", "Temp", "Screenshots");
             for (int i = 0; i < points.Length; i++)
@@ -104,7 +104,7 @@ namespace DesertGecko.Tests
                 player.Teleport(points[i]);
                 player.Frozen = true; // boşluğun üstünde de görüntü alınabilsin
                 follow.SnapToTarget();
-                float wait = points[i].x == 345f ? 4.2f : 2.2f; // fırtına ekrana girsin
+                float wait = points[i].x == 369f ? 4.2f : 2.2f; // fırtına ekrana girsin
                 for (float t = 0f; t < wait; t += Time.deltaTime)
                 {
                     if (t < 0.1f) follow.SnapToTarget();

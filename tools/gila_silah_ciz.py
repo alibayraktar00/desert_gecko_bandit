@@ -37,6 +37,12 @@ PALETTE = {
     "w": (108, 47, 21, 255),    # ahşap kabza
     "W": (158, 64, 30, 255),    # ahşap parlak
     "g": (232, 184, 72, 255),   # pirinç
+    # Bard'ın gitarının paleti (bard_9.png): krem gövde, koyu sap
+    "C": (236, 222, 180, 255),  # krem parlak
+    "c": (214, 196, 150, 255),  # krem
+    "e": (160, 140, 110, 255),  # krem gölge
+    "N": (52, 40, 52, 255),     # sap
+    "p": (84, 60, 110, 255),    # manyetik (mor)
     # Çakal'ın tüfeğinin paleti (cakal_14.png): mat haki-zeytin namlu, kahve-kırmızı ahşap
     "q": (161, 136, 92, 255),   # namlu üst parlaması
     "K": (135, 120, 83, 255),   # namlu açık
@@ -166,6 +172,18 @@ PICKAXE = [
     "..............EA...",
 ]
 
+# Gitar (Bard'dan): çizim değil, Bard'ın kendi gitarı. "Yukarı kaldırma" karesinde (bard_insan_vurus_2.png) gitar
+# başının üstünde, neredeyse tamamı görünür: gövdesi ve burgu başı oradan kesilir, yatırılır, Gila'nın boyuna
+# küçültülür. Sapın Bard'ın kollarının altında kalan kısmı iki uç arasına düz çizilir.
+# Sapından (burguların dibinden) tutulur, gövdesiyle vurulur: kazma gibi yalnız ileri sallanır.
+GUITAR_SOURCE = ROOT / "Assets/Sprites/_Gelen/bard_insan_vurus_2.png"
+GUITAR_FRAME = (99, 30, 266, 212)   # karenin kutusu (sol, üst, sağ, alt)
+GUITAR_TILT = 23.7                  # kaynakta gitarın yataydan açısı (derece)
+GUITAR_LENGTH = 30                  # oyunda gitarın boyu (piksel); Gila 34
+GUITAR_NECK = ((96, 90, 100, 255), (62, 56, 66, 255))  # sapın üst ve alt satırı
+GUITAR_SWING = [(0.0, 50, False, 0, 0), (0.0, 125, True, -3, -9), (0.0, -20, False, 0, 0), (0.0, -8, False, 0, 0)]
+GUITAR_OUTLINE = (24, 16, 30, 255)  # Bard'ın koyu mor dış çizgisi
+
 # Bıçak (Çalı Faresi'nden): kısa sap, siper ve sırtı uca doğru çentikli (testere dişli) geniş ağız.
 # Yalnız ileri saplanır; kareler saplamanın evreleri.
 KNIFE_HELD = [
@@ -224,6 +242,8 @@ HAND_PATCH = {
 
 
 def parse(rows):
+    if isinstance(rows, tuple):
+        return rows  # hazır pikseller ve tutuş noktası (gitar: görselden kesilir)
     pixels, hand = {}, None
     for y, row in enumerate(rows):
         for x, ch in enumerate(row):
@@ -534,10 +554,73 @@ def knife():
         img.save(WEAPON_OUT / f"{nm}.png")
 
 
+def guitar_pixels():
+    """
+    Bard'ın gitarı: ({(x, y): renk}, tutuş noktası, gövdenin ortası). Burgu başı solda, gövde sağda, sap yatay.
+    """
+    import sys
+    import numpy as np
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from gemini_serif_isle import downscale, label
+
+    image = np.array(Image.open(GUITAR_SOURCE).convert("RGB"), dtype=np.int32)
+    x0, y0, x1, y1 = GUITAR_FRAME
+    frame = image[y0:y1, x0:x1]
+    background = np.median(image.reshape(-1, 3), axis=0)
+    lab, boxes = label(np.abs(frame - background).max(axis=2) >= 10)
+    body = lab == 1 + max(range(len(boxes)), key=lambda i: boxes[i][4])
+    ys, xs = np.mgrid[0:frame.shape[0], 0:frame.shape[1]]
+    # Bard'ın elleri ve kolları (ten rengi) ile koyu dış çizgi atılır: çizgiyi render kendisi çeker.
+    skin = (frame[..., 0] > 110) & (frame[..., 1] < 140) & (frame[..., 0] - frame[..., 2] > 45)
+    dark = frame.max(axis=2) < 40
+    # Gitarın gövdesi karenin sol üstünde, burgu başı sağ üst köşede; arası Bard'ın kolları.
+    part = body & ~skin & ~dark & (((xs < 90) & (ys < 100)) | ((xs >= 134) & (ys < 19)))
+    rgba = np.zeros(frame.shape[:2] + (4,), np.uint8)
+    rgba[..., :3] = frame
+    rgba[..., 3] = part * 255
+    flat = np.array(Image.fromarray(rgba, "RGBA").rotate(-GUITAR_TILT, resample=Image.NEAREST, expand=True)
+                    .transpose(Image.FLIP_LEFT_RIGHT))
+    ys, xs = np.where(flat[..., 3] > 0)
+    flat = flat[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    small = downscale(flat[..., :3].astype(np.int32), flat[..., 3] > 0, flat.shape[1] / GUITAR_LENGTH)
+
+    pixels = {(x, y): tuple(int(v) for v in small[y, x]) for y in range(small.shape[0]) for x in range(small.shape[1])
+              if small[y, x, 3]}
+    # Sap: burgu başının sağ ucundan gövdeye, burgu başının hizasında iki satır.
+    head = [p for p in pixels if p[0] < small.shape[1] // 3]
+    head_right = max(x for x, _ in head)
+    rows = sorted({y for x, y in head if x == head_right})
+    neck_y = rows[len(rows) // 2]
+    x = head_right + 1
+    while (x, neck_y) not in pixels and x < small.shape[1]:
+        pixels[(x, neck_y)] = GUITAR_NECK[0]
+        pixels[(x, neck_y + 1)] = GUITAR_NECK[1]
+        x += 1
+    body_xs = [px for px, _ in pixels if px >= x]
+    return pixels, (head_right + 1, neck_y), ((min(body_xs) + max(body_xs)) / 2, neck_y + 0.5)
+
+
+def guitar():
+    """Gitar kareleri, yerde duran gitar ve arayüzdeki dayanıklılık çentikleri."""
+    pixels, hand, head = guitar_pixels()
+    held_frames("gitar", (pixels, hand), head, outline=GUITAR_OUTLINE, poses=GUITAR_SWING, aims=["ileri"])
+    item_sprite("gitar", (pixels, hand), GUITAR_OUTLINE)
+    tick = ["CC", "Cc", "pc", "NN", "NN", "cC"]  # arayüz: küçük dikey gitar (dayanıklılık)
+    for nm, empty in (("gitar_ikon", False), ("gitar_ikon_bos", True)):
+        img = Image.new("RGBA", (2, 6), (0, 0, 0, 0))
+        for y, row in enumerate(tick):
+            for x, ch in enumerate(row):
+                img.putpixel((x, y), (70, 60, 60, 200) if empty else PALETTE[ch])
+        img.save(WEAPON_OUT / f"{nm}.png")
+
+
 def main():
     import sys
     if "bicak" in sys.argv[1:]:
         knife()  # yalnız bıçak: öteki silahların karelerine dokunmaz
+        return
+    if "gitar" in sys.argv[1:]:
+        guitar()  # yalnız gitar
         return
     remove_old()
     key_hint()
@@ -574,6 +657,7 @@ def main():
                 img.putpixel((x, y), (70, 60, 60, 200) if empty else PALETTE[ch])
         img.save(WEAPON_OUT / f"{nm}.png")
     knife()
+    guitar()
     shotgun_sprites()
     item_sprite("altipatlar", REVOLVER)
     small_sprites()

@@ -1,0 +1,235 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f500203e0f0cb4499715eeef47384b9, type: 3}
+  m_Name: Gitar
+  m_EditorClassIdentifier: DesertGecko::DesertGecko.Weapons.WeaponData
+  displayName: Gitar
+  icon: {fileID: 21300000, guid: 0ef1ce2584b73b14bb404af0855b8aa6, type: 3}
+  forwardFrames:
+  - {fileID: 21300000, guid: 97bd8f3b2b5b1b14f8aaf2a47e89a0a0, type: 3}
+  - {fileID: 21300000, guid: a3e60217a0e261541a9ffc6b6b172231, type: 3}
+  - {fileID: 21300000, guid: 2245753a53690564b8deab75c204ff11, type: 3}
+  - {fileID: 21300000, guid: 870510f2d3b295f4f926990bd28a90ad, type: 3}
+  diagonalFrames: []
+  upFrames: []
+  forwardMuzzle: {x: 0.562, y: 0.791}
+  diagonalMuzzle: {x: 0, y: 0}
+  upMuzzle: {x: 0, y: 0}
+  poses:
+  - body: {fileID: 21300000, guid: d19a68e79cc26594ab3e8fe863c21050, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 97bd8f3b2b5b1b14f8aaf2a47e89a0a0, type: 3}
+    - {fileID: 21300000, guid: a3e60217a0e261541a9ffc6b6b172231, type: 3}
+    - {fileID: 21300000, guid: 2245753a53690564b8deab75c204ff11, type: 3}
+    - {fileID: 21300000, guid: 870510f2d3b295f4f926990bd28a90ad, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.791}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 95c1a3682cb3a3849a012a5510aa8ce0, type: 3}
+    forward:
+    - {fileID: 21300000, guid: f6b2374355c440447a4b4ebe374325e4, type: 3}
+    - {fileID: 21300000, guid: 27fcb91c440ccd845b8707ac46bcbf65, type: 3}
+    - {fileID: 21300000, guid: e74e64b48f771d24c8ad8ad10411b32e, type: 3}
+    - {fileID: 21300000, guid: c4dcc02dd5d2e55419a31e388df48d6f, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.791}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 03f42b8b97df68b4ba7100a4930defe1, type: 3}
+    forward:
+    - {fileID: 21300000, guid: d5e36271c89d09145aa05388775bb6c2, type: 3}
+    - {fileID: 21300000, guid: 7f12f36dec6bdc74981a1ea122df448c, type: 3}
+    - {fileID: 21300000, guid: 05d497e4cc24dfb44abf239b20ec91e4, type: 3}
+    - {fileID: 21300000, guid: b75618c9228e92445bcb270a8fe883fa, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.76}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: c89c7da84daf5d145a05eaa1e6cea495, type: 3}
+    forward:
+    - {fileID: 21300000, guid: ec3c480f89910204db2d3a09e6e79410, type: 3}
+    - {fileID: 21300000, guid: ac743a36c943af24eb02d1821fd64fa0, type: 3}
+    - {fileID: 21300000, guid: cfbdf2df3b0584749ad6ab8fe0673b78, type: 3}
+    - {fileID: 21300000, guid: 387a011286fd04a45aafcd6a7a967aaa, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.76}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: ff17ac220202f844e8c26318bfe9a22c, type: 3}
+    forward:
+    - {fileID: 21300000, guid: f4834d99530ca7949bce0894880cdec5, type: 3}
+    - {fileID: 21300000, guid: 35a25722b9fc71549ae4bb129556a342, type: 3}
+    - {fileID: 21300000, guid: 22f115696a371344aa8de7d5505a7b6c, type: 3}
+    - {fileID: 21300000, guid: acb531ad32aff9d4e9cc5a9c74e5846e, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.5, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: c9df84acaa6de104683a9250db918a53, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 3523f14ab7637eb4b9e2091a07705149, type: 3}
+    - {fileID: 21300000, guid: 725bafb2c58ad6b4d9a4a6bdf1b133e4, type: 3}
+    - {fileID: 21300000, guid: bd6337eb949232541ba97561a1041d25, type: 3}
+    - {fileID: 21300000, guid: 1e6c36cda8aab9a4797c4068c0431f33, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.531, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: a470ecbfdaa89de42a5024fdd63f184e, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 335f4d54f40f0af47900f2426e343970, type: 3}
+    - {fileID: 21300000, guid: 60c07e9a06a94ee4b9e4a11060e6bd29, type: 3}
+    - {fileID: 21300000, guid: e6066d5c5d529fd4e9e5cb35027437e7, type: 3}
+    - {fileID: 21300000, guid: 3a9b7163839106a4e9640f0456743ec4, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.531, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 63dd13393c7cb344ab5b240dc001aeba, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 7cc7524a7d31ac149927b63c7079ed20, type: 3}
+    - {fileID: 21300000, guid: d5501c01908e96d4aa4591c7b9d38e10, type: 3}
+    - {fileID: 21300000, guid: 651e3a2833337904b8ac184e7a1c9f63, type: 3}
+    - {fileID: 21300000, guid: 44451d6add22aa949bb95d62906598ed, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: c3d11c7ff3dc77c4fb8a1e993a329cef, type: 3}
+    forward:
+    - {fileID: 21300000, guid: adbc30e67e044de4193e9636dbd07b53, type: 3}
+    - {fileID: 21300000, guid: f97efa5578206044980cb6ee3a1bb51f, type: 3}
+    - {fileID: 21300000, guid: c9bf1ceb0eb4b784ebb3555bfa2e4b70, type: 3}
+    - {fileID: 21300000, guid: 0bae7c6b730aa684392362a89fab5626, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.5, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: f632a34ef14429b43a3a69361d86cd80, type: 3}
+    forward:
+    - {fileID: 21300000, guid: aa9da34ee3dd9f3449edfdd37d9cc86a, type: 3}
+    - {fileID: 21300000, guid: e736e144ceb33744db117aeaea544e85, type: 3}
+    - {fileID: 21300000, guid: 791966b69d78b8746a6af62bb83367d7, type: 3}
+    - {fileID: 21300000, guid: 62c9c59c92f1ce34b80c6ab462c65321, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.5, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 8c8bbbbbf1989af43b1c06e07f048b08, type: 3}
+    forward:
+    - {fileID: 21300000, guid: b0b805dc664f93242a2ae24bc5b870ce, type: 3}
+    - {fileID: 21300000, guid: 8725d5bcd00f42f4fa1ba4a5394ea6be, type: 3}
+    - {fileID: 21300000, guid: 71c60bf258a95a545aa366ee1e244361, type: 3}
+    - {fileID: 21300000, guid: 7e2ff78b613690c41a6b6f30a7bf42e5, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.5, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 98cbeb4b8d1cc2d4a9ff98679c06177c, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 8abaab8acd005654db5c393e8f0845f3, type: 3}
+    - {fileID: 21300000, guid: e1a55048045b81c409f805ea8c91a160, type: 3}
+    - {fileID: 21300000, guid: a38c91bcc555f2846ba8f184f63d39bb, type: 3}
+    - {fileID: 21300000, guid: d4e4028c4de3ae3429ce616898c46738, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.531, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 4f192b667cdd8fe4596a646b111586e7, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 2df7897ba0aa27c4c9edcd5c9661e27f, type: 3}
+    - {fileID: 21300000, guid: 600b3f0574ddb5c4ba2317009b1cbad4, type: 3}
+    - {fileID: 21300000, guid: d2f03fa0040c64a44b44502c1e23f7a9, type: 3}
+    - {fileID: 21300000, guid: bf8707fdb83fcf645976fb45c0ba1679, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.562, y: 0.822}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 8586a0d7337d38d44a201df7126d68b6, type: 3}
+    forward:
+    - {fileID: 21300000, guid: 7325e34cc6623464495d51757020eb94, type: 3}
+    - {fileID: 21300000, guid: 2e96e7158ff53564a8fb1c143fcb12af, type: 3}
+    - {fileID: 21300000, guid: 7078d8ed75bd25d49b3dd82de0f359b7, type: 3}
+    - {fileID: 21300000, guid: 834a2cb0dc3323c4d82f618ba26b2cec, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.5, y: 0.791}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  - body: {fileID: 21300000, guid: 856bebe70ad2daf45a0183511219b6cd, type: 3}
+    forward:
+    - {fileID: 21300000, guid: cdc0a414a28690c48ab3964b33f0aa1f, type: 3}
+    - {fileID: 21300000, guid: 8de8342ba6799e644982506e489d69a7, type: 3}
+    - {fileID: 21300000, guid: 53147221da6979040ae560aedc37619f, type: 3}
+    - {fileID: 21300000, guid: 488b33e41c645ef48939de1b0b40fbf5, type: 3}
+    diagonal: []
+    up: []
+    forwardMuzzle: {x: 0.75, y: 0.885}
+    diagonalMuzzle: {x: 0, y: 0}
+    upMuzzle: {x: 0, y: 0}
+  bulletSprite: {fileID: 0}
+  muzzleFlashFrames: []
+  ammoIcon: {fileID: 21300000, guid: d198668fe3c0d5c49b72ec63997b6147, type: 3}
+  ammoIconEmpty: {fileID: 21300000, guid: db07a9c47ec31e445a20cac9999d6683, type: 3}
+  fireMode: 2
+  consumable: 1
+  ammo: 6
+  damage: 3
+  fireInterval: 0.45
+  bulletSpeed: 18
+  bulletRange: 10
+  pellets: 1
+  spreadAngle: 0
+  pelletJitter: 0
+  recoil: 0
+  sticksInGround: 0
+  shake: 0.2
+  recoverTime: 0.14
+  thrownDamage: 1
+  maxShotDamage: 0
+  breaksRocks: 0
+  alwaysDrops: 1
+  throwVelocity: {x: 8, y: 6}
+  fuseTime: 1.3
+  blastRadius: 1.7
+  impactSound: {fileID: 0}
+  impactVolume: 0.8
+  meleeArea: {x: 1.8, y: 1.5}
+  windupTime: 0.09
+  strikeTime: 0.12
+  followTime: 0.14
+  fireSound: {fileID: 8300000, guid: c9d9f852160cc4e428f435cb916aa1e4, type: 3}
+  fireVolume: 0.7
+  cycleSound: {fileID: 0}
+  cycleDelay: 0.1
+  ejectsShell: 0
+  shellColor: {r: 0.8862745, g: 0.30588236, b: 0.21960784, a: 1}
+  swingSound: {fileID: 8300000, guid: 31c1de4913365a244a660785f650c242, type: 3}
+  ricochetSound: {fileID: 8300000, guid: 51942609b5664c346a3f2a0c6853ae2f, type: 3}
+  fuseSound: {fileID: 0}
+  pickupSound: {fileID: 8300000, guid: 0cf68c279ca29df4fa3c788a98d73328, type: 3}
+  hitStop: 0.05
+  swapHintSprite: {fileID: 21300000, guid: 52d0fe9074b9e6741a1e96ccfb6245c2, type: 3}
