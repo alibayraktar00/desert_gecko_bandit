@@ -49,6 +49,7 @@ namespace DesertGecko.Player
         PlayerController controller;
         PlayerInputReader input;
         PlayerHealth health;
+        PlayerVisual visual;
         float readyAt;
         bool hookShown;
         bool holdHookOverride; // testler tuş basmadan kancada tutabilsin
@@ -64,6 +65,7 @@ namespace DesertGecko.Player
             controller = GetComponent<PlayerController>();
             input = GetComponent<PlayerInputReader>();
             health = GetComponent<PlayerHealth>();
+            visual = GetComponentInChildren<PlayerVisual>();
             if (hitMask == 0)
                 hitMask = LayerMask.GetMask("Default", GameLayers.Enemy);
             if (tongueRenderer != null)
@@ -370,6 +372,15 @@ namespace DesertGecko.Player
             Attacked?.Invoke();
 
             HitTargets(MouthPosition(), direction);
+            if (latchedChest != null)
+            {
+                // Sandığın kilidi: dil yapışır, sandık açılana kadar orada kalıp çekiştirir.
+                TreasureChest chest = latchedChest;
+                latchedChest = null;
+                yield return HoldChest(chest);
+                FinishAttack();
+                yield break;
+            }
             float reach = Reach(MouthPosition(), direction);
 
             // Görsel: hızlıca uzan, kısa dur, geri çekil. Duvara değerse orada durur.
@@ -438,9 +449,67 @@ namespace DesertGecko.Player
             IsAttacking = false;
         }
 
+        TreasureChest latchedChest; // bu saldırıda dilin açmaya başladığı sandık
+
+        /// <summary>
+        /// Dil kilide uzanıp yapışır; sandık açılana kadar gerilip gevşeyerek çekiştirir, Gila da asılır (gövdesi
+        /// geriye yaslanıp öne gelir). Vurulursa bırakır, sandık yine de açılır. Sonunda dil hızla geri sarılır.
+        /// </summary>
+        IEnumerator HoldChest(TreasureChest chest)
+        {
+            float until = Time.time + chest.TeaseDuration;
+            bool guarded = health.IsInvincible;
+            Transform body = visual != null ? visual.transform : null;
+            Vector3 bodyHome = body != null ? body.localPosition : Vector3.zero;
+
+            float extend = extendTime * 1.5f;
+            for (float t = 0f; t < extend; t += Time.deltaTime)
+            {
+                Vector2 mouth = MouthPosition();
+                Vector2 to = chest.LockPoint - mouth;
+                ShowTongue(mouth, to.normalized, to.magnitude * Mathf.Clamp01(t / extend));
+                yield return null;
+            }
+
+            while (Time.time < until && chest != null && health.IsAlive && (guarded || !health.IsInvincible))
+            {
+                // Çekiştirme: hızlı küçük titreşim ve arada bir sert asılma (dil gerilir, Gila geriye yaslanır).
+                bool yank = Mathf.Sin(Time.time * 5.5f) > 0.55f;
+                float wiggle = Mathf.Sin(Time.time * 26f) * 0.05f;
+                Vector2 mouth = MouthPosition();
+                Vector2 to = chest.LockPoint - mouth;
+                ShowTongue(mouth, to.normalized, to.magnitude + wiggle - (yank ? 0.06f : 0f));
+                if (body != null)
+                    body.localPosition = bodyHome + Vector3.left * (AttackSide() * (yank ? 1f : 0f) / 32f);
+                yield return null;
+            }
+            if (body != null)
+                body.localPosition = bodyHome;
+
+            // Geri sarıl.
+            Vector2 end = chest != null ? chest.LockPoint : MouthPosition();
+            for (float t = 0f; t < 0.08f; t += Time.deltaTime)
+            {
+                Vector2 mouth = MouthPosition();
+                Vector2 to = end - mouth;
+                ShowTongue(mouth, to.normalized, to.magnitude * (1f - t / 0.08f));
+                yield return null;
+            }
+        }
+
+        void FinishAttack()
+        {
+            if (tongueRenderer != null)
+                tongueRenderer.enabled = false;
+            if (health.IsAlive) // ölüm sırasında kilidi PlayerHealth yönetir
+                controller.MovementLocked = false;
+            IsAttacking = false;
+        }
+
         void HitTargets(Vector2 origin, Vector2 direction, bool catchBugs = true)
         {
             alreadyHit.Clear();
+            latchedChest = null;
             int count = OverlapTongue(origin, direction);
             for (int i = 0; i < count; i++)
             {
@@ -465,7 +534,9 @@ namespace DesertGecko.Player
                     float away = Mathf.Sign(transform.position.x - ((Component)target).transform.position.x);
                     health.TakeDamage(prickly.PrickDamage, new Vector2(away == 0f ? -AttackSide() : away, 0f));
                 }
-                target.TakeDamage(new DamageInfo(damage, direction, DamageKind.Tongue));
+                bool landed = target.TakeDamage(new DamageInfo(damage, direction, DamageKind.Tongue));
+                if (landed && target is TreasureChest chest)
+                    latchedChest = chest;
             }
         }
 

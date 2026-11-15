@@ -113,8 +113,8 @@ namespace DesertGecko.Enemies
         [SerializeField] float idleFps = 2f;
         [SerializeField] float walkFps = 10f;
         [SerializeField] float victoryFps = 6f;
-        [SerializeField] float defeatFps = 7f;
-        [SerializeField] Vector2 defeatKnock = new Vector2(1.2f, 2.5f);
+        [Tooltip("Yenilgi karelerinin süreleri (sn), fallFrames ve landFrames sırasıyla; ağır çekimde uzar")]
+        [SerializeField] float[] defeatDurations = { 0.55f, 0.6f, 0.7f, 0.55f, 0.55f, 0.9f, 1.1f };
 
         public BardState State { get; private set; }
         public bool IsMonster { get; private set; }
@@ -401,10 +401,17 @@ namespace DesertGecko.Enemies
             CancelRoutine();
             DismissBats(); // sahibi ölünce yarasalar yukarı kaçışır
             int knock = Player != null ? -DirectionToPlayer : -FacingDirection;
-            Sprite first = fallFrames != null && fallFrames.Length > 0 ? fallFrames[0] : null;
-            JackalDefeat defeat = JackalDefeat.Spawn(transform.position, first, null, spriteRenderer != null && spriteRenderer.flipX,
-                spriteRenderer != null ? spriteRenderer.sortingOrder : 8, knock);
-            defeat.Animate(fallFrames, landFrames, defeatFps, defeatKnock);
+            // Epik yenilgi: yerinde ağır ağır çöker (BardDefeat). Kareler: ağır darbe, dizlerin üstüne çöküş (canavar),
+            // dizlerin üstünde (insana döner), öne eğilme, yere yığılma, serilme, hareketsiz (ruh yükselir).
+            var frames = new System.Collections.Generic.List<Sprite>();
+            if (fallFrames != null)
+                frames.AddRange(fallFrames);
+            if (landFrames != null)
+                frames.AddRange(landFrames);
+            int fall = fallFrames != null ? fallFrames.Length : 0;
+            BardDefeat defeat = BardDefeat.Spawn(transform.position, frames.ToArray(), defeatDurations, spriteRenderer != null && spriteRenderer.flipX,
+                spriteRenderer != null ? spriteRenderer.sortingOrder : 8, knock,
+                formChange: IsMonster ? fall + 1 : -1, downFrame: frames.Count - 3, soulFrame: frames.Count - 2);
             int life = lifeId;
             defeat.Finished += position =>
             {

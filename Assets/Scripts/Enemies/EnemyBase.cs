@@ -40,6 +40,19 @@ namespace DesertGecko.Enemies
         [Tooltip("Uçurum kenarına en fazla bu kadar yaklaşır: tırmanan oyuncuya çıkacak yer kalsın")]
         [SerializeField] protected float edgeMargin = 1.2f;
 
+        [Header("Katmanlar")]
+        [Tooltip("Gila tek yönlü bir platforma (veranda, balkon, çatı) çıkınca altından zıplayıp peşinden çıkar; " +
+                 "alttaki katmana inince platformdan aşağı süzülür")]
+        [SerializeField] bool climbsLayers = true;
+        [Tooltip("En fazla bu kadar yükseğe zıplar (birim)")]
+        [SerializeField] float maxClimb = 3.2f;
+        [Tooltip("En fazla bu kadar aşağıdaki Gila için platformdan iner (birim)")]
+        [SerializeField] float maxDrop = 8f;
+        [Tooltip("Zıplamadan önce çömelme: oyuncunun görüp hazırlanma payı")]
+        [SerializeField] float crouchTime = 0.18f;
+        [SerializeField] float layerCooldown = 0.7f;
+        [SerializeField] Color layerDustColor = new Color32(0xB0, 0x92, 0x6A, 0xFF);
+
         [Header("Temas")]
         [Tooltip("Can yaktıktan sonra bu kadar durur: oyuncu geri tepmeyle uzaklaşabilsin")]
         [SerializeField] float contactPause = 0.5f;
@@ -97,6 +110,8 @@ namespace DesertGecko.Enemies
         public virtual bool IgnoresEnemyFire => false;
         /// <summary>true ise darbe onu uçurumdan aşağı itmez (iri, ağır düşmanlar): kenardaysa yerinde sendeler.</summary>
         protected virtual bool KeepsFooting => false;
+        /// <summary>false ise katmanlar arasında zıplamaz, inmez (uçanlar, sabit duranlar, iri gövdeler).</summary>
+        protected virtual bool ClimbsLayers => climbsLayers && body != null && body.gravityScale > 0f && CanChase;
         protected PlayerHealth Player => player;
         /// <summary>Silah, ölüm animasyonu bu kadar sürdükten sonra görünür.</summary>
         protected virtual float WeaponDropDelay => weaponDropDelay;
@@ -154,6 +169,8 @@ namespace DesertGecko.Enemies
             if (spriteRenderer == null)
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>();
             if (spriteRenderer != null)
+                visualScale = spriteRenderer.transform.localScale;
+            if (spriteRenderer != null)
                 baseColor = spriteRenderer.color;
             if (groundMask == 0)
                 groundMask = GameLayers.GroundMask;
@@ -177,6 +194,7 @@ namespace DesertGecko.Enemies
         {
             if (spriteRenderer == null)
                 return;
+            UpdateSquash();
             Color color = Time.time < flashUntil ? flashColor : baseColor;
             // Koruma süresinde yanıp söner: oyuncu şu an vuramayacağını görür.
             if (Time.time < hitGuardUntil && Mathf.Sin(Time.time * guardBlinkRate * Mathf.PI * 2f) > 0f)
@@ -197,21 +215,41 @@ namespace DesertGecko.Enemies
                 gameObject.SetActive(false); // uçuruma düştü: ödül yok, oyuncu doğunca geri gelir
                 return;
             }
+            RestoreDropCollider();
             bool grounded = IsGrounded();
             if (!grounded)
                 UnstickFromLedge();
             else
+            {
                 perchedSince = -1f;
+                if (layerAirborne && Time.time > layerLeftAt + 0.1f)
+                    Land();
+            }
             if (Time.time < stunnedUntil || !grounded)
+            {
+                jumpAt = -1f; // darbe ya da düşüş çömelmeyi bozar
                 return; // havadayken yön değiştirip titremesin
+            }
 
             if (HoldPosition)
             {
+                jumpAt = -1f;
                 body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
                 return;
             }
 
+            if (jumpAt >= 0f)
+            {
+                // Çömeliyor: yerinde durur, süre dolunca sıçrar.
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
+                if (Time.time >= jumpAt)
+                    Jump();
+                return;
+            }
+
             UpdateAggro();
+            if (TryChangeLayer())
+                return;
             Move();
         }
 
@@ -272,6 +310,15 @@ namespace DesertGecko.Enemies
             Vector2 toPlayer = player.transform.position - transform.position;
             if (playerMovement == null)
                 playerMovement = player.GetComponent<PlayerController>();
+            // Başka katmandaki Gila: oraya zıplayıp inebiliyorsa peşini bırakmaz (TryChangeLayer).
+            if (CanReachLayer(toPlayer))
+            {
+                if (!IsChasing)
+                    IsChasing = Mathf.Abs(toPlayer.x) <= detectRange;
+                else if (toPlayer.magnitude > loseRange)
+                    IsChasing = false;
+                return;
+            }
             // Aşağıda kalan ya da duvara tırmanan oyuncuyu kenarda beklemez, devriyesine döner.
             if (toPlayer.y < -belowTolerance || PlayerStandsAbove || (playerMovement != null && playerMovement.State == PlayerController.MoveState.WallCling))
             {
@@ -312,6 +359,173 @@ namespace DesertGecko.Enemies
 
             FacingDirection = direction;
             body.linearVelocity = new Vector2(direction * speed, body.linearVelocity.y);
+        }
+
+        // --- Katmanlar arası: tek yönlü platformlara zıplama, platformdan inme ---
+
+        Vector3 visualScale = Vector3.one;
+        float jumpAt = -1f, jumpTargetY, layerReadyAt, layerLeftAt, squashUntil, squashStart;
+        bool layerAirborne, squashIsLanding, squashApplied;
+        Collider2D dropCollider;
+        float dropRestoreAt;
+        readonly RaycastHit2D[] layerHits = new RaycastHit2D[6];
+
+        /// <summary>Gila'nın durduğu yüzey (yoksa null).</summary>
+        Collider2D PlayerFloor()
+        {
+            if (playerMovement == null || !playerMovement.IsGrounded)
+                return null;
+            RaycastHit2D hit = Physics2D.Raycast((Vector2)player.transform.position + Vector2.up * 0.1f, Vector2.down, 0.4f, groundMask);
+            return hit.collider;
+        }
+
+        /// <summary>Altındaki yüzey: tek yönlü platformsa üstünden aşağı süzülebilir.</summary>
+        Collider2D OwnFloor()
+        {
+            Bounds b = box.bounds;
+            RaycastHit2D hit = Physics2D.Raycast(new Vector2(b.center.x, b.min.y + 0.05f), Vector2.down, 0.15f, groundMask);
+            // Yalnız ayağının altındaki yüzey: içinden geçtiği alçak veranda basamağı sayılmaz.
+            return hit.collider != null && Mathf.Abs(hit.collider.bounds.max.y - b.min.y) < 0.1f ? hit.collider : null;
+        }
+
+        /// <summary>Gila başka bir katmanda ve oraya geçilebilir: yukarıda tek yönlü yüzeyde ya da aşağıda, biz tek yönlüdeyken.</summary>
+        bool CanReachLayer(Vector2 toPlayer)
+        {
+            if (!ClimbsLayers || playerMovement == null || playerMovement.State == PlayerController.MoveState.WallCling)
+                return false;
+            if (toPlayer.y > aboveTolerance && toPlayer.y <= maxClimb + 0.2f)
+            {
+                Collider2D floor = PlayerFloor();
+                return floor != null && floor.usedByEffector;
+            }
+            if (toPlayer.y < -belowTolerance && toPlayer.y >= -maxDrop)
+            {
+                Collider2D own = OwnFloor();
+                return own != null && own.usedByEffector && playerMovement.IsGrounded;
+            }
+            return false;
+        }
+
+        /// <returns>Zıplamaya çömeldiyse ya da aşağı süzüldüyse true (bu adım yürümez).</returns>
+        bool TryChangeLayer()
+        {
+            if (!IsChasing || Time.time < layerReadyAt || player == null)
+                return false;
+            Vector2 toPlayer = player.transform.position - transform.position;
+            if (!CanReachLayer(toPlayer))
+                return false;
+
+            if (toPlayer.y < 0f)
+            {
+                // Aşağıdaki Gila: bastığı tek yönlü platformun içinden düşer.
+                Collider2D own = OwnFloor();
+                dropCollider = own;
+                dropRestoreAt = Time.time + 0.45f;
+                Physics2D.IgnoreCollision(box, own, true);
+                body.linearVelocity = new Vector2(0f, -2f);
+                LeaveGround();
+                return true;
+            }
+
+            // Yukarıdaki Gila: başının üstünde, Gila'nın durduğu yüzeyin hizasında tek yönlü platform varsa zıplar.
+            Bounds b = box.bounds;
+            float playerFloorY = player.transform.position.y;
+            var filter = new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
+            int count = Physics2D.Raycast(new Vector2(b.center.x, b.max.y), Vector2.up, filter, layerHits, maxClimb + 0.3f);
+            for (int i = 0; i < count; i++)
+            {
+                Collider2D c = layerHits[i].collider;
+                if (!c.usedByEffector)
+                    return false; // tavan, katı blok: içinden geçilmez
+                float top = c.bounds.max.y;
+                if (top - b.min.y > maxClimb + 0.05f)
+                    break;
+                if (Mathf.Abs(top - playerFloorY) <= 0.35f)
+                {
+                    FacingDirectionTo(toPlayer.x);
+                    jumpTargetY = top;
+                    jumpAt = Time.time + crouchTime;
+                    Squash(false, crouchTime);
+                    return true;
+                }
+            }
+            return false; // henüz altında değil: Gila'ya doğru yürür
+        }
+
+        void FacingDirectionTo(float dx)
+        {
+            if (Mathf.Abs(dx) > 0.05f)
+                TurnTowards(dx > 0f ? 1 : -1);
+        }
+
+        void Jump()
+        {
+            jumpAt = -1f;
+            float gravity = -Physics2D.gravity.y * body.gravityScale;
+            float height = Mathf.Max(0.5f, jumpTargetY - box.bounds.min.y + 0.4f);
+            float vy = Mathf.Sqrt(2f * gravity * height);
+            body.linearVelocity = new Vector2(FacingDirection * 1.2f, vy);
+            PixelBurst.Spawn(new Vector2(box.bounds.center.x, box.bounds.min.y + 0.05f), layerDustColor, 6, 2.5f, 0.35f);
+            LeaveGround();
+        }
+
+        void LeaveGround()
+        {
+            layerAirborne = true;
+            layerLeftAt = Time.time;
+            layerReadyAt = Time.time + layerCooldown;
+            squashUntil = 0f;
+        }
+
+        void Land()
+        {
+            layerAirborne = false;
+            PixelBurst.Spawn(new Vector2(box.bounds.center.x, box.bounds.min.y + 0.05f), layerDustColor, 7, 2.8f, 0.4f);
+            Squash(true, 0.12f);
+        }
+
+        void RestoreDropCollider()
+        {
+            if (dropCollider == null || Time.time < dropRestoreAt)
+                return;
+            // Platformun tamamen altına inene kadar bekler: içindeyken açılırsa yukarı itilirdi.
+            if (box.bounds.max.y > dropCollider.bounds.min.y && box.bounds.min.y < dropCollider.bounds.max.y)
+                return;
+            Physics2D.IgnoreCollision(box, dropCollider, false);
+            dropCollider = null;
+        }
+
+        void Squash(bool landing, float duration)
+        {
+            squashIsLanding = landing;
+            squashStart = Time.time;
+            squashUntil = Time.time + duration;
+        }
+
+        /// <summary>
+        /// Zıplama görünümü: çömelirken ve yere değince basılır (alçalır, genişler), havada uzar.
+        /// Kareler alttan pivotlu: ayaklar yerinde kalır.
+        /// </summary>
+        void UpdateSquash()
+        {
+            if (spriteRenderer == null || body == null || body.gravityScale <= 0f)
+                return;
+            bool active = Time.time < squashUntil || (layerAirborne && body.linearVelocity.y > 1f);
+            if (!active && !squashApplied)
+                return; // başka bir şey ölçeklemiyorsa dokunmaz (akrebin karşı duruşu kendi ölçeğini kullanır)
+            squashApplied = active;
+            Vector3 scale = visualScale;
+            if (Time.time < squashUntil)
+            {
+                float k = (Time.time - squashStart) / Mathf.Max(0.01f, squashUntil - squashStart);
+                float amount = squashIsLanding ? 1f - k : k; // çömelme derinleşir, iniş toparlanır
+                scale = new Vector3(visualScale.x * (1f + 0.18f * amount), visualScale.y * (1f - 0.2f * amount), visualScale.z);
+            }
+            else if (layerAirborne && body.linearVelocity.y > 1f)
+            {
+                scale = new Vector3(visualScale.x * 0.9f, visualScale.y * 1.12f, visualScale.z);
+            }
+            spriteRenderer.transform.localScale = scale;
         }
 
         protected bool IsBlocked(int direction)
@@ -512,6 +726,14 @@ namespace DesertGecko.Enemies
             lastShotId = 0;
             shotDamage = 0;
             perchedSince = -1f;
+            jumpAt = -1f;
+            layerAirborne = false;
+            squashUntil = 0f;
+            if (dropCollider != null)
+                Physics2D.IgnoreCollision(box, dropCollider, false);
+            dropCollider = null;
+            if (spriteRenderer != null)
+                spriteRenderer.transform.localScale = visualScale;
         }
 
         protected virtual void OnDrawGizmosSelected()

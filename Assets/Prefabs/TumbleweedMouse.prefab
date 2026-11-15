@@ -121,7 +121,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 909a98919045d3448b1874e238167fba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.TumbleweedMouse
-  maxHealth: 2
+  maxHealth: 3
   contactDamage: 1
   patrolSpeed: 2
   chaseSpeed: 4
@@ -132,6 +132,12 @@ MonoBehaviour:
   belowTolerance: 1.1
   aboveTolerance: 0.6
   edgeMargin: 1.2
+  climbsLayers: 1
+  maxClimb: 3.2
+  maxDrop: 8
+  crouchTime: 0.18
+  layerCooldown: 0.7
+  layerDustColor: {r: 0.6901961, g: 0.57254905, b: 0.41568628, a: 1}
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3

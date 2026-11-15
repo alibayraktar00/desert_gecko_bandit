@@ -615,10 +615,10 @@ namespace DesertGecko.EditorTools
             SetField(mouse, "parryFrame", f[18]);
             SetArray(mouse, "defeatFrames", Range(43, 47));
 
-            // Kareler sağa bakar. Sıska: savuşturmaları bitince iki darbede ölür.
+            // Kareler sağa bakar. Sıska ama inatçı: savuşturmaları bitince üç darbede ölür.
             var so = new SerializedObject(mouse);
             so.FindProperty("spriteFacesLeft").boolValue = false;
-            so.FindProperty("maxHealth").intValue = 2;
+            so.FindProperty("maxHealth").intValue = 3;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();

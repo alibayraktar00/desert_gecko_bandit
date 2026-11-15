@@ -20,7 +20,8 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/kapi_zincir.wav    tavan kapısının zinciri boşalır (kapı inmeden hemen önce)
   Assets/Audio/kapi_carpma.wav    ağır ahşap kapı yere çakılır, mağarada gümbürtü
   Assets/Audio/kapi_kalkma.wav    kapı kalkarken makara takırtısı (döngü)
-  Assets/Audio/sandik_acilma.wav  sandık açılır: sarsıntı, kilit, menteşe gıcırtısı, dökülen altın
+  Assets/Audio/sandik_gerilim.wav sandığın gerilimi: kilit, sıklaşan tıkırtı, uğultu, aralanıp kapanma
+  Assets/Audio/sandik_acilma.wav  sandık patlayarak açılır: kapak fırlar, dökülen altın, parlak akor
   Assets/Audio/gitar_akor.wav     Bard'ın yarasa çağıran akoru: distorsiyonlu elektro gitar güç akoru
   Assets/Audio/bard_donusum.wav   Bard canavara dönüşür: yükselen hırıltı, gümbürtü, akor patlaması
 
@@ -265,36 +266,75 @@ def gate_grind(rng, seconds=1.0):
     return (grind * 0.45 + ratchet * 0.4 + hum) * 0.6
 
 
-def chest_open(rng, seconds=1.4):
-    """Sandık açılır: kilit tıkırtısı ve sarsıntı, gıcırdayan menteşe, ardından dökülen altın şıngırtısı."""
+def chest_tease(rng, seconds=2.4):
+    """
+    Sandığın gerilimi (TreasureChest süreleriyle aynı): 0 kilit çıtlar ve susar; 0.4-1.4 tok tıkırtılar sıklaşır,
+    altında pes bir uğultu kabarır; 1.4 menteşe gıcırdar (kapak aralanır); 1.75 kapak geri düşer: tok gümleme;
+    2.05-2.4 en sert ve sık tıkırtılar.
+    """
     t = np.arange(int(seconds * RATE)) / RATE
     out = np.zeros(t.size)
-    # Sarsıntı (0-0.45 sn): tahtanın tok tıkırtıları
-    for start in np.arange(0.0, 0.45, 0.065) + rng.uniform(0, 0.01, 7):
+
+    def knock(start, gain):
         u = np.clip(t - start, 0.0, None)
-        knock = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(25) / 25, mode="same") * 4.0 * np.exp(-u * 60.0)
-        out += knock * (t >= start) * 0.5
-    # Kilit açılır (0.45)
-    u = np.clip(t - 0.45, 0.0, None)
-    out += np.sin(2 * np.pi * 2300.0 * u) * np.exp(-u * 70.0) * (t >= 0.45) * 0.4
-    # Menteşe gıcırtısı (0.5-0.75): titreşen, yükselen sürtünme
-    hinge = (t > 0.5) & (t < 0.78)
-    freq = 420.0 + 380.0 * np.clip((t - 0.5) / 0.28, 0, 1)
+        body = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(25) / 25, mode="same") * 4.0 * np.exp(-u * 60.0)
+        return body * (t >= start) * gain
+
+    # Kilit: madeni çıt
+    out += np.sin(2 * np.pi * 2600.0 * t) * np.exp(-t * 80.0) * 0.4
+    out += np.sin(2 * np.pi * 1750.0 * np.clip(t - 0.03, 0, None)) * np.exp(-np.clip(t - 0.03, 0, None) * 90.0) * (t >= 0.03) * 0.25
+    # Sıklaşan tıkırtılar
+    start, gap = 0.4, 0.2
+    while start < 1.38:
+        out += knock(start + rng.uniform(0, 0.01), 0.25 + 0.35 * (start - 0.4))
+        start += gap
+        gap = max(0.055, gap * 0.8)
+    # Kabaran uğultu: sandığın içinden gelen sıcak ses
+    hum = (t > 0.4) & (t < 2.4)
+    swell = np.clip((t - 0.4) / 1.0, 0, 1) * np.where(t > 1.75, 0.35, 1.0)
+    out += (np.sin(2 * np.pi * 110.0 * t) + 0.5 * np.sin(2 * np.pi * 165.0 * t)) * hum * swell * 0.12
+    # Menteşe gıcırtısı (aralanma)
+    hinge = (t > 1.4) & (t < 1.68)
+    freq = 380.0 + 300.0 * np.clip((t - 1.4) / 0.28, 0, 1)
     creak = np.sign(np.sin(2 * np.pi * np.cumsum(freq) / RATE)) * (0.6 + 0.4 * np.sin(2 * np.pi * 38.0 * t))
-    out += creak * hinge * np.sin(np.pi * np.clip((t - 0.5) / 0.28, 0, 1)) * 0.18
-    # Altın şıngırtısı (0.74 sonrası): rastgele madeni çınlamalar, yoğun başlar, seyrelir
-    for _ in range(26):
-        start = 0.74 + rng.exponential(0.16)
+    out += creak * hinge * np.sin(np.pi * np.clip((t - 1.4) / 0.28, 0, 1)) * 0.15
+    # Kapak geri düşer: tok gümleme
+    u = np.clip(t - 1.75, 0.0, None)
+    out += (np.sin(2 * np.pi * 70.0 * u) * 0.8 + np.convolve(rng.normal(0, 1, t.size), np.ones(40) / 40, mode="same") * 3.0) \
+        * np.exp(-u * 18.0) * (t >= 1.75) * 0.5
+    # Son sarsıntı: sert ve sık
+    for s in np.arange(2.05, 2.38, 0.045):
+        out += knock(s + rng.uniform(0, 0.006), 0.7)
+    return np.tanh(out * 1.2) * 0.8
+
+
+def chest_open(rng, seconds=1.2):
+    """Sandık patlayarak açılır: kapak fırlar (kısa gıcırtı ve tok vuruş), ardından dökülen altın şıngırtısı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.zeros(t.size)
+    # Kapak fırlar: hızlı yükselen gıcırtı
+    hinge = t < 0.12
+    freq = 500.0 + 900.0 * np.clip(t / 0.12, 0, 1)
+    creak = np.sign(np.sin(2 * np.pi * np.cumsum(freq) / RATE))
+    out += creak * hinge * np.sin(np.pi * np.clip(t / 0.12, 0, 1)) * 0.15
+    # Kapak arkaya çarpar
+    u = np.clip(t - 0.12, 0.0, None)
+    out += np.convolve(rng.normal(0, 1, t.size), np.ones(20) / 20, mode="same") * 3.5 * np.exp(-u * 45.0) * (t >= 0.12) * 0.5
+    # Altın şıngırtısı: yoğun başlar, seyrelir
+    for _ in range(34):
+        start = 0.12 + rng.exponential(0.18)
         if start >= seconds:
             continue
         u = np.clip(t - start, 0.0, None)
-        f = rng.uniform(2400.0, 4600.0)
-        ring = (np.sin(2 * np.pi * f * u) + 0.4 * np.sin(2 * np.pi * f * 1.51 * u)) * np.exp(-u * rng.uniform(25.0, 45.0))
+        f = rng.uniform(2400.0, 4800.0)
+        ring = (np.sin(2 * np.pi * f * u) + 0.4 * np.sin(2 * np.pi * f * 1.51 * u)) * np.exp(-u * rng.uniform(22.0, 42.0))
         out += ring * (t >= start) * rng.uniform(0.08, 0.18)
-    burst = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(3) / 3, mode="same") * np.exp(-np.clip(t - 0.74, 0, None) * 12.0) * (t >= 0.74)
+    burst = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(3) / 3, mode="same") * np.exp(-u * 10.0) * (t >= 0.12)
     out += burst * 0.25
+    # Parlak bir akor: hazine bulundu
+    for f in (523.25, 659.25, 783.99, 1046.5):
+        out += np.sin(2 * np.pi * f * u) * np.exp(-u * 3.0) * (t >= 0.12) * 0.06
     return out * 0.85
-
 
 def pluck(rng, frequency, seconds, damping=0.996):
     """Karplus-Strong: gürültüyle dolu gecikme hattı tel gibi sönümlenir."""
@@ -357,6 +397,7 @@ def main():
     save("kapi_carpma.wav", gate_slam(np.random.default_rng(20)))
     save("kapi_kalkma.wav", gate_grind(np.random.default_rng(21)))
     save("sandik_acilma.wav", chest_open(np.random.default_rng(22)))
+    save("sandik_gerilim.wav", chest_tease(np.random.default_rng(25)))
     save("gitar_akor.wav", power_chord(np.random.default_rng(23)))
     save("bard_donusum.wav", monster_shift(np.random.default_rng(24)))
 

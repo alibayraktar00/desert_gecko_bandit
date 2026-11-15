@@ -230,6 +230,12 @@ MonoBehaviour:
   belowTolerance: 1.1
   aboveTolerance: 0.6
   edgeMargin: 1.2
+  climbsLayers: 1
+  maxClimb: 3.2
+  maxDrop: 8
+  crouchTime: 0.18
+  layerCooldown: 0.7
+  layerDustColor: {r: 0.6901961, g: 0.57254905, b: 0.41568628, a: 1}
   contactPause: 0.5
   knockbackVelocity: {x: 4, y: 3}
   stunDuration: 0.3
@@ -394,8 +400,14 @@ MonoBehaviour:
   idleFps: 2
   walkFps: 10
   victoryFps: 6
-  defeatFps: 7
-  defeatKnock: {x: 1.2, y: 2.5}
+  defeatDurations:
+  - 0.55
+  - 0.6
+  - 0.7
+  - 0.55
+  - 0.55
+  - 0.9
+  - 1.1
 --- !u!114 &2761977735085623146
 MonoBehaviour:
   m_ObjectHideFlags: 0

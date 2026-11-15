@@ -208,6 +208,7 @@ namespace DesertGecko.EditorTools
             painter.DressCaveFloors();
             painter.DressCaveWalls();
             painter.DressCeilings();
+            painter.DressExposedSides();
             painter.ScatterVeins();
             painter.ScatterGroundCover();
             painter.DressBoundaries();
@@ -509,11 +510,10 @@ namespace DesertGecko.EditorTools
             p.RockEdge(109f, 40f, baseY + 3f, -1);
             p.DoorFade(109f, -1, 4.5f, baseY, baseY + 3f);
             p.RockMass(109f, 131f, shaftRoof, 60f);
-            p.RockMass(127f, 131f, GroundBottom, 19f);
-            p.RockEdge(131f, 19.5f, GroundBottom, 1);
+            // Bacanın çıkışı: tünelin tabanı kayanın kendisi (en üst çıkıntıyla aynı hizada), dışarı taşan çıkıntı yok.
+            p.RockMass(127f, 131f, GroundBottom, 19.2f); // çıkıntının hemen altında: taşlı çıkıntı kayanın üstünde görünsün
             p.RockMass(127f, 131f, 22.5f, shaftRoof);
-            p.RockEdge(131f, 40f, 22.5f, 1);
-            p.DoorFade(131f, 1, 4.5f, 19f, 22.5f);
+            p.DoorFade(131f, 1, 4.5f, 19.5f, 22.5f);
             p.Sign(110.5f, baseY, "Çıkıntılardan aşağıdan\nzıplayarak geçebilirsin");
 
             p.Ledge(114f, 120f, 9.5f);
@@ -525,6 +525,8 @@ namespace DesertGecko.EditorTools
             p.Ledge(121f, 126f, 17f);
             p.Crystal(123.5f, 17.8f);
             p.Ledge(121f, 133f, 19.5f, register: true); // en üst çıkıntı tünelden dışarı uzanır
+            // Dışarı taşan ucu boşlukta kalmasın: sütundan dışarı çıkan bir kaya dili onu taşır (yüzü pürüzlü, altı yuvarlak).
+            p.RockMass(131f, 133f, 16.8f, 19.2f);
 
             // Son süzülüş ve akrep sürüsü
             p.CrystalArc(132f, 22.5f, 139f, 19.8f, 4);
@@ -1594,7 +1596,7 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_otel", 30.1f, street);
             p.Lamp(28.3f, street + 1.3f, 1.6f);
             p.Lamp(31.9f, street + 1.3f, 1.6f);
-            p.Barmen(27f, street); // saloonun fıçılarının yanında
+            p.Barmen(25.4f, street); // saloonun fıçılarının yanında: iki verandanın arasında, platforma gömülmesin
             p.TownDeco("kasaba_araba", 36.4f, street, 1f, -9); // otelden berbere geçerken basamak
             p.Building("kasaba_berber", 41.6f, street);
             p.TownDeco("kasaba_fici_teker", 46.3f, street, 1f, -8);
@@ -1617,7 +1619,7 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_banka", 79.5f, upper);
             p.CrystalLine(78f, upper + 4f, 3, 1.4f);
             p.Building("kasaba_silahci", 87.5f, upper);
-            p.Barmen(90f, upper); // silahçının önünde
+            p.Barmen(88f, upper + 10f / 32f); // silahçının verandasında (veranda tabanı 10 piksel)
             p.Building("kasaba_cenazeci", 95f, upper);
             p.TownDeco("kasaba_kuyu_tas", 101f, upper);
             p.TownDeco("kasaba_bank_sandalye", 105.3f, upper, 1f, -8);
@@ -1644,7 +1646,7 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_maden_ofisi", 7f, yard);
             p.Building("kasaba_demirci", 18f, yard);
             p.Lamp(17.6f, yard + 1.1f, 2.2f); // ocağın ateşi
-            p.Barmen(22f, yard); // demircinin önünde
+            p.Barmen(12.3f, yard); // maden ofisiyle demircinin arasında (sandık yığınına gömülüyordu)
             // Demircinin sundurmasından sandık yığınına, oradan su kulesinin güvertesine
             p.TownDeco("kasaba_sandiklar", 25.5f, yard, 1f, -9);
             p.Building("kasaba_su_kulesi", 33f, yard);
@@ -1787,6 +1789,15 @@ namespace DesertGecko.EditorTools
             readonly List<(float xMin, float xMax, float top)> lifts = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float top)> caveFloors = new List<(float, float, float)>();
             readonly List<(float xMin, float xMax, float yMin, float yMax)> rockMasses = new List<(float, float, float, float)>();
+            // Döşemeler (dünya koordinatı): yan yüzleri DressExposedSides örter.
+            readonly List<(float xMin, float xMax, float bottom, float top)> slabs = new List<(float, float, float, float)>();
+            readonly Dictionary<(float, float, float, float), Transform> rockObjects = new Dictionary<(float, float, float, float), Transform>();
+            // Sahte kayalar: komşu kayanın yüzünü örter (sırrı ele vermesin), kendi yüzleri onunla birlikte saydamlaşır.
+            readonly List<(float xMin, float xMax, float yMin, float yMax, Transform rock)> secretRocks = new List<(float, float, float, float, Transform)>();
+            // Çizilmiş pürüzlü yüzler (yüzün x'i, baktığı yön, dikey aralık): aynı yere ikinci kez çizilmesin.
+            readonly List<(float x, int side, float yMin, float yMax)> faces = new List<(float, int, float, float)>();
+            // RockEdge istekleri: kütlelerden çıkarılamayan bir kenar kalırsa yine pürüzlü yüzle örtülür.
+            readonly List<(float x, int side, float yMin, float yMax)> edgeRequests = new List<(float, int, float, float)>();
             int count;
 
             /// <summary>Toprağın içine gömülecek süslerin temaları (mg_damar_*). Level tanımı kendi temasını seçer.</summary>
@@ -1999,6 +2010,7 @@ namespace DesertGecko.EditorTools
                 SpriteRenderer sr = TiledArt(geometry, Name("Yamac"), face, position + Vector2.down * capHeight,
                     new Vector2(face.bounds.size.x, top - capHeight - bottom), order);
                 sr.flipX = side > 0;
+                faces.Add((x, side, bottom, top));
             }
 
             void Rubble(float x, float groundTop, int side)
@@ -2344,14 +2356,11 @@ namespace DesertGecko.EditorTools
             /// Kaya kütlesinin dik yüzü: toprak katmanlarını kesen çerçeveli kenar (cetvelle kesilmiş görünmesin).
             /// Görsel kütlenin içine doğru uzanır, yüzü tam x'te. side: yüzün baktığı yön. Yalnızca görsel.
             /// </summary>
-            public void RockEdge(float x, float yTop, float yBottom, int side)
-            {
-                Sprite face = LayerArt(FaceArt);
-                float width = face.bounds.size.x;
-                SpriteRenderer sr = TiledArt(geometry, Name("KayaKenar"), face, new Vector2(x + OriginX - side * width / 2f, yTop),
-                    new Vector2(width, yTop - yBottom), 3);
-                sr.flipX = side < 0; // görsel sağa bakar
-            }
+            public void RockEdge(float x, float yTop, float yBottom, int side) =>
+                // Çerçeveli düz şerit (mg_kenar) cetvelle kesilmiş gibi duruyordu: artık DressExposedSides kütlelerin açık
+                // yüzlerini pürüzlü yamaçla örter (üstte omuz, altta yuvarlak köşe). İstek, kütleden çıkarılamayan
+                // bir kenar kalırsa diye saklanır.
+                edgeRequests.Add((x + OriginX, side, yBottom, yTop));
 
             /// <summary>
             /// RockEdge'in pürüzlü karşılığı: çerçeveli düz kenar yerine yamaç görseli, kenar boyunca girintili çıkıntılı.
@@ -2374,6 +2383,7 @@ namespace DesertGecko.EditorTools
                         Sprite face = LayerArt("zemin_yamac");
                         TiledArt(geometry, Name("Yamac"), face, new Vector2(x - side * 0.375f, yTop),
                             new Vector2(face.bounds.size.x, yTop - yBottom), 3).flipX = side > 0;
+                        faces.Add((x, side, yBottom, yTop));
                         break;
                 }
             }
@@ -2403,6 +2413,125 @@ namespace DesertGecko.EditorTools
                         new Vector2(face.bounds.size.x, yTop - faceBottom), 3);
                     sr.flipX = side > 0;
                 }
+                faces.Add((x, side, yBottom, Mathf.Max(yTop, faceBottom)));
+            }
+
+            /// <summary>
+            /// Bütün katı gövdelerin (zemin, döşeme, kaya kütlesi) açıkta kalan yan yüzlerini bulur ve pürüzlü yamaçla örter:
+            /// hiçbir yerde cetvelle kesilmiş dik kenar kalmasın. Yüzü komşu bir gövde ya da daha önce çizilmiş bir yüz
+            /// örtüyorsa dokunmaz. Üstünde yürünen gövdenin yüzü omuzla, tavandan sarkanınki yuvarlak köşeyle biter.
+            /// Sahte kayaların yüzleri kayanın çocuğudur: oyuncu girince onunla birlikte saydamlaşır. Yalnızca görsel.
+            /// </summary>
+            public void DressExposedSides()
+            {
+                const float eps = 0.05f, minLength = 0.45f;
+                var solids = grounds.Select(g => (g.xMin, g.xMax, bottom: GroundBottom, g.top, hangs: false, parent: geometry, order: 3))
+                    .Concat(slabs.Select(s => (s.xMin, s.xMax, s.bottom, s.top, hangs: true, parent: geometry, order: 3)))
+                    .Concat(rockMasses.Select(r => (r.xMin, r.xMax, bottom: r.yMin, top: r.yMax, hangs: true, parent: geometry, order: 3)))
+                    .Concat(secretRocks.Select(r => (r.xMin, r.xMax, bottom: r.yMin, top: r.yMax, hangs: true, parent: r.rock, order: SecretOrder + 1)))
+                    .ToList();
+
+                List<(float a, float b)> Exposed(float x, int side, float bottom, float top, int self)
+                {
+                    var open = new List<(float a, float b)> { (bottom, top) };
+                    for (int i = 0; i < solids.Count; i++)
+                    {
+                        var s = solids[i];
+                        if (i == self)
+                            continue;
+                        // Yüzün dışına taşan komşu: o aralıkta yüz görünmez (içerideki aynı kenarlı gövde sayılmaz).
+                        bool outside = side < 0 ? s.xMin < x - eps && s.xMax >= x - eps : s.xMax > x + eps && s.xMin <= x + eps;
+                        if (outside)
+                            open = Subtract(open, s.bottom, s.top);
+                    }
+                    foreach (var f in faces.Where(f => f.side == side && Mathf.Abs(f.x - x) < eps))
+                        open = Subtract(open, f.yMin, f.yMax);
+                    return open.Where(o => o.b - o.a >= minLength).ToList();
+                }
+
+                for (int i = 0; i < solids.Count; i++)
+                {
+                    var r = solids[i];
+                    foreach (int side in new[] { -1, 1 })
+                    {
+                        float x = side < 0 ? r.xMin : r.xMax;
+                        if (r.parent == geometry && boundaries.Any(b => Mathf.Abs(x - b) < eps || Mathf.Abs(x - (b + 1f)) < eps))
+                            continue; // levelin ucundaki dağ duvarı (DressBoundaries)
+                        foreach (var (a, b) in Exposed(x, side, r.bottom, r.top, i))
+                        {
+                            // Omuz: gövdenin tepesi açıkta (üstüne başka gövde oturmuyor). Köşe: tavandan sarkan gövdenin altı.
+                            bool topCap = b >= r.top - eps && !solids.Any(s => Mathf.Abs(s.bottom - r.top) < eps && s.xMin < x + 0.5f && s.xMax > x - 0.5f);
+                            bool bottomCap = r.hangs && a <= r.bottom + eps && !solids.Any(s => Mathf.Abs(s.top - r.bottom) < eps && s.xMin < x + 0.5f && s.xMax > x - 0.5f);
+                            DrawFace(r.parent, x, a, b, side, topCap, bottomCap, r.order);
+                        }
+                    }
+                }
+
+                // Kütleden çıkarılamayan RockEdge istekleri (kenar başka bir şeyin üstünde): düz yüzle örtülür.
+                foreach (var e in edgeRequests)
+                {
+                    var open = new List<(float a, float b)> { (e.yMin, e.yMax) };
+                    foreach (var f in faces.Where(f => f.side == e.side && Mathf.Abs(f.x - e.x) < eps).ToList())
+                        open = Subtract(open, f.yMin, f.yMax);
+                    foreach (var (a, b) in open.Where(o => o.b - o.a >= minLength).ToList())
+                        DrawFace(geometry, e.x, a, b, e.side, false, false, 3);
+                }
+            }
+
+            /// <summary>Aralık listesinden [cutMin, cutMax] çıkarılır.</summary>
+            static List<(float a, float b)> Subtract(List<(float a, float b)> spans, float cutMin, float cutMax)
+            {
+                var result = new List<(float a, float b)>();
+                foreach (var (a, b) in spans)
+                {
+                    if (cutMax <= a || cutMin >= b)
+                    {
+                        result.Add((a, b));
+                        continue;
+                    }
+                    if (cutMin > a)
+                        result.Add((a, cutMin));
+                    if (cutMax < b)
+                        result.Add((cutMax, b));
+                }
+                return result;
+            }
+
+            /// <summary>Pürüzlü yamaç yüzü: istenirse üstü omuzla, altı yuvarlak köşeyle biter. x yüzün kendisi.</summary>
+            void DrawFace(Transform parent, float x, float a, float b, int side, bool topCap, bool bottomCap, int order)
+            {
+                const float faceOffset = 0.375f;
+                Sprite face = LayerArt("zemin_yamac"), cap = LayerArt("zemin_yamac_ust");
+                float capHeight = cap.bounds.size.y;
+                if (b - a < capHeight * (topCap && bottomCap ? 2f : 1f) + 0.1f)
+                    topCap = bottomCap = false; // kısa yüze iki uç sığmaz
+                float px = x - side * faceOffset;
+                float faceTop = b, faceBottom = a;
+                if (topCap)
+                {
+                    var capSr = new GameObject(Name("YamacUst")).AddComponent<SpriteRenderer>();
+                    capSr.transform.SetParent(parent);
+                    capSr.transform.position = new Vector2(px, b);
+                    capSr.sprite = cap;
+                    capSr.flipX = side > 0;
+                    capSr.sortingOrder = order;
+                    faceTop = b - capHeight;
+                }
+                if (bottomCap)
+                {
+                    var capSr = new GameObject(Name("TavanKosesi")).AddComponent<SpriteRenderer>();
+                    capSr.transform.SetParent(parent);
+                    capSr.transform.position = new Vector2(px, a);
+                    capSr.sprite = cap;
+                    capSr.flipX = side > 0;
+                    capSr.flipY = true;
+                    capSr.sortingOrder = order;
+                    faceBottom = a + capHeight;
+                }
+                if (faceTop > faceBottom)
+                    TiledArt(parent, Name("Yamac"), face, new Vector2(px, faceTop), new Vector2(face.bounds.size.x, faceTop - faceBottom), order)
+                        .flipX = side > 0;
+                faces.Add((x, side, a, b));
             }
 
             /// <summary>Yer altı uçurumu: dipsiz görünsün diye arka duvarın önüne karanlık koyar.</summary>
@@ -2429,6 +2558,7 @@ namespace DesertGecko.EditorTools
                 Underside(sr.transform, xMin, xMax, yMin, size.y, 2);
                 Fringe(sr.transform, xMin, xMax, yMin);
                 rockMasses.Add((xMin, xMax, yMin, yMax));
+                rockObjects[(xMin, xMax, yMin, yMax)] = sr.transform;
             }
 
             /// <summary>Tavanın alt yüzü: katmanlı toprak ters çevrilir, açık kenarı aşağı, odaya bakar.</summary>
@@ -2482,6 +2612,9 @@ namespace DesertGecko.EditorTools
                             && b.yMin > a.yMin + minStep && b.yMin < a.yMax).ToList();
                         if (neighbours.Count == 0)
                             continue;
+                        // Basamağı sahte kaya dolduruyor: köşe çizilirse gizli oda ele verilir.
+                        if (secretRocks.Any(s => Mathf.Abs((side < 0 ? s.xMax : s.xMin) - x) < eps && s.yMin <= a.yMin + eps))
+                            continue;
                         float top = neighbours.Min(b => b.yMin) + 0.4f; // komşunun sarkıtlarının arkasından başlar
                         HangingEdge(x, a.yMin, top, side);
                     }
@@ -2507,6 +2640,7 @@ namespace DesertGecko.EditorTools
                     Fringe(sr.transform, xMin, xMax, top - thickness);
                 if (register)
                     platforms.Add((xMin, xMax, top));
+                slabs.Add((xMin, xMax, top - thickness, top));
             }
 
             /// <summary>
@@ -3395,24 +3529,25 @@ namespace DesertGecko.EditorTools
             // Her binanın kendi tasarımı (görseller tools/kasaba_paketi_isle.py çıktısı, ölçüler görselin pikseliyle).
             static readonly Dictionary<string, BuildingPart[]> BuildingParts = new Dictionary<string, BuildingPart[]>
             {
-                // Saloon: veranda, balkon, saçaklı çatı
-                { "kasaba_saloon", new[] { Gecit(12, 180, 10), Gecit(15, 175, 68), Gecit(25, 168, 124) } },
-                // Otel: saloonun ikizi, balkonu daha geniş
-                { "kasaba_otel", new[] { Gecit(8, 200, 10), Gecit(5, 200, 68), Gecit(30, 175, 121) } },
+                // Saloon: veranda, balkon, saçaklı çatı. Çatının ortasında tabela yükselir: üstünde de durulur
+                // (çatı yüzeyleri görselin üst silüetine göre: cephenin tepesi ve tabelanın tepesi).
+                { "kasaba_saloon", new[] { Gecit(12, 180, 10), Gecit(15, 175, 68), Gecit(25, 54, 127), Gecit(54, 140, 143), Gecit(140, 168, 127) } },
+                // Otel: saloonun ikizi, balkonu daha geniş; çatının ortasında HOTEL tabelası yükselir
+                { "kasaba_otel", new[] { Gecit(8, 200, 10), Gecit(5, 200, 68), Gecit(30, 68, 124), Gecit(68, 138, 137), Gecit(138, 175, 124) } },
                 // Dükkân, silahçı, berber: veranda, tente, çatı
                 { "kasaba_dukkan", new[] { Gecit(10, 185, 10), Gecit(15, 180, 78), Gecit(22, 165, 122) } },
                 { "kasaba_silahci", new[] { Gecit(10, 190, 10), Gecit(20, 185, 80), Gecit(30, 175, 124) } },
-                { "kasaba_berber", new[] { Gecit(15, 185, 10), Gecit(22, 177, 74), Gecit(30, 170, 122) } },
+                { "kasaba_berber", new[] { Gecit(15, 185, 10), Gecit(22, 177, 74), Gecit(30, 175, 124) } },
                 // Şerif: alçak veranda ve küçük tente, üstte tabelalı cephe
                 { "kasaba_serif", new[] { Gecit(35, 160, 8), Gecit(28, 105, 65), Gecit(25, 120, 110), Egim(120, 78, 205, 68) } }, // yan ek binanın eğik çatısı
                 // Hapishane: alt kat taş ve demir, içinden geçilmez; tırmanılıp pervaza çıkılır, pencerelerin önünden
                 // yürünür, çatıya ya da yandaki ek binanın çatısına atlanır
-                { "kasaba_hapishane", new[] { Blok(22, 158, 0, 62), Gecit(30, 165, 124), Egim(152, 76, 200, 63) } },
+                { "kasaba_hapishane", new[] { Blok(22, 158, 0, 62), Gecit(30, 167, 128), Egim(152, 76, 200, 63) } },
                 // Banka (öbür binalardan biraz küçük çıkarılır): tuğla kasa, içinden geçilmez; duvarından tırmanılıp üstünden
                 // aşılır. Yanındaki sandıklar basamak.
                 { "kasaba_banka", new[] { Blok(12, 144, 0, 100), Gecit(144, 160, 31) } },
                 // Cenazeci: veranda ve düz çatı
-                { "kasaba_cenazeci", new[] { Gecit(20, 180, 10), Gecit(30, 165, 124), Egim(165, 72, 210, 55) } },
+                { "kasaba_cenazeci", new[] { Gecit(20, 180, 10), Gecit(30, 167, 128), Egim(165, 72, 210, 55) } },
                 // Maden ofisi: veranda, tente, çatı
                 { "kasaba_maden_ofisi", new[] { Gecit(5, 185, 10), Gecit(2, 182, 70), Gecit(25, 173, 110) } },
                 // İstasyon: peron verandası, tente, çatı, saat kulesi
@@ -3425,8 +3560,9 @@ namespace DesertGecko.EditorTools
                 { "kasaba_kilise", new[] { Gecit(0, 60, 8), Gecit(65, 150, 100) } },
                 // Demirci: açık ocağın sundurma çatısı
                 { "kasaba_demirci", new[] { Egim(4, 57, 40, 68), Gecit(40, 170, 108), Egim(170, 104, 198, 72) } }, // iki yanda eğik çatılar
-                // Su kulesi: güverte; tank katı, tepesine güverteden tırmanılır
-                { "kasaba_su_kulesi", new[] { Gecit(37, 112, 67), Blok(47, 103, 70, 113) } },
+                // Su kulesi: iki kat. Güverte boydan boya yürünür (tank oyuncunun arkasında kalır, yolu kesmez);
+                // tankın kenarı ikinci kat, güverteden zıplanıp çıkılır.
+                { "kasaba_su_kulesi", new[] { Gecit(37, 112, 67), Gecit(47, 103, 113) } },
                 // Ambar (tam boy): yan sundurma ve samanlık kapısının eşiği
                 { "kasaba_ambar", new[] { Gecit(5, 40, 68), Gecit(120, 158, 120) } }, // samanlık: sadece kapının açıklığı
                 // Eşyalar
@@ -3945,20 +4081,66 @@ namespace DesertGecko.EditorTools
                 platforms.Add((xMin, xMax, flowY));
             }
 
-            /// <summary>İçinden geçilen, oyuncu girince saydamlaşan sahte kaya. Arkasındaki odanın duvarı CaveWall'dan gelir.</summary>
+            /// <summary>
+            /// İçinden geçilen, oyuncu girince saydamlaşan sahte kaya. Arkasındaki odanın duvarı CaveWall'dan gelir.
+            /// Odadaki her şeyin (sandık, altın, böcek, düşman) önünde çizilir: dışarıdan hiçbiri görünmez. Odayı belli
+            /// eden yalnız kayanın kendisi: üstünde çatlaklar, altından ara ara sızan toz ve çatlaktan çakan altın pırıltısı
+            /// (SecretWall).
+            /// </summary>
             public void SecretRock(float xMin, float xMax, float yMin, float yMax)
             {
                 xMin += OriginX;
                 xMax += OriginX;
                 var size = new Vector2(xMax - xMin, yMax - yMin);
-                SpriteRenderer sr = TiledArt(geometry, Name("SahteKaya"), LayerArt(DeepArt), new Vector2((xMin + xMax) / 2f, yMax), size, 4);
+                // Görsel, aynı hizada biten komşu kayaların üstüne de taşar: tek parça çizilir, alt yüzün katmanları ve
+                // sarkıtlar kesintisiz sürer (iki ayrı parçanın dokusu sınırda kayıp dikiş gibi görünüyordu).
+                const float eps = 0.05f;
+                float vMin = xMin, vMax = xMax;
+                foreach (var r in rockMasses)
+                {
+                    if (Mathf.Abs(r.yMin - yMin) > eps)
+                        continue;
+                    if (Mathf.Abs(r.xMax - xMin) < eps)
+                        vMin = Mathf.Max(r.xMin, xMin - 4f);
+                    if (Mathf.Abs(r.xMin - xMax) < eps)
+                        vMax = Mathf.Min(r.xMax, xMax + 4f);
+                }
+                SpriteRenderer sr = TiledArt(geometry, Name("SahteKaya"), LayerArt(DeepArt), new Vector2((vMin + vMax) / 2f, yMax),
+                    new Vector2(vMax - vMin, size.y), SecretOrder);
                 var col = sr.gameObject.AddComponent<BoxCollider2D>();
                 col.isTrigger = true;
                 col.size = size;
-                col.offset = new Vector2(0f, -size.y / 2f);
-                Fringe(sr.transform, xMin, xMax, yMin);
+                col.offset = new Vector2((xMin + xMax) / 2f - (vMin + vMax) / 2f, -size.y / 2f);
+                Underside(sr.transform, vMin, vMax, yMin, size.y, SecretOrder);
+                Fringe(sr.transform, vMin, vMax, yMin);
+                // Sahte kayanın üstüne oturan kütlenin alt yüzü (açık renkli katmanlar) odanın genişliğinde bir dikdörtgen
+                // çizip yeri ele veriyordu: kaldırılır, üstteki kaya doğrudan sahte kayanın dokusuna bağlanır.
+                foreach (var r in rockMasses.Where(r => Mathf.Abs(r.yMin - yMax) < eps && r.xMin < xMax && r.xMax > xMin))
+                    if (rockObjects.TryGetValue(r, out Transform rock))
+                        foreach (Transform child in rock.Cast<Transform>().Where(c => c.name == "AltYuz" || c.name == "Sacak").ToList())
+                            Object.DestroyImmediate(child.gameObject);
+                foreach (SpriteRenderer child in sr.GetComponentsInChildren<SpriteRenderer>())
+                    child.sortingOrder = SecretOrder;
+                // Çatlaklar: kayanın alt yarısında, biri sola biri sağa yakın.
+                Sprite crack = LayerArt("mg_damar_yarik");
+                if (crack != null)
+                {
+                    foreach (float t in new[] { 0.3f, 0.72f })
+                    {
+                        var c = new GameObject("Catlak").AddComponent<SpriteRenderer>();
+                        c.transform.SetParent(sr.transform);
+                        c.transform.position = new Vector3(Mathf.Lerp(xMin, xMax, t), yMin + Mathf.Min(size.y * 0.75f, 2.6f), -0.05f);
+                        c.sprite = crack;
+                        c.flipX = t > 0.5f;
+                        c.sortingOrder = SecretOrder + 1;
+                    }
+                }
                 sr.gameObject.AddComponent<SecretWall>();
+                secretRocks.Add((xMin, xMax, yMin, yMax, sr.transform));
             }
+
+            /// <summary>Sahte kayanın çizim sırası: odadaki her şeyin ve Gila'nın önünde (Gila girince kaya saydamlaşır).</summary>
+            const int SecretOrder = 25;
 
             /// <summary>Dövüş odası: triggerX'i geçince giriş kapısı iner, xMin-xMax arasındaki düşmanlar ölünce kapılar kalkar.</summary>
             public void Arena(float xMin, float xMax, float triggerX, float floorY, float roofY)
@@ -4076,18 +4258,27 @@ namespace DesertGecko.EditorTools
             public void Chest(float x, float groundTop, int coins = 8)
             {
                 x += OriginX;
-                var frames = Enumerable.Range(0, 6).Select(i => TestSceneBuilder.Prop("sandik_" + i)).ToArray();
+                var frames = Enumerable.Range(0, 8).Select(i => TestSceneBuilder.Prop("sandik_" + i)).ToArray();
                 var go = new GameObject(Name("Sandik")) { layer = LayerMask.NameToLayer("Default") };
                 go.transform.SetParent(actors);
                 go.transform.position = new Vector3(x, groundTop - 1f / 32f, 0f); // ayakları zemine oturur
                 var sr = go.AddComponent<SpriteRenderer>();
                 sr.sprite = frames[0];
                 sr.sortingOrder = 4;
-                // Görsel kıvılcımlar için uzun; collider yalnız sandığın gövdesi (~1.8 x 1.4 birim).
+                // Görsel kıvılcımlar için uzun; collider yalnız sandığın gövdesi (~1.2 x 1.1 birim, Gila boyunda).
                 var box = go.AddComponent<BoxCollider2D>();
                 box.isTrigger = true;
-                box.size = new Vector2(1.7f, 1.3f);
-                box.offset = new Vector2(0f, 0.65f);
+                box.size = new Vector2(1.15f, 1.05f);
+                box.offset = new Vector2(0f, 0.52f);
+                // İçerideki altının ışığı: başta sönük, aralıktan sızar, açılınca patlar.
+                Light2D glow = PointLight(go.transform, new Vector2(x, groundTop + 0.85f), new Color(1f, 0.78f, 0.35f), 2.4f, 0f);
+                // Gila yaklaşınca üstünde beliren ipucu: J tuşu ve dil (kilit dille açılır).
+                var hint = new GameObject("Ipucu").AddComponent<SpriteRenderer>();
+                hint.transform.SetParent(go.transform, false);
+                hint.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+                hint.sprite = TestSceneBuilder.Prop("sandik_ipucu");
+                hint.sortingOrder = 24; // gizli odadaki sandığın ipucu sahte kayanın (25) arkasında kalsın
+                glow.enabled = false;
                 var chest = go.AddComponent<TreasureChest>();
                 var so = new SerializedObject(chest);
                 var list = so.FindProperty("frames");
@@ -4095,6 +4286,10 @@ namespace DesertGecko.EditorTools
                 for (int i = 0; i < frames.Length; i++)
                     list.GetArrayElementAtIndex(i).objectReferenceValue = frames[i];
                 so.FindProperty("openSound").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/sandik_acilma.wav");
+                AssetDatabase.ImportAsset("Assets/Audio/sandik_gerilim.wav", ImportAssetOptions.ForceSynchronousImport);
+                so.FindProperty("teaseSound").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/sandik_gerilim.wav");
+                so.FindProperty("glow").objectReferenceValue = glow;
+                so.FindProperty("hint").objectReferenceValue = hint;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 var drop = go.AddComponent<DesertGecko.Collectibles.CrystalDrop>();
                 var dso = new SerializedObject(drop);

@@ -11,7 +11,8 @@ namespace DesertGecko.Enemies
     public class JackalDefeat : MonoBehaviour
     {
         const float BodyGravity = 22f, HatPopSpeed = 4.5f, HatDrag = 9f, HatFallSpeed = 1.1f, HatSwayWidth = 1.6f;
-        const float LingerAfterLanding = 1.2f, MaxLifetime = 6f;
+        const float LingerAfterLanding = 0.8f, MaxLifetime = 6f;
+        const float DropAfterLanding = 0.25f; // gövde yere değdikten sonra silahın çıkması
 
         Transform bodyPart, hatPart;
         Vector2 bodyVelocity;
@@ -21,7 +22,7 @@ namespace DesertGecko.Enemies
         float frameRate;
         bool bodyLanded, hatLanded;
 
-        /// <summary>Gövde yere oturup yenilgi bittiğinde, gövdenin yattığı yer. Uçuruma düşerse çağrılmaz.</summary>
+        /// <summary>Gövde yere oturduktan kısa bir an sonra (şapkayı beklemeden), gövdenin yattığı yer. Uçuruma düşerse çağrılmaz.</summary>
         public event System.Action<Vector2> Finished;
 
         public static JackalDefeat Spawn(Vector2 position, Sprite defeat, Sprite hat, bool flipX, int order, int knockDirection, float hatHeight = 0.95f)
@@ -78,14 +79,27 @@ namespace DesertGecko.Enemies
             MoveHat(dt);
             ShowFrame();
 
+            // Silah, gövde yere oturur oturmaz kısa bir an sonra çıkar: şapkanın süzülüp inmesini beklemez.
+            if (bodyLanded && !finished && age - bodyLandedAt >= DropAfterLanding)
+                Finish();
             if (bodyLanded && hatLanded && landedAt < 0f)
                 landedAt = age;
             if ((landedAt >= 0f && age - landedAt > LingerAfterLanding) || age > MaxLifetime)
             {
                 if (bodyLanded)
-                    Finished?.Invoke(bodyPart.position);
+                    Finish();
                 Destroy(gameObject);
             }
+        }
+
+        bool finished;
+
+        void Finish()
+        {
+            if (finished)
+                return;
+            finished = true;
+            Finished?.Invoke(bodyPart.position);
         }
 
         void MoveBody(float dt)
