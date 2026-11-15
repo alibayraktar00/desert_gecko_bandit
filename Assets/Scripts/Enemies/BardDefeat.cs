@@ -2,6 +2,7 @@ using System.Collections;
 using DesertGecko.Core;
 using DesertGecko.Effects;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace DesertGecko.Enemies
 {
@@ -9,8 +10,9 @@ namespace DesertGecko.Enemies
     /// Bard'ın epik yenilgisi: savrulmaz, olduğu yerde ağır ağır çöker.
     /// Son darbede zaman bir an durur, sonra ağır çekime girer; ağır darbe karesi, ekran sarsılır, mor ve kızıl kıvılcım
     /// saçılır. Canavar dizlerinin üstüne çöker, mor bir dumanın içinde insana döner; öne eğilir, yere yığılır, serilir.
-    /// Gövdesinden mor ruh zerreleri yükselir, sonunda ceset yavaşça solar. Kareler arası kısa bir geçişle (iki
-    /// görselin karışması) akar, kare kare zıplamaz. Düşman kapanmış olduğu için kendi başına yaşar.
+    /// Gövdesinden mor ruh zerreleri yükselir; sonunda ceset mor zerrelere ayrışıp yukarı savrulur ve yok olur.
+    /// Darbe anında ve yok oluşta mor bir ışık parlar. Kareler arası kısa bir geçişle (iki görselin karışması) akar,
+    /// kare kare zıplamaz. Düşman kapanmış olduğu için kendi başına yaşar.
     /// </summary>
     public class BardDefeat : MonoBehaviour
     {
@@ -18,7 +20,7 @@ namespace DesertGecko.Enemies
         const float SlowScale = 0.4f;       // ağır çekim
         const float SlowTime = 1.1f;        // ağır çekimin gerçek süresi
         const float SlowRecover = 0.5f;     // normale dönüş
-        const float FadeTime = 1.1f;
+        const float DissolveTime = 1.1f;
         const float SlideDistance = 0.35f;  // darbeyle geriye doğru kayma (yerde kalır)
 
         static readonly Color Purple = new Color32(0x8E, 0x5A, 0xD6, 0xFF);
@@ -73,7 +75,29 @@ namespace DesertGecko.Enemies
             return hit ? new Vector2(position.x, hit.point.y) : position;
         }
 
-        Vector2 Chest => (Vector2)transform.position + Vector2.up * 0.9f;
+        Vector2 Chest => (Vector2)transform.position + Vector2.up * 0.75f;
+        Light2D glow;
+
+        /// <summary>Mor ışık: darbede ve yok oluşta parlar, arada söner.</summary>
+        IEnumerator Flash(float peak, float duration)
+        {
+            if (glow == null)
+            {
+                glow = new GameObject("Isik").AddComponent<Light2D>();
+                glow.transform.SetParent(transform, false);
+                glow.transform.localPosition = Vector3.up * 0.7f;
+                glow.lightType = Light2D.LightType.Point;
+                glow.pointLightOuterRadius = 4.5f;
+                glow.pointLightInnerRadius = 0.5f;
+                glow.color = new Color(0.7f, 0.45f, 1f);
+            }
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                glow.intensity = peak * (1f - t / duration);
+                yield return null;
+            }
+            glow.intensity = 0f;
+        }
 
         IEnumerator Play()
         {
@@ -81,6 +105,7 @@ namespace DesertGecko.Enemies
             HitStop.Request(0.12f);
             StartCoroutine(SlowMotion());
             CameraShake.AddAt(transform.position, 0.45f);
+            StartCoroutine(Flash(3f, 0.9f));
             PixelBurst.Spawn(Chest, Purple, 16, 5.5f, 0.7f);
             PixelBurst.Spawn(Chest, Crimson, 10, 4f, 0.55f);
             StartCoroutine(Slide());
@@ -117,13 +142,28 @@ namespace DesertGecko.Enemies
                 }
             }
 
-            // Ceset yavaşça solar, son toz.
-            PixelBurst.Spawn((Vector2)transform.position + Vector2.up * 0.2f, Purple, 10, 1.5f, 1f);
-            for (float t = 0f; t < FadeTime; t += Time.deltaTime)
+            // Yok oluş: ceset mor zerrelere ayrışıp yukarı savrulur, son bir ışık ve toz.
+            StartCoroutine(Flash(2f, DissolveTime + 0.3f));
+            Bounds body = current.bounds;
+            Vector3 scale = current.transform.localScale;
+            float nextBit = 0f;
+            for (float t = 0f; t < DissolveTime; t += Time.deltaTime)
             {
-                SetAlpha(current, 1f - t / FadeTime);
+                float k = t / DissolveTime;
+                SetAlpha(current, 1f - k * k);
+                current.transform.localScale = new Vector3(scale.x * (1f + 0.08f * k), scale.y * (1f - 0.25f * k), scale.z);
+                if (Time.time >= nextBit)
+                {
+                    nextBit = Time.time + 0.035f;
+                    var at = new Vector2(Random.Range(body.min.x + 0.15f, body.max.x - 0.15f), Random.Range(body.min.y, body.min.y + body.size.y * (1f - k * 0.6f)));
+                    PixelBurst.Spawn(at, Random.value < 0.7f ? Purple : new Color(0.25f, 0.18f, 0.3f), 2, 1.8f, 0.8f);
+                }
                 yield return null;
             }
+            PixelBurst.Spawn(Chest, Purple, 18, 3.5f, 0.9f);
+            PixelBurst.Spawn((Vector2)transform.position + Vector2.up * 0.1f, Dust, 10, 2f, 0.5f);
+            current.enabled = false;
+            yield return new WaitForSeconds(0.35f); // ışık sönsün
             Destroy(gameObject);
         }
 

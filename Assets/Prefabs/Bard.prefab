@@ -98,7 +98,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0.75}
+  m_Offset: {x: 0, y: 0.65}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -108,7 +108,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.8, y: 1.5}
+  m_Size: {x: 0.7, y: 1.3}
   m_EdgeRadius: 0
 --- !u!82 &4706958403385697624
 AudioSource:
@@ -258,18 +258,24 @@ MonoBehaviour:
   killY: -12
   human:
     bombers: 1
-    divers: 1
+    divers: 2
+    growth: 1
+    maxBats: 3
     resummonDelay: 2.2
     batSpeed: 1
+    batHealth: 2
     bashWindup: 0.35
     bashCooldown: 1.5
     bashDamage: 1
     playFps: 9
   monster:
-    bombers: 1
+    bombers: 2
     divers: 2
+    growth: 1
+    maxBats: 4
     resummonDelay: 1
     batSpeed: 1.25
+    batHealth: 3
     bashWindup: 0.24
     bashCooldown: 0.9
     bashDamage: 2
@@ -279,18 +285,19 @@ MonoBehaviour:
   monsterWalkSpeed: 2.8
   batPrefab: {fileID: 6303115135147076808, guid: debb3054181082f48b73ee4dab990f92, type: 3}
   firstSummonDelay: 0.8
-  summonHeight: 2.4
+  summonHeight: 2.1
+  entryHeight: 7
   summonColor: {r: 0.5568628, g: 0.3529412, b: 0.8392157, a: 1}
   keepDistance: 4.5
   farDistance: 8.5
   retreatSpeed: 2.6
   bashRange: 1.7
   bashReach: 2.1
-  bashHeight: 1.6
+  bashHeight: 1.4
   bashStrikeDuration: 0.12
   bashRecoverDuration: 0.28
   hurtDuration: 0.4
-  eyeHeight: 1.1
+  eyeHeight: 0.95
   targetHeight: 0.45
   audioSource: {fileID: 4706958403385697624}
   summonClip: {fileID: 8300000, guid: c9d9f852160cc4e428f435cb916aa1e4, type: 3}
@@ -401,13 +408,13 @@ MonoBehaviour:
   walkFps: 10
   victoryFps: 6
   defeatDurations:
+  - 0.45
+  - 0.5
   - 0.55
-  - 0.6
-  - 0.7
+  - 0.4
+  - 0.4
   - 0.55
-  - 0.55
-  - 0.9
-  - 1.1
+  - 0.45
 --- !u!114 &2761977735085623146
 MonoBehaviour:
   m_ObjectHideFlags: 0

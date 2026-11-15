@@ -655,6 +655,13 @@ namespace DesertGecko.Enemies
         /// </summary>
         protected virtual int SecondWind() => 0;
 
+        /// <summary>Çağrılan düşmanın canı (Bard'ın yarasaları faza göre): en fazla ve şu anki can birlikte.</summary>
+        protected void SetHealth(int amount)
+        {
+            maxHealth = Mathf.Max(1, amount);
+            health = maxHealth;
+        }
+
         protected virtual void OnDamaged() { }
         protected virtual void OnBlocked() { }
         protected virtual void OnDied() { }

@@ -5,12 +5,15 @@ using UnityEngine;
 namespace DesertGecko.Enemies
 {
     /// <summary>
-    /// Bard'ın çağırdığı yarasa. Haydut Yarasa'nın kareleriyle uçar ama yuvası yoktur: Bard'ın başının üstünde
-    /// belirir, sırası gelince saldırır, işi bitince (ya da Bard ölünce) yukarı kaçıp kaybolur.
+    /// Bard'ın çağırdığı yarasa. Haydut Yarasa'nın kareleriyle uçar ama yuvası yoktur: yukarıdaki karanlıktan uçarak
+    /// gelir, Bard'ın başının üstünde toplanır, sırası gelince saldırır ve Gila onu öldürene kadar saldırmayı bırakmaz
+    /// (Bard ölse de). Dinamiti ve dalışı tükenmez.
     /// Dinamitçi: Gila'nın tepesine süzülür, fitili yakıp (uyarı) dinamit bırakır.
     /// Dalışçı: Gila'nın çaprazında asılı kalıp alay eder (uyarı), sonra o anki yerine dümdüz, hızla dalar;
     /// dalış sırasında yön değiştirmez, zıplayan ya da çekilen kurtulur.
-    /// Tek canlıdır. Dille vurulursa ölmek yerine Bard'a savrulur ve ona hasar verir (BardBatFling).
+    /// Canını Bard verir (insan fazında 2, canavar fazında 3 vuruş). Vurulup ölmeyen yarasa sarsılıp geri savrulur,
+    /// dalıyorsa dalışı bozulur; kısa bir sersemlemeden sonra Gila'ya saldırmaya devam eder (Bard'a dönmez).
+    /// Son vuruşta yere çakılıp ölür.
     /// Kristal ve silah düşürmez; oyuncu yeniden doğunca silinir (sürüyü Bard yeniden çağırır).
     /// Transform yarasanın ortasıdır; kareler sağa bakar.
     /// </summary>
@@ -31,19 +34,17 @@ namespace DesertGecko.Enemies
 
         [Header("Dinamit")]
         [SerializeField] BatDynamite dynamitePrefab;
-        [SerializeField] int dynamiteCount = 2;
         [Tooltip("Yatayda Gila'ya bu kadar yaklaşınca fitili yakar")]
         [SerializeField] float aimTolerance = 1f;
         [Tooltip("Tepesine gelemezse bu kadar bekleyip dinamiti kavisle atar")]
         [SerializeField] float lobPatience = 1.4f;
         [SerializeField] float windupDuration = 0.6f;
         [SerializeField] float releaseDuration = 0.3f;
-        [SerializeField] float throwInterval = 0.9f;
+        [SerializeField] float throwInterval = 1.3f;
         [SerializeField] Vector2 dropOffset = new Vector2(0.2f, -0.55f);
         [SerializeField] Color sparkColor = new Color32(0xFF, 0xD2, 0x4A, 0xFF);
 
         [Header("Dalış")]
-        [SerializeField] int diveCount = 3;
         [Tooltip("Dalıştan önce Gila'ya göre asılı kaldığı yer (yatay, dikey)")]
         [SerializeField] Vector2 aimOffset = new Vector2(3.2f, 2.8f);
         [Tooltip("Dalış uyarısı: alay eder, gözleri parlar")]
@@ -52,13 +53,13 @@ namespace DesertGecko.Enemies
         [Tooltip("Hedefi bu kadar geçince dalışı bırakır")]
         [SerializeField] float diveOvershoot = 1.6f;
         [SerializeField] float maxDiveTime = 0.9f;
-        [SerializeField] float climbDuration = 0.7f;
+        [SerializeField] float climbDuration = 0.9f;
         [SerializeField] Color diveColor = new Color32(0xFF, 0x5A, 0x5A, 0xFF);
 
-        [Header("Dille fırlatma")]
-        [Tooltip("Dille vurulan yarasanın Bard'a verdiği hasar")]
-        [SerializeField] int flingDamage = 2;
-        [SerializeField] float flingSpeed = 17f;
+        [Header("Darbe")]
+        [Tooltip("Vurulup ölmeyen yarasa bu kadar sersemler: geri savrulur, sonra saldırıya döner")]
+        [SerializeField] float staggerTime = 0.35f;
+        [SerializeField] float staggerPush = 5f;
 
         [Header("Ayrılış")]
         [SerializeField] float leaveDuration = 0.8f;
@@ -86,9 +87,8 @@ namespace DesertGecko.Enemies
         Bard owner;
         float speedScale = 1f, side = 1f;
         float stateStartedAt, stateEndsAt, nextThrowAt, hoverSince, nextSparkAt;
-        int dynamitesLeft, divesLeft;
         bool lobbing;
-        Vector2 perch, diveDirection, diveFrom;
+        Vector2 perch, perchOffset, diveDirection, diveFrom;
         float diveLength;
         Color baseTint = Color.white;
 
@@ -101,33 +101,29 @@ namespace DesertGecko.Enemies
             base.Awake();
             body.gravityScale = 0f;
             perch = transform.position;
-            dynamitesLeft = dynamiteCount;
-            divesLeft = diveCount;
             if (spriteRenderer != null)
                 baseTint = spriteRenderer.color;
             Enter(BatState.Appear, appearDuration);
         }
 
         /// <summary>
-        /// Bard çağırınca: rolü, hız çarpanı, saldırıya geçme gecikmesi ve yelpazedeki yeri (-1 sol, 1 sağ).
+        /// Bard çağırınca: rolü, hız çarpanı, saldırıya geçme gecikmesi, yelpazedeki yeri (-1 sol, 1 sağ) ve Bard'a göre
+        /// toplanacağı nokta. Yarasa olduğu yerden (yukarıdaki karanlık) oraya uçar.
         /// </summary>
-        public void Summon(Bard bard, BatRole role, float speed, float delay, float spread)
+        public void Summon(Bard bard, BatRole role, float speed, float delay, float spread, Vector2 gatherOffset, int health)
         {
+            SetHealth(health);
             owner = bard;
             Role = role;
             speedScale = speed;
             side = spread >= 0f ? 1f : -1f;
-            perch = transform.position;
+            perchOffset = gatherOffset;
+            perch = (Vector2)bard.transform.position + gatherOffset;
             Enter(BatState.Appear, appearDuration + delay);
         }
 
-        /// <summary>Bard öldü: saldırıyı bırakıp yukarı kaçar.</summary>
-        public void Scatter()
-        {
-            owner = null;
-            if (IsAlive && State != BatState.Leave)
-                Enter(BatState.Leave, leaveDuration);
-        }
+        /// <summary>Toplanma noktası: Bard yaşıyorsa onunla birlikte kayar.</summary>
+        Vector2 Perch => owner != null && owner.IsAlive ? (Vector2)owner.transform.position + perchOffset : perch;
 
         void Enter(BatState state, float duration)
         {
@@ -144,19 +140,27 @@ namespace DesertGecko.Enemies
             body.gravityScale = 0f;
             bool timeUp = Time.time >= stateEndsAt;
 
-            // Gila öldüyse ya da Bard gittiyse oyalanmaz.
-            if (State != BatState.Leave && State != BatState.Dive && (!PlayerAlive || (owner != null && !owner.IsAlive)))
+            // Gila öldüyse çekilir (Gila doğunca sürü baştan çağrılır). Bard ölse de saldırmayı bırakmaz.
+            if (State != BatState.Leave && State != BatState.Dive && !PlayerAlive)
             {
                 Enter(BatState.Leave, leaveDuration);
+                return;
+            }
+
+            if (Time.time < staggerUntil)
+            {
+                // Sersemlemiş: savrulduğu yönde yavaşlar, saldırmaz.
+                body.linearVelocity = Vector2.MoveTowards(body.linearVelocity, Vector2.zero, flyAcceleration * Time.fixedDeltaTime);
                 return;
             }
 
             switch (State)
             {
                 case BatState.Appear:
-                    FlyTowards(perch, flySpeed * 0.5f, bob: true);
+                    // Karanlıktan uçarak gelir; toplanma noktasına varınca (ve sırası gelince) saldırır.
+                    FlyTowards(Perch, flySpeed, bob: true);
                     TurnTowards(DirectionToPlayer);
-                    if (timeUp)
+                    if (timeUp && (Vector2.Distance(body.position, Perch) < 0.8f || Time.time > stateEndsAt + 2f))
                         BeginAttack();
                     break;
                 case BatState.Hover:
@@ -199,22 +203,12 @@ namespace DesertGecko.Enemies
         {
             if (Role == BatRole.Bomber)
             {
-                if (dynamitesLeft <= 0)
-                {
-                    Enter(BatState.Leave, leaveDuration);
-                    return;
-                }
                 hoverSince = Time.time;
                 nextThrowAt = Time.time + 0.25f;
                 Enter(BatState.Hover, 0f);
             }
             else
             {
-                if (divesLeft <= 0)
-                {
-                    Enter(BatState.Leave, leaveDuration);
-                    return;
-                }
                 // Gila'nın hangi yanındaysa o çaprazdan dalar.
                 side = transform.position.x >= Player.transform.position.x ? 1f : -1f;
                 Enter(BatState.Aim, aimDuration / speedScale + 0.5f);
@@ -253,7 +247,6 @@ namespace DesertGecko.Enemies
 
         void Release()
         {
-            dynamitesLeft--;
             if (dynamitePrefab != null)
             {
                 BatDynamite d = Instantiate(dynamitePrefab, DropPoint(), Quaternion.identity);
@@ -264,11 +257,6 @@ namespace DesertGecko.Enemies
 
         void AfterThrow()
         {
-            if (dynamitesLeft <= 0)
-            {
-                Enter(BatState.Leave, leaveDuration);
-                return;
-            }
             hoverSince = Time.time;
             nextThrowAt = Time.time + throwInterval / speedScale;
             Enter(BatState.Hover, 0f);
@@ -293,7 +281,6 @@ namespace DesertGecko.Enemies
 
         void BeginDive()
         {
-            divesLeft--;
             diveFrom = body.position;
             Vector2 toTarget = PlayerTarget - diveFrom;
             diveLength = toTarget.magnitude + diveOvershoot;
@@ -329,20 +316,27 @@ namespace DesertGecko.Enemies
             body.linearVelocity = Vector2.MoveTowards(body.linearVelocity, desired, flyAcceleration * speedScale * Time.fixedDeltaTime);
         }
 
+        float staggerUntil;
+
+        protected override void OnDamaged()
+        {
+            // Darbe: Gila'dan uzağa savrulur, kısa bir an sersemler. Dalıyor ya da fitil yakıyorsa saldırısı bozulur;
+            // sonra Gila'nın çaprazına tırmanıp saldırıya yeniden başlar.
+            staggerUntil = Time.time + staggerTime;
+            Vector2 away = PlayerAlive ? (body.position - PlayerTarget).normalized : Vector2.up;
+            body.linearVelocity = (away + Vector2.up * 0.4f).normalized * staggerPush;
+            PixelBurst.Spawn(body.position, dustColor, 4, 2f, 0.25f);
+            if (State == BatState.Dive || State == BatState.Windup)
+                Enter(BatState.Climb, climbDuration + staggerTime);
+            else if (State == BatState.Hover || State == BatState.Aim)
+                stateEndsAt += staggerTime;
+        }
+
         protected override void OnDied()
         {
             bool flipX = spriteRenderer != null && spriteRenderer.flipX;
             int order = spriteRenderer != null ? spriteRenderer.sortingOrder : 8;
-            // Dil yarasayı yakalayıp sahibine savurur: Bard'ı vurmanın uzaktan yolu.
-            if (LastHit.Kind == DamageKind.Tongue && owner != null && owner.IsAlive)
-            {
-                Sprite sprite = hurtFrames != null && hurtFrames.Length > 0 ? hurtFrames[0] : null;
-                BardBatFling.Spawn(transform.position, owner, sprite, order, flingDamage, flingSpeed, dustColor);
-            }
-            else
-            {
-                BatDefeat.Spawn(transform.position, body.linearVelocity, defeatFrames, flipX, order, dustColor);
-            }
+            BatDefeat.Spawn(transform.position, body.linearVelocity, defeatFrames, flipX, order, dustColor);
             Destroy(gameObject);
         }
 
@@ -371,6 +365,8 @@ namespace DesertGecko.Enemies
 
         Sprite CurrentFrame()
         {
+            if (Time.time < staggerUntil)
+                return Loop(hurtFrames, flyFps * 1.5f);
             switch (State)
             {
                 case BatState.Windup: return Loop(windupFrames, flyFps);

@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE_DIR = ROOT / "Assets" / "Sprites" / "_Gelen"
 OUT_DIR = ROOT / "Assets" / "Sprites" / "Enemies" / "bard"
 CANVAS_W, CANVAS_H = 128, 96
-INSAN_BOY, CANAVAR_BOY = 50, 56   # ayakta boy (oyun pikseli); Gila 34, şerif 47, barmen 56
+INSAN_BOY, CANAVAR_BOY = 42, 47   # ayakta boy (oyun pikseli); Gila 34, şerif 47. Daha iriyken Gila'nın yanında dev duruyordu
 MIN_AREA = 9000                   # gövde; yazılar ve kopuk parçalar bundan küçük
 TOLERANCE = 10                    # zemin rengine yakınlık: canavarın koyu mor dış çizgisi zemine karışmasın
 
@@ -42,9 +42,10 @@ PAGES = {
     "i_calma": ("bard_insan_calma.webp", [(67, 275, 200, INSAN_BOY), (300, 547, 192, INSAN_BOY)]),
     "i_hasar": ("bard_insan_hasar.webp", [(79, 337, 249, INSAN_BOY), (420, 729, 256, INSAN_BOY)]),
     "i_sevinc": ("bard_insan_sevinc.webp", [(79, 337, 249, INSAN_BOY), (420, 729, 256, INSAN_BOY)]),
-    # Ölüm sayfaları öteki sayfalardan küçük çizilmiş (yerdeki gitar 170 piksel, yürüyüşte 253): ayakta boy
-    # ölçüsü gitarın boyuna göre küçültüldü, yoksa Bard ölürken ufalıyordu.
-    "i_olum": ("bard_insan_olum.webp", [(79, 276, 172, INSAN_BOY), (560, 733, 172, INSAN_BOY)]),
+    # Ölüm sayfaları öteki sayfalardan farklı ölçekte çizilmiş. İnsanın ölüm ölçüsü, canavarın aynı pozdaki
+    # karelerine (ağır darbe, dizlerin üstüne çöküş) göre ayarlandı: insan canavardan boyları oranında (42/47) küçük
+    # kalsın, ölürken insana dönüşte ani bir büyüme olmasın.
+    "i_olum": ("bard_insan_olum.webp", [(79, 276, 208, INSAN_BOY), (560, 733, 208, INSAN_BOY)]),
     # Dönüşüm: boy kare kare ayarlanır (GROW), buradaki ölçü yalnız başlangıç.
     "donusum": ("bard_donusum.webp", [(79, 337, 249, INSAN_BOY), (410, 701, 244, CANAVAR_BOY)]),
     "c_yuruyus": ("bard_canavar_yuruyus.webp", [(76, 284, 201, CANAVAR_BOY), (300, 541, 203, CANAVAR_BOY)]),
@@ -64,7 +65,7 @@ KIRP = {"i_vurus_b": (60, 545)}
 STRETCH = {("c_hasar", 0): 1.25, ("c_hasar", 1): 1.18, ("c_sevinc", 0): 1.25, ("c_sevinc", 1): 1.18}
 
 # Dönüşümde hedef boy: insan boyundan canavar boyuna kademeli (kare 2..8).
-GROW = [50, 51, 52, 53, 54, 55, 56]
+GROW = [42, 43, 44, 45, 46, 47, 47]
 
 
 def cells(page, pairs):
@@ -99,8 +100,16 @@ GROUPS = [
 
 # Canavarın gitarla vurması: (insan karesi, o karede yüzün ortası (x, y) tuvalde ya da None).
 # None: baş kolların arasında, görünmüyor (yukarı kaldırma): yalnız boyanır.
-MONSTER_BASH = [(80, (66, 52)), (81, None), (82, (69, 59)), (83, (64, 52))]   # 84-87
-MONSTER_HEAD = (54, (56, 37, 79, 58), (68, 51))  # canavar karesi, baş kutusu (sol, üst, sağ, alt), yüzün ortası
+# Ölçüler insan 50, canavar 56 piksel boydayken tuvalde ölçüldü; boy değişince alt orta noktaya göre ölçeklenir.
+def _at(point, height, measured):
+    k = height / measured
+    return (int(round(CANVAS_W / 2 + (point[0] - CANVAS_W / 2) * k)), int(round(CANVAS_H - 1 - (CANVAS_H - 1 - point[1]) * k)))
+
+
+MONSTER_BASH = [(80, _at((66, 52), INSAN_BOY, 50)), (81, None), (82, _at((69, 59), INSAN_BOY, 50)), (83, _at((64, 52), INSAN_BOY, 50))]  # 84-87
+_HEAD_A, _HEAD_B = _at((56, 37), CANAVAR_BOY, 56), _at((79, 58), CANAVAR_BOY, 56)
+# canavar karesi, baş kutusu (sol, üst, sağ, alt), yüzün ortası
+MONSTER_HEAD = (54, (_HEAD_A[0], _HEAD_A[1], _HEAD_B[0], _HEAD_B[1]), _at((68, 51), CANAVAR_BOY, 56))
 MONSTER_SKIN = [(47, 26, 45), (75, 46, 69), (112, 86, 88)]  # koyu, orta, açık
 
 

@@ -9,13 +9,14 @@ namespace DesertGecko.Enemies
 {
     /// <summary>
     /// Bard: yarasa çağıran gitarist, iki fazlı. Kendisi dövüşmez, alanı yarasalarıyla tutar (cadı gibi).
-    /// Gila'yı görünce çalmaya başlar ve bir daha susmaz: gitarın sesi yarasaları çağırır. Yarasaların bir kısmı
-    /// tepeden dinamit bırakır, bir kısmı hızla dalış yapar; sürü bitince yenisini çağırır.
+    /// Gila'yı görünce çalmaya başlar ve bir daha susmaz: gitarın sesi yarasaları çağırır; yarasalar yukarıdaki
+    /// karanlıktan uçarak gelir. Bir kısmı tepeden dinamit bırakır, bir kısmı hızla dalış yapar; Gila öldürene kadar
+    /// saldırır. Sürü bitince Bard yenisini gönderir: insan fazında 3, canavar fazında 4 yarasa (maxBats).
     /// İnsan formu: Gila yaklaşınca geri çekilir, mesafeyi korur. Köşeye sıkışırsa ya da Gila dibine girerse
     /// gitarı savurup onu geri iter.
     /// Canı bitince ölmez, canavara dönüşür (dönüşürken darbe işlemez): dolu canla, daha kalabalık ve hızlı
-    /// sürüyle, geri çekilmeden Gila'nın üstüne yürüyerek devam eder. Canavar ölünce yarasaları dağılır.
-    /// Gila diliyle bir yarasayı vurursa yarasa Bard'a savrulur ve ona hasar verir (BardBat).
+    /// sürüyle, geri çekilmeden Gila'nın üstüne yürüyerek devam eder. Canavar ölünce yeni yarasa gelmez, sahadakiler
+    /// öldürülene kadar saldırır.
     /// Kareler sağa bakar; sola bakarken EnemyBase sprite'ı aynalar.
     /// </summary>
     public class Bard : EnemyBase
@@ -29,10 +30,16 @@ namespace DesertGecko.Enemies
             public int bombers = 1;
             [Tooltip("Bir sürüdeki dalışçı yarasa sayısı")]
             public int divers = 1;
+            [Tooltip("Her yeni sürüye eklenen yarasa")]
+            public int growth = 1;
+            [Tooltip("Bir sürüdeki en fazla yarasa")]
+            public int maxBats = 4;
             [Tooltip("Sürü bittikten sonra yenisini çağırmadan önceki soluklanma")]
             public float resummonDelay = 2.2f;
             [Tooltip("Yarasaların hız çarpanı")]
             public float batSpeed = 1f;
+            [Tooltip("Yarasanın kaç vuruşta öldüğü")]
+            public int batHealth = 2;
             [Tooltip("Gitar savurmadan önceki gerilme: oyuncunun kaçma penceresi")]
             public float bashWindup = 0.35f;
             public float bashCooldown = 1.5f;
@@ -41,10 +48,10 @@ namespace DesertGecko.Enemies
         }
 
         [Header("Fazlar")]
-        [SerializeField] Phase human = new Phase();
+        [SerializeField] Phase human = new Phase { bombers = 1, divers = 2, maxBats = 3 }; // insan: hep 3 yarasa
         [SerializeField] Phase monster = new Phase
         {
-            bombers = 1, divers = 2, resummonDelay = 1f, batSpeed = 1.25f, bashWindup = 0.24f, bashCooldown = 0.9f, bashDamage = 2, playFps = 13f,
+            bombers = 2, divers = 2, maxBats = 4, batHealth = 3, resummonDelay = 1f, batSpeed = 1.25f, bashWindup = 0.24f, bashCooldown = 0.9f, bashDamage = 2, playFps = 13f,
         };
         [Tooltip("Canavar formunun canı (insan formunun canı: maxHealth)")]
         [SerializeField] int monsterHealth = 6;
@@ -56,8 +63,10 @@ namespace DesertGecko.Enemies
         [SerializeField] BardBat batPrefab;
         [Tooltip("Gila'yı fark ettikten sonra ilk sürüye kadar geçen süre")]
         [SerializeField] float firstSummonDelay = 0.8f;
-        [Tooltip("Yarasaların belirdiği yer: başının üstü")]
-        [SerializeField] float summonHeight = 2.4f;
+        [Tooltip("Yarasaların toplandığı yer: başının üstü")]
+        [SerializeField] float summonHeight = 2.1f;
+        [Tooltip("Yarasalar bu kadar yukarıdan (tavan alçaksa tavanın hemen altından) uçarak gelir")]
+        [SerializeField] float entryHeight = 7f;
         [SerializeField] Color summonColor = new Color32(0x8E, 0x5A, 0xD6, 0xFF);
 
         [Header("Mesafe (insan formu)")]
@@ -72,14 +81,14 @@ namespace DesertGecko.Enemies
         [SerializeField] float bashRange = 1.7f;
         [Tooltip("Savurmanın uzandığı mesafe: gerilme sırasında bunun dışına çıkan kurtulur")]
         [SerializeField] float bashReach = 2.1f;
-        [SerializeField] float bashHeight = 1.6f;
+        [SerializeField] float bashHeight = 1.4f;
         [SerializeField] float bashStrikeDuration = 0.12f;
         [SerializeField] float bashRecoverDuration = 0.28f;
 
         [Header("Hasar")]
         [SerializeField] float hurtDuration = 0.4f;
         [Tooltip("Gövdeye göre göz hizası: görüş hattı buradan bakılır")]
-        [SerializeField] float eyeHeight = 1.1f;
+        [SerializeField] float eyeHeight = 0.95f;
         [SerializeField] float targetHeight = 0.45f;
 
         [Header("Ses")]
@@ -114,7 +123,7 @@ namespace DesertGecko.Enemies
         [SerializeField] float walkFps = 10f;
         [SerializeField] float victoryFps = 6f;
         [Tooltip("Yenilgi karelerinin süreleri (sn), fallFrames ve landFrames sırasıyla; ağır çekimde uzar")]
-        [SerializeField] float[] defeatDurations = { 0.55f, 0.6f, 0.7f, 0.55f, 0.55f, 0.9f, 1.1f };
+        [SerializeField] float[] defeatDurations = { 0.45f, 0.5f, 0.55f, 0.4f, 0.4f, 0.55f, 0.45f };
 
         public BardState State { get; private set; }
         public bool IsMonster { get; private set; }
@@ -236,18 +245,22 @@ namespace DesertGecko.Enemies
                 return;
 
             Phase phase = Current;
-            int total = phase.bombers + phase.divers;
+            // Her sürü bir öncekinden kalabalık: Gila yarasaları bitirdikçe Bard daha fazlasını gönderir.
+            int baseCount = phase.bombers + phase.divers;
+            int total = Mathf.Min(phase.maxBats, baseCount + phase.growth * wavesSummoned);
+            int bombers = Mathf.Max(1, Mathf.RoundToInt(total * phase.bombers / (float)Mathf.Max(1, baseCount)));
+            float ceiling = CeilingAbove();
             for (int i = 0; i < total; i++)
             {
-                // Başının üstünde yelpaze: ortadan yanlara.
+                // Başının üstünde yelpaze: ortadan yanlara. Yukarıdaki karanlıktan, yelpazenin yanlarına açılarak gelir.
                 float spread = total > 1 ? (i / (total - 1f) - 0.5f) * 2f : 0f;
-                Vector2 perch = (Vector2)transform.position + new Vector2(spread * 1.3f, summonHeight + (i % 2) * 0.5f);
-                BardBat bat = Instantiate(batPrefab, perch, Quaternion.identity);
-                bool bomber = i < phase.bombers;
+                var gather = new Vector2(spread * 1.6f, summonHeight + (i % 2) * 0.5f);
+                Vector2 entry = (Vector2)transform.position + new Vector2(spread * 3.5f, Mathf.Min(entryHeight, ceiling - 0.7f));
+                BardBat bat = Instantiate(batPrefab, entry, Quaternion.identity);
                 // Sırayla saldırırlar: hepsi aynı anda çullanmasın.
-                bat.Summon(this, bomber ? BardBat.BatRole.Bomber : BardBat.BatRole.Diver, phase.batSpeed, 0.5f + i * 0.45f, spread);
+                bat.Summon(this, i < bombers ? BardBat.BatRole.Bomber : BardBat.BatRole.Diver, phase.batSpeed, 0.4f + i * 0.45f, spread, gather,
+                    phase.batHealth);
                 bats.Add(bat);
-                PixelBurst.Spawn(perch, summonColor, 8, 3f, 0.35f);
             }
             wavesSummoned++;
             waveOut = true;
@@ -255,13 +268,12 @@ namespace DesertGecko.Enemies
             PixelBurst.Spawn(GuitarPoint(), summonColor, 10, 4.5f, 0.4f);
         }
 
-        void DismissBats()
+        /// <summary>Başının üstündeki tavana uzaklık (açık havada entryHeight).</summary>
+        float CeilingAbove()
         {
-            foreach (BardBat bat in bats)
-                if (bat != null)
-                    bat.Scatter();
-            bats.Clear();
-            waveOut = false;
+            Vector2 head = (Vector2)transform.position + Vector2.up * (eyeHeight + 0.4f);
+            RaycastHit2D hit = Physics2D.Raycast(head, Vector2.up, entryHeight + 1f, solidFilter.layerMask);
+            return hit ? hit.point.y - transform.position.y : entryHeight + 1f;
         }
 
         void RemoveBats()
@@ -273,7 +285,7 @@ namespace DesertGecko.Enemies
             waveOut = false;
         }
 
-        Vector2 GuitarPoint() => (Vector2)transform.position + new Vector2(0.45f * FacingDirection, 0.85f);
+        Vector2 GuitarPoint() => (Vector2)transform.position + new Vector2(0.4f * FacingDirection, 0.7f);
 
         // --- Hareket ---
 
@@ -399,7 +411,7 @@ namespace DesertGecko.Enemies
         protected override void OnDied()
         {
             CancelRoutine();
-            DismissBats(); // sahibi ölünce yarasalar yukarı kaçışır
+            bats.Clear(); // sahadaki yarasalar öldürülene kadar saldırır; yenisi gelmez
             int knock = Player != null ? -DirectionToPlayer : -FacingDirection;
             // Epik yenilgi: yerinde ağır ağır çöker (BardDefeat). Kareler: ağır darbe, dizlerin üstüne çöküş (canavar),
             // dizlerin üstünde (insana döner), öne eğilme, yere yığılma, serilme, hareketsiz (ruh yükselir).

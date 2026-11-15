@@ -349,24 +349,22 @@ MonoBehaviour:
   bobFrequency: 1.6
   appearDuration: 0.4
   dynamitePrefab: {fileID: 2586680791358700231, guid: 06ea86a41f7d32147ae9711a58e5bfa3, type: 3}
-  dynamiteCount: 2
   aimTolerance: 1
   lobPatience: 1.4
   windupDuration: 0.6
   releaseDuration: 0.3
-  throwInterval: 0.9
+  throwInterval: 1.3
   dropOffset: {x: 0.2, y: -0.55}
   sparkColor: {r: 1, g: 0.8235294, b: 0.2901961, a: 1}
-  diveCount: 3
   aimOffset: {x: 3.2, y: 2.8}
   aimDuration: 0.6
   diveSpeed: 13
   diveOvershoot: 1.6
   maxDiveTime: 0.9
-  climbDuration: 0.7
+  climbDuration: 0.9
   diveColor: {r: 1, g: 0.3529412, b: 0.3529412, a: 1}
-  flingDamage: 2
-  flingSpeed: 17
+  staggerTime: 0.35
+  staggerPush: 5
   leaveDuration: 0.8
   targetHeight: 0.45
   dustColor: {r: 0.6117647, g: 0.47843137, b: 0.32156864, a: 1}

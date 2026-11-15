@@ -734,10 +734,10 @@ namespace DesertGecko.EditorTools
             body.gravityScale = 3f;
             body.freezeRotation = true;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
-            // İnsan 50, canavar 56 piksel boy: şerifin (47) üstünde, barmenle (56) aynı sınıf.
+            // İnsan 42, canavar 47 piksel boy: Gila'dan (34) biraz iri, şerif (47) boyunda.
             var box = root.AddComponent<BoxCollider2D>();
-            box.size = new Vector2(0.8f, 1.5f);
-            box.offset = new Vector2(0f, 0.75f);
+            box.size = new Vector2(0.7f, 1.3f);
+            box.offset = new Vector2(0f, 0.65f);
 
             SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
             var audio = root.AddComponent<AudioSource>();
