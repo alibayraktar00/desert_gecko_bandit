@@ -258,14 +258,16 @@ MonoBehaviour:
   backOffTime: 0.2
   backOffSpeed: 2.5
   windupTime: 0.4
-  strikeSpeed: 6
-  maxStrikeTime: 0.3
+  strikeSpeed: 8
+  maxStrikeTime: 0.4
   strikeStopDistance: 1
   stingReach: 1.35
   stingHeight: 1
   stingDamage: 1
-  recoverTime: 0.4
+  recoverTime: 0.7
   stingColor: {r: 0.95686275, g: 0.827451, b: 0.36862746, a: 1}
+  enragedStrikeDelay: 0.12
+  parryColor: {r: 1, g: 0.9490196, b: 0.7607843, a: 1}
 --- !u!114 &6872854913150851558
 MonoBehaviour:
   m_ObjectHideFlags: 0

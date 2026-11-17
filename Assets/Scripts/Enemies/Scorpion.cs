@@ -1,3 +1,4 @@
+using DesertGecko.Core;
 using DesertGecko.Effects;
 using UnityEngine;
 
@@ -7,6 +8,9 @@ namespace DesertGecko.Enemies
     /// İlk düşman: çölde devriye gezen akrep. 3 can, 1 temas hasarı, oyuncuyu görünce hızlanır.
     /// Vurulunca sersemler, bir adım geri çekilir, iğnesini kaldırıp gerilir (uyarı), sonra kısa bir
     /// hamleyle sokar. Hamle oyuncunun önünde durur, içinden geçmez. Diğer değerler EnemyBase'dedir.
+    /// Geri çekilip gerilirken ve sokarken kıskaçlarıyla önden gelen dili savuşturur: dili art arda atmak
+    /// işe yaramaz, üstelik onu öfkelendirip hamleyi öne çeker. Sokmadan sonraki toparlanma anı ya da
+    /// üstünden atlayıp arkadan vurmak açık verir. Silahlar (mermi, patlama, bıçak) savuşturulamaz.
     /// </summary>
     public class Scorpion : EnemyBase
     {
@@ -26,19 +30,51 @@ namespace DesertGecko.Enemies
         [SerializeField] float backOffSpeed = 2.5f;
         [Tooltip("İğneyi kaldırıp gerilme: oyuncunun kaçma ya da vurma fırsatı")]
         [SerializeField] float windupTime = 0.4f;
-        [SerializeField] float strikeSpeed = 6f;
-        [SerializeField] float maxStrikeTime = 0.3f;
+        [SerializeField] float strikeSpeed = 8f;
+        [Tooltip("Hamle en fazla strikeSpeed × bu süre kadar ilerler: dil menzilindeki oyuncuya yetişsin")]
+        [SerializeField] float maxStrikeTime = 0.4f;
         [Tooltip("Hamle oyuncuya bu kadar kala durur: üst üste binmesin")]
         [SerializeField] float strikeStopDistance = 1f;
         [SerializeField] float stingReach = 1.35f;
         [SerializeField] float stingHeight = 1f;
         [SerializeField] int stingDamage = 1;
-        [SerializeField] float recoverTime = 0.4f;
+        [Tooltip("Sokmadan sonra yorgun kalır: oyuncunun dille cezalandırma penceresi")]
+        [SerializeField] float recoverTime = 0.7f;
         [SerializeField] Color stingColor = new Color32(0xF4, 0xD3, 0x5E, 0xFF);
+
+        [Header("Kıskaç savuşturma")]
+        [Tooltip("Gerilirken dil savuşturulursa hamle en geç bu kadar sonra gelir: dil yağdıran oyuncu cezalanır")]
+        [SerializeField] float enragedStrikeDelay = 0.12f;
+        [SerializeField] Color parryColor = new Color32(0xFF, 0xF2, 0xC2, 0xFF);
 
         public CounterPhase Counter { get; private set; }
 
         protected override bool HoldPosition => Counter != CounterPhase.None;
+
+        /// <summary>Kıskaçlar kalkık: geri çekilirken, gerilirken ve sokarken.</summary>
+        bool Guarding => Counter == CounterPhase.BackOff || Counter == CounterPhase.Windup || Counter == CounterPhase.Strike;
+
+        /// <summary>Kıskaçlar yalnız önden gelen dili savuşturur; arkadan vurmak ya da silah işler.</summary>
+        protected override bool Deflects(in DamageInfo hit)
+        {
+            if (!Guarding || hit.Kind != DamageKind.Tongue)
+                return false;
+            // Darbe yönü oyuncudan uzağa iter: önden gelen darbe akrebi baktığı yönün tersine iter.
+            return Mathf.Abs(hit.Direction.x) < 0.01f || Mathf.Sign(hit.Direction.x) != FacingDirection;
+        }
+
+        protected override void OnBlocked()
+        {
+            if (!Guarding || LastHit.Kind != DamageKind.Tongue)
+                return; // vuruş koruması (sersemken): sessizce boşa gider
+            Vector2 claw = (Vector2)transform.position + new Vector2(FacingDirection * 0.55f, 0.35f);
+            PixelBurst.Spawn(claw, parryColor, 5, 3.5f, 0.2f);
+            // Öfkelenir: gerilmeyi kısa keser, hemen sokar.
+            if (Counter == CounterPhase.Windup)
+                phaseEndsAt = Mathf.Min(phaseEndsAt, Time.time + enragedStrikeDelay);
+            else if (Counter == CounterPhase.BackOff)
+                phaseEndsAt = Time.time; // geri çekilmeyi bırakıp gerilmeye geçer
+        }
 
         float visualBaseY;
         Vector3 visualBaseScale = Vector3.one;
@@ -175,8 +211,9 @@ namespace DesertGecko.Enemies
                 case CounterPhase.Strike:
                     return new Vector3(1.25f, 0.85f, 1f);
                 case CounterPhase.Recover:
+                    // Yorgun: hafifçe çöker, sonra normale döner.
                     float r = Mathf.Clamp01((Time.time - phaseStartedAt) / recoverTime);
-                    return Vector3.Lerp(new Vector3(1.25f, 0.85f, 1f), Vector3.one, r);
+                    return Vector3.Lerp(new Vector3(1.25f, 0.85f, 1f), Vector3.one, r * r);
                 default:
                     return Vector3.one;
             }
