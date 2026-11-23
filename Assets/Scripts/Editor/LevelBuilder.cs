@@ -76,6 +76,15 @@ namespace DesertGecko.EditorTools
             return "ana menü kuruldu";
         }
 
+        /// <summary>EditorBridge için: açık sahneyi olduğu gibi kaydeder, sonra ana menüyü kurar.</summary>
+        public static string SaveAndBuildMainMenu()
+        {
+            if (EditorApplication.isPlaying)
+                return "Play modunda kurulamaz.";
+            EditorSceneManager.SaveOpenScenes();
+            return BuildMainMenu();
+        }
+
         [MenuItem("Desert Gecko/Levelleri Kur/Level 1")]
         public static string BuildLevel1() => BuildSingleLevel(0, Level_1);
 
