@@ -527,6 +527,7 @@ namespace DesertGecko.Player
 
         /// <summary>Duvarda ve dilde sallanırken silah çizilmez: o karelerde yumruk başka yerde.</summary>
         bool ShowsArm() =>
-            controller.State != PlayerController.MoveState.WallCling && controller.State != PlayerController.MoveState.Swinging;
+            controller.State != PlayerController.MoveState.WallCling && controller.State != PlayerController.MoveState.Swinging
+            && (visual == null || !visual.PoseOverridden);
     }
 }

@@ -54,6 +54,9 @@ namespace DesertGecko.Environment
             Vector2 delta = (Vector2)cameraPosition - cameraOrigin;
             float x = layerOrigin.x + delta.x * followFactor.x;
             float y = layerOrigin.y + delta.y * followFactor.y;
+            // Tren yolculuğu: dünya geriye akar; yakın katman (kamerayı az takip eden) daha hızlı kayar.
+            if (repeatX)
+                x -= TrainScroll.Offset * (1f - followFactor.x);
 
             // Katman kameradan bir kopya boyu uzaklaşınca bir kopya kaydır: ekran hiç boş kalmaz.
             if (repeatX && tileWidth > 0f)

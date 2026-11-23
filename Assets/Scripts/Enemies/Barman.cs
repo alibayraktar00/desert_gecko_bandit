@@ -16,7 +16,7 @@ namespace DesertGecko.Enemies
     /// </summary>
     public class Barman : EnemyBase
     {
-        public enum BarmanState { None, Windup, Swing, FollowThrough, Draw, Aim, Fire, Pump }
+        public enum BarmanState { None, Windup, Swing, FollowThrough, Draw, Aim, Fire, Pump, Reload }
 
         [Header("Fıçı fırlatma")]
         [SerializeField] BarmanBarrel barrelPrefab;
@@ -53,6 +53,10 @@ namespace DesertGecko.Enemies
         [Tooltip("Tüfeği kurma: bu sırada ateş edemez")]
         [SerializeField] float pumpDuration = 0.3f;
         [SerializeField] float shotCooldown = 0.4f;
+        [Tooltip("Tüfeğe sığan fişek: hepsi atılınca durup yeniden doldurur")]
+        [SerializeField] int shellsPerLoad = 2;
+        [Tooltip("Fişekleri tek tek sürme süresi (toplam): olduğu yerde durur, Gila'nın saldırı penceresi")]
+        [SerializeField] float reloadDuration = 0.9f;
         [SerializeField] int pelletCount = 4;
         [Tooltip("Saçmaların yelpaze açısı (derece, tek yön)")]
         [SerializeField] float spreadAngle = 12f;
@@ -98,6 +102,8 @@ namespace DesertGecko.Enemies
         [SerializeField] float steepAngle = 72f;
         [SerializeField] Sprite pumpFrame;
         [SerializeField] Sprite readyFrame;
+        [Tooltip("Fişek sürme: el kemerden fişek alır, yuvaya getirir, içeri iter. Her fişek için bir kez oynar")]
+        [SerializeField] Sprite[] reloadFrames;
         [Tooltip("Tüfek elde yürüyüş")]
         [SerializeField] Sprite[] gunWalkFrames;
         [SerializeField] Sprite[] hurtFrames;
@@ -119,6 +125,7 @@ namespace DesertGecko.Enemies
         Coroutine routine;
         float stateStartedAt;
         float nextShotAt;
+        int shellsLeft;
         float hurtUntil;
         float barrelChaseSpeed;
         Rigidbody2D playerBody;
@@ -139,6 +146,7 @@ namespace DesertGecko.Enemies
         {
             base.Awake();
             barrelChaseSpeed = chaseSpeed;
+            shellsLeft = shellsPerLoad;
             solidFilter = new ContactFilter2D
             {
                 useLayerMask = true,
@@ -281,13 +289,23 @@ namespace DesertGecko.Enemies
 
             Enter(BarmanState.Fire);
             FireBlast();
+            shellsLeft--;
             yield return new WaitForSeconds(firePoseDuration + recoilPoseDuration);
             SetLean(false);
 
             Enter(BarmanState.Pump);
             PlaySound(pumpClip);
-            ShellCasing.Spawn(Eye + Vector2.right * (0.3f * FacingDirection), new Vector2(-FacingDirection * 1.5f, 3.5f), new Color32(0xC0, 0x3A, 0x2E, 0xFF));
+            EjectShell();
             yield return new WaitForSeconds(pumpDuration);
+
+            if (shellsLeft <= 0)
+            {
+                // Tüfek boş: olduğu yerde durup fişekleri tek tek sürer, sonunda pompalar.
+                Enter(BarmanState.Reload);
+                yield return new WaitForSeconds(reloadDuration);
+                shellsLeft = Mathf.Max(1, shellsPerLoad);
+                PlaySound(pumpClip);
+            }
 
             State = BarmanState.None;
             routine = null;
@@ -331,6 +349,11 @@ namespace DesertGecko.Enemies
                 pellet.Launch(new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)), Eye);
             }
             PixelBurst.Spawn(muzzle, new Color32(0xFF, 0xD8, 0x5A, 0xFF), 5, 2.5f, 0.15f);
+        }
+
+        void EjectShell()
+        {
+            ShellCasing.Spawn(Eye + Vector2.right * (0.3f * FacingDirection), new Vector2(-FacingDirection * 1.5f, 3.5f), new Color32(0xC0, 0x3A, 0x2E, 0xFF));
         }
 
         void PlaySound(AudioClip clip)
@@ -402,6 +425,7 @@ namespace DesertGecko.Enemies
             HasBarrel = true; // yeni bir fıçıyla döner
             chaseSpeed = barrelChaseSpeed;
             nextShotAt = 0f;
+            shellsLeft = shellsPerLoad;
             hurtUntil = 0f;
         }
 
@@ -447,6 +471,17 @@ namespace DesertGecko.Enemies
                         return since < firePoseDuration ? upFireFrame : upRecoilFrame;
                     return since < firePoseDuration ? fireFrame : recoilFrame;
                 case BarmanState.Pump: return since < pumpDuration * 0.6f ? pumpFrame : readyFrame;
+                case BarmanState.Reload:
+                {
+                    // Son anda pompa kolu çekilir; öncesinde her fişek için sürme kareleri baştan oynar.
+                    float pumpAt = reloadDuration - pumpDuration * 0.6f;
+                    if (since >= pumpAt)
+                        return pumpFrame;
+                    if (reloadFrames == null || reloadFrames.Length == 0)
+                        return readyFrame;
+                    float perShell = pumpAt / Mathf.Max(1, shellsPerLoad);
+                    return Stretch(reloadFrames, (since % perShell) / perShell);
+                }
                 default:
                     return Mathf.Abs(body.linearVelocity.x) > 0.1f ? Loop(gunWalkFrames, walkFps) : readyFrame;
             }

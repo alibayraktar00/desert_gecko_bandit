@@ -7,13 +7,13 @@ using UnityEngine;
 namespace DesertGecko.Player
 {
     /// <summary>
-    /// Oyuncunun canı: 3 kalp = 6 birim (yarım kalp = 1). Hasar alınca geri itilir ve kısa süre
+    /// Oyuncunun canı: 4 kalp = 8 birim (yarım kalp = 1). Hasar alınca geri itilir ve kısa süre
     /// yanıp sönerek hasar almaz. Can bitince son checkpoint'te yeniden doğar, düşmanlar sıfırlanır.
     /// </summary>
     [RequireComponent(typeof(PlayerController))]
     public class PlayerHealth : MonoBehaviour, IDamageable
     {
-        [SerializeField] int maxHealth = 6;
+        [SerializeField] int maxHealth = 8;
 
         [Header("Hasar tepkisi")]
         [SerializeField] float invincibleDuration = 2f;

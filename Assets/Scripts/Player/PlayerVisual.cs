@@ -55,6 +55,13 @@ namespace DesertGecko.Player
         /// <summary>Şu an gösterilen gövde karesi (kuyruk haline çevrilmeden önce). Silah kolu buna göre seçilir.</summary>
         public Sprite BaseFrame { get; private set; }
 
+        /// <summary>Ara sahne pozu (yerde yatma, doğrulma): doluyken hareket kareleri yerine bu gösterilir, silah çizilmez.</summary>
+        public bool PoseOverridden => poseOverride != null;
+        Sprite poseOverride;
+
+        public void SetPose(Sprite pose) => poseOverride = pose;
+        public void ClearPose() => poseOverride = null;
+
         Vector2 squash = Vector2.one;
         Sprite[] currentFrames;
         float animTime;
@@ -111,6 +118,13 @@ namespace DesertGecko.Player
         {
             squash = Vector2.Lerp(squash, Vector2.one, squashRecovery * Time.deltaTime);
             transform.localScale = new Vector3(squash.x * controller.FacingDirection, squash.y, 1f);
+
+            if (poseOverride != null)
+            {
+                spriteRenderer.sprite = poseOverride;
+                spriteRenderer.color = groundedColor;
+                return;
+            }
 
             Animate();
 

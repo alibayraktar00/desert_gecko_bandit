@@ -42,3 +42,4 @@ desktop.ini
 
 # graphify bilgi grafiği (her commit sonrası yerelde yeniden üretilir)
 graphify-out/
+tools/pxl/out/

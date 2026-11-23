@@ -721,7 +721,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a58da822910b4c419173438f80b1393, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Player.PlayerHealth
-  maxHealth: 6
+  maxHealth: 8
   invincibleDuration: 2
   knockbackVelocity: {x: 7.5, y: 7}
   knockbackControlLock: 0.25

@@ -219,7 +219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf5ba3944b5ea184387a12962f7bd691, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.Barman
-  maxHealth: 10
+  maxHealth: 8
   contactDamage: 2
   patrolSpeed: 2.2
   chaseSpeed: 4.4
@@ -277,6 +277,8 @@ MonoBehaviour:
   recoilPoseDuration: 0.15
   pumpDuration: 0.3
   shotCooldown: 0.4
+  shellsPerLoad: 2
+  reloadDuration: 0.9
   pelletCount: 4
   spreadAngle: 12
   pelletSpeed: 17
@@ -323,6 +325,10 @@ MonoBehaviour:
   steepAngle: 72
   pumpFrame: {fileID: 21300000, guid: aa40015b897efb646845469c5d4a6722, type: 3}
   readyFrame: {fileID: 21300000, guid: 7e1d5e11a51cc9041a9917e10dd98816, type: 3}
+  reloadFrames:
+  - {fileID: 21300000, guid: 12a600302b144dcfac60fc8f644021df, type: 3}
+  - {fileID: 21300000, guid: 91e8b186ace3487c8992e6543f69aaaf, type: 3}
+  - {fileID: 21300000, guid: 483c4a56ce364a6e9a03f43ab39d80fb, type: 3}
   gunWalkFrames:
   - {fileID: 21300000, guid: 167bc17d6df46a94daaf72f682b198be, type: 3}
   - {fileID: 21300000, guid: c7dbaea9efe0a684c8e5dc04060f5f57, type: 3}

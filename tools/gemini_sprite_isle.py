@@ -45,6 +45,10 @@ SHEETS = [
     # ölçekte çizdi; kendi ilk karesinden TARGET_HEIGHT'a ölçeklenir. Baş sabit dursun diye "top".
     {"file": "gila_wall.jpg", "cols": 4, "rows": 2, "margin": 24, "own_scale": True,
      "frames": [("wall", i, "top") for i in range(8)]},
+    # Kazadan sonra doğrulma (kullanıcının verdiği sayfa): yüzüstü uyuyor -> kalkıyor -> dik duruş.
+    # Kendi ölçeği, son karedeki (dik duran Gila) boydan: ayakta idle ile aynı boyda olsun.
+    {"file": "gila_kalkis.webp", "cols": 4, "rows": 2, "own_scale": True, "scale_frame": 7,
+     "frames": [("kalkis", i, "bottom") for i in range(8)]},
 ]
 SCALE_REFERENCE = ("gila_idle.jpg", 0)  # ölçek bu karedeki karakter boyuna göre hesaplanır
 
@@ -152,7 +156,7 @@ def main():
         sheet_cells = list(cells(images[sheet["file"]], sheet["cols"], sheet["rows"], sheet.get("margin", CELL_MARGIN)))
         sheet_factor = factor
         if sheet.get("own_scale"):
-            _, t, _, b = bounding_box(~background_mask(sheet_cells[sheet["frames"][0][1]]))
+            _, t, _, b = bounding_box(~background_mask(sheet_cells[sheet.get("scale_frame", sheet["frames"][0][1])]))
             sheet_factor = (b - t) / TARGET_HEIGHT
             print(f"  {sheet['file']}: kendi ölçeği, 1 oyun pikseli = {sheet_factor:.2f} kaynak piksel")
         for anim, cell_index, anchor in sheet["frames"]:

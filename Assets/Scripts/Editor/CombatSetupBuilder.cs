@@ -35,6 +35,7 @@ namespace DesertGecko.EditorTools
             public BanditBat BanditBat;
             public Bard Bard;
             public SpikeMutant SpikeMutant;
+            public BlueGiant BlueGiant;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -65,6 +66,7 @@ namespace DesertGecko.EditorTools
             a.BanditBat = BuildBanditBat(a.Crystal);
             a.Bard = BuildBard(a.Crystal); // yarasanın dinamitini kullanır: ondan sonra
             a.SpikeMutant = BuildSpikeMutant(a.Crystal);
+            a.BlueGiant = BuildBlueGiant(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -422,10 +424,11 @@ namespace DesertGecko.EditorTools
         // 23-25 sevinç, 26-27 ölüm havada (sarsılma, devrilme), 28-31 ölüm yerde, 32-37 hasar (tüfekli),
         // 38-43 tüfekli yürüyüş (üretilmiş: tetikteki gövde + yürüyüş bacakları),
         // 44-46 yukarı nişan, ateş, geri tepme (üretilmiş: belden yukarısı geriye yatık),
-        // 47-48 dik yukarı nişan ve ateş (üretilmiş: tüfek ayrıca kalkar, namlu dimdik).
+        // 47-48 dik yukarı nişan ve ateş (üretilmiş: tüfek ayrıca kalkar, namlu dimdik),
+        // 49-51 fişek sürme (pxl ile 22'den üretilmiş: el kemerde fişekle, yuvada, içeri itilmiş).
         static Barman BuildBarman(EnemyBullet pelletPrefab, Crystal crystalPrefab)
         {
-            Sprite[] f = LoadEnemyFrames("barmen", 49);
+            Sprite[] f = LoadEnemyFrames("barmen", 52);
             Object[] Range(int from, int to)
             {
                 var frames = new Object[to - from + 1];
@@ -475,6 +478,7 @@ namespace DesertGecko.EditorTools
             SetField(barman, "steepFireFrame", f[48]);
             SetField(barman, "pumpFrame", f[21]);
             SetField(barman, "readyFrame", f[22]);
+            SetArray(barman, "reloadFrames", Range(49, 51));
             SetArray(barman, "hurtFrames", Range(32, 37));
             SetArray(barman, "gunWalkFrames", Range(38, 43));
             SetArray(barman, "victoryFrames", Range(23, 25));
@@ -488,7 +492,7 @@ namespace DesertGecko.EditorTools
             so.FindProperty("chaseSpeed").floatValue = 4.4f;
             so.FindProperty("detectRange").floatValue = 12f;
             so.FindProperty("loseRange").floatValue = 16f;
-            so.FindProperty("maxHealth").intValue = 10;
+            so.FindProperty("maxHealth").intValue = 8;
             so.FindProperty("contactDamage").intValue = 2; // iri gövde: çarpması bir kalp
             so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -928,6 +932,75 @@ namespace DesertGecko.EditorTools
             return Save<SpikeMutant>(root, "SpikeMutant");
         }
 
+        // Kare sırası (tools/gemini_dev_isle.py): 0-1 bekleme, 2-7 yürüyüş, 8 hazırlık, 9 çömelme, 10 kalkış,
+        // 11 yükselme, 12 gülle (tepede top), 13 hızlı düşüş, 14 yere çarpma.
+        // Şok dalgası: dev_sok_0..71 (tools/dev_sok_isle.py, pixelfx impacts/ground-slam), 30 fps.
+        static BlueGiant BuildBlueGiant(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("dev", 15);
+            Sprite[] shock = Enumerable.Range(0, 72)
+                .Select(i => LoadCollectible($"{SpriteImportRules.EnemiesFolder}dev/dev_sok_{i}"))
+                .ToArray();
+            AudioClip Clip(string file)
+            {
+                string path = "Assets/Audio/" + file;
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            }
+
+            var root = new GameObject("BlueGiant") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            // 74 piksel boy (Gila 34'ün ~2.2 katı), gövde ~40 piksel geniş.
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(1.2f, 2.1f);
+            box.offset = new Vector2(0f, 1.05f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            var giant = root.AddComponent<BlueGiant>();
+            SetField(giant, "spriteRenderer", sr);
+            SetMask(giant, "groundMask", GameLayers.GroundMask);
+            SetField(giant, "audioSource", audio);
+            SetField(giant, "leapClip", Clip("savurma.wav"));
+            SetField(giant, "slamClip", Clip("kapi_carpma.wav"));
+            SetField(giant, "deflectClip", Clip("sekme.wav"));
+            SetArray(giant, "idleFrames", new Object[] { f[0], f[1] });
+            SetArray(giant, "walkFrames", new Object[] { f[2], f[3], f[4], f[5], f[6], f[7] });
+            SetArray(giant, "telegraphFrames", new Object[] { f[8], f[9] });
+            SetField(giant, "takeoffFrame", f[10]);
+            SetField(giant, "riseFrame", f[11]);
+            SetField(giant, "cannonballFrame", f[12]);
+            SetField(giant, "fallFrame", f[13]);
+            SetField(giant, "slamFrame", f[14]);
+            SetField(giant, "stunnedFrame", f[9]);
+            SetArray(giant, "defeatFrames", new Object[] { f[14], f[9] });
+            SetArray(giant, "shockFrames", shock);
+
+            // Kareler sağa bakar. Ağır yürür; uzaktan fark eder. Yalnız yere çarptıktan sonra vurulur.
+            var so = new SerializedObject(giant);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("patrolSpeed").floatValue = 0.9f;
+            so.FindProperty("chaseSpeed").floatValue = 1.4f;
+            so.FindProperty("patrolDistance").floatValue = 2f;
+            so.FindProperty("detectRange").floatValue = 10f;
+            so.FindProperty("loseRange").floatValue = 16f;
+            so.FindProperty("maxHealth").intValue = 8;
+            so.FindProperty("contactDamage").intValue = 2; // gövdesine çarpmak bir kalp
+            so.FindProperty("knockbackVelocity").vector2Value = new Vector2(0.5f, 0.5f);
+            so.FindProperty("deathBurstColor").colorValue = new Color32(0x2E, 0x5C, 0xC8, 0xFF);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<BlueGiant>(root, "BlueGiant");
+        }
+
         /// <summary>Diken mermisi: yılan mermisiyle aynı davranış, kendi görseli ve hızıyla.</summary>
         static EnemyBullet BuildSpikeProjectile()
         {
@@ -1096,8 +1169,8 @@ namespace DesertGecko.EditorTools
             Transform hud = canvasGo.transform;
 
             // Kalpler
-            RectTransform heartsRoot = CreateRect("Kalpler", hud, new Vector2(0f, 1f), new Vector2(8f, -8f), new Vector2(54f, 16f));
-            var hearts = new Image[3];
+            RectTransform heartsRoot = CreateRect("Kalpler", hud, new Vector2(0f, 1f), new Vector2(8f, -8f), new Vector2(72f, 16f));
+            var hearts = new Image[4]; // 4 kalp = PlayerHealth.maxHealth 8
             for (int i = 0; i < hearts.Length; i++)
                 hearts[i] = ImageAt($"Kalp_{i + 1}", heartsRoot, new Vector2(0f, 1f), new Vector2(i * 18f, 0f), new Vector2(16f, 16f), a.HeartFull);
             var healthUI = heartsRoot.gameObject.AddComponent<HealthUI>();
