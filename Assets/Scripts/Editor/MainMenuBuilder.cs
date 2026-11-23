@@ -103,6 +103,7 @@ namespace DesertGecko.EditorTools
             var menu = canvas.gameObject.AddComponent<MainMenu>();
             var so = new SerializedObject(menu);
             so.FindProperty("revolver").objectReferenceValue = revolver;
+            so.FindProperty("dust").objectReferenceValue = BuildDustTransition();
             so.FindProperty("totalCrystalsLabel").objectReferenceValue = total;
             so.FindProperty("infoLabel").objectReferenceValue = info;
             so.FindProperty("volumeRoot").objectReferenceValue = volumeRoot.gameObject;
@@ -147,6 +148,45 @@ namespace DesertGecko.EditorTools
         }
 
         const string MenuArt = "Assets/Sprites/UI/MainMenu/";
+        // Ateşten sonraki sahne geçişi: soldan sağa savrulan yarı saydam toz topakları (DustTransition), en üstte
+        // ayrı bir kanvasta; oynayınca sahneler arası taşınır.
+        static DustTransition BuildDustTransition()
+        {
+            var go = new GameObject("TozGecisi", typeof(RectTransform));
+            var canvas = go.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1000;
+            var scaler = go.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(640f, 360f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 1f;
+            RectTransform Stretch(string name)
+            {
+                var r = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+                r.SetParent(go.transform, false);
+                r.anchorMin = Vector2.zero;
+                r.anchorMax = Vector2.one;
+                r.offsetMin = r.offsetMax = Vector2.zero;
+                return r;
+            }
+            var veil = Stretch("KumPerdesi").gameObject.AddComponent<Image>();
+            veil.color = new Color32(0xE2, 0xCD, 0xAA, 0);
+            veil.raycastTarget = false;
+            veil.enabled = false;
+            RectTransform area = Stretch("Topaklar");
+            var sound = go.AddComponent<AudioSource>();
+            sound.playOnAwake = false;
+            sound.clip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/savurma.wav");
+            var dust = go.AddComponent<DustTransition>();
+            var so = new SerializedObject(dust);
+            so.FindProperty("area").objectReferenceValue = area;
+            so.FindProperty("puff").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(MenuArt + "menu_toz_bulut.png");
+            so.FindProperty("veil").objectReferenceValue = veil;
+            so.FindProperty("sound").objectReferenceValue = sound;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return dust;
+        }
 
         // Üst bilgi ve ses göstergesi (640x360 tuvalin merkezine göre); tabelanın sağında, ekranın üstünde.
         static readonly Vector2 InfoPos = new Vector2(110f, 150f);

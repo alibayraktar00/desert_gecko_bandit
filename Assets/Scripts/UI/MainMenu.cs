@@ -1,5 +1,6 @@
 using System;
 using DesertGecko.Core;
+using DesertGecko.Effects;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,6 +19,8 @@ namespace DesertGecko.UI
     {
         [SerializeField] RevolverMenu revolver;
         [SerializeField] Text totalCrystalsLabel;
+        [Tooltip("Ateşten sonra ekranı kaplayan toz; level ekran kapalıyken yüklenir (yoksa doğrudan yüklenir)")]
+        [SerializeField] DustTransition dust;
 
         [Header("Üst bilgi")]
         [Tooltip("Seçili seçeneğin açıklaması")]
@@ -66,7 +69,7 @@ namespace DesertGecko.UI
             string next = LevelCatalog.Levels[GameProgress.HighestUnlocked].Title;
             SetPage(
                 new[] { progress ? "Devam Et" : "Başla", "Level Seç", "Ayarlar", "Çıkış" },
-                new Action[] { () => SceneFlow.LoadLevel(GameProgress.HighestUnlocked), ShowLevels, ShowSettings, SceneFlow.Quit },
+                new Action[] { () => StartLevel(GameProgress.HighestUnlocked), ShowLevels, ShowSettings, SceneFlow.Quit },
                 new[] { true, false, false, false },
                 null,
                 new[] { progress ? $"Kaldığın yer: {next}" : "Gila'nın adını temize çıkar!", "Bölüm seç", "Ses, ekran ve ilerleme", "Oyundan çık" },
@@ -86,7 +89,7 @@ namespace DesertGecko.UI
                 bool unlocked = GameProgress.IsUnlocked(i);
                 texts[i] = $"Level {i + 1}";
                 fire[i] = unlocked;
-                actions[i] = unlocked ? () => SceneFlow.LoadLevel(level) : () => { };
+                actions[i] = unlocked ? () => StartLevel(level) : () => { };
                 string status = !unlocked ? "Kilitli"
                     : GameProgress.IsCompleted(i) ? $"Bitti - {GameProgress.BestCrystals(i)} altın"
                     : "Yeni";
@@ -142,6 +145,14 @@ namespace DesertGecko.UI
             resetArmed = false;
             infos[2] = "İlerleme sıfırlandı";
             ShowInfo(2);
+        }
+
+        void StartLevel(int level)
+        {
+            if (dust != null)
+                dust.Play(() => SceneFlow.LoadLevel(level));
+            else
+                SceneFlow.LoadLevel(level);
         }
 
         static string VolumeInfo() => $"Ses: %{Mathf.RoundToInt(GameProgress.Volume * 100f)}";

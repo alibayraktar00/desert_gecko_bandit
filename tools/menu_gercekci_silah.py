@@ -11,6 +11,7 @@ Girdi : Assets/Sprites/_Gelen/menu_silah_gercekci.jpg (Gemini, elsiz silah, gri 
 Çıktı : menu_gercekci_silah.png : elsiz gerçekçi silah, eski silah görseliyle aynı tuval ve hizada
         menu_el.png             : yalnızca Gila'nın eli ve kolu (aynı tuval)
         menu_pus.png            : geçişte silahın üstüne çöken pikselli toz bulutu
+        menu_toz_bulut.png      : sahne geçişinde soldan sağa savrulan yarı saydam toz topağı
 
 Kullanım (proje kökünden):
   python tools/menu_gercekci_silah.py [--preview onizleme.png]
@@ -37,6 +38,7 @@ HAND_MIN_X = 172           # bunun solundaki turuncu, el değil (fişek pirinci)
 TRIGGER_FINGER_MAX_X = 200       # ağırlık merkezi bunun solundaki el parçası eski tetik parmağıdır
 CUFF_MIN_X = 296           # bilekliğin kahvesi bu x'ten sonra (soldaki kahve kabzanın tahtası)
 OUTLINE = (36, 1, 29)
+BACKSTRAP_ZONE = [(226, 86), (258, 86), (284, 198), (264, 198), (246, 112), (226, 112)]  # kahve leke bölgesi
 STRAY_BOX = (286, 172, 312, 217)  # x0, y0, x1, y1: avucun altındaki eski kabza çizgisi burada silinir
 
 
@@ -63,7 +65,13 @@ def hand_layer(old):
     ys, xs = np.mgrid[0:h, 0:w]
     r, g, b = (old[..., i].astype(int) for i in range(3))
     opaque = old[..., 3] > 0
-    skin = opaque & (r > 150) & (g > 60) & (r - b > 80) & (xs >= HAND_MIN_X)
+    # Arka kayış bölgesinde eski ceviz kabzanın açık kahve tonları (165,93,50 gibi) ele karışmasın: orada yalnızca
+    # gerçek ten (r >= 180) sayılır; parmaklar dışarıda kaldığı için gölge tonlarını korur.
+    from PIL import ImageDraw
+    zone_img = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(zone_img).polygon(BACKSTRAP_ZONE, fill=255)
+    zone = np.asarray(zone_img) > 0
+    skin = opaque & (r > 150) & (g > 60) & (r - b > 80) & (xs >= HAND_MIN_X) & (~zone | (r >= 180))
     cuff = opaque & (r > b + 25) & (r < 150) & (xs >= CUFF_MIN_X)
     body = skin | cuff
     # sadece büyük parçalar (eldeki çizgiler, bileklik); kopuk kırıntılar atılır
@@ -214,6 +222,25 @@ def add_palm(hand, gun):
     return out
 
 
+# Avucun alt sınırı (kullanıcının yeşil çizgisi): bunun altında kalan eski el parçası silinir, çizgi boyunca hat çekilir.
+PALM_BOTTOM = ((262, 177), (302, 160))   # sol ve sağ uç (tuval pikseli)
+PALM_BOTTOM_X = (258, 304)               # silmenin uygulandığı x aralığı (sağında bileklik başlar)
+
+
+def cut_below_palm(hand):
+    out = hand.copy()
+    h, w = hand.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w]
+    (x0, y0), (x1, y1) = PALM_BOTTOM
+    line_y = y0 + (xs - x0) * (y1 - y0) / (x1 - x0)
+    band = (xs >= PALM_BOTTOM_X[0]) & (xs <= PALM_BOTTOM_X[1])
+    below = band & (ys > line_y + 0.5)
+    out[below, 3] = 0
+    edge = band & (np.abs(ys - line_y) <= 0.5) & (out[..., 3] > 0)
+    out[edge] = (*OUTLINE, 255)
+    return out
+
+
 PUFF_SIZE = 64
 PUFF_COLORS = [(176, 140, 104), (212, 180, 136), (236, 214, 176)]  # koyu, orta, açık toz (çöl paleti)
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16.0
@@ -231,6 +258,37 @@ def puff_sprite():
     out = np.zeros((n, n, 4), dtype=np.uint8)
     for i, c in enumerate(PUFF_COLORS):
         out[solid & (tone == i)] = (*c, 255)
+    return out
+
+
+CLOUD_SIZE = 96
+CLOUD_COLORS = [(196, 168, 128), (220, 198, 160), (240, 226, 200)]  # gölge, orta, ışık (açık kum)
+
+
+def cloud_sprite():
+    """Toz geçişinin topağı: birkaç daireden oluşan kabarık bulut; kenarlara doğru gerçek saydamlıkla (alfa
+    basamaklı) söner, üstü ışık alır. Oyunda onlarcası soldan sağa savrulur (DustTransition)."""
+    n = CLOUD_SIZE
+    ys, xs = np.mgrid[0:n, 0:n] + 0.5
+    rng = np.random.default_rng(11)
+    lobes = [(n / 2, n / 2 + 4, n * 0.30)] + [
+        (n / 2 + rng.uniform(-n * 0.2, n * 0.2), n / 2 + rng.uniform(-n * 0.12, n * 0.08), n * rng.uniform(0.16, 0.24))
+        for _ in range(5)]
+    dens = np.zeros((n, n))
+    for cx, cy, r in lobes:
+        dens = np.maximum(dens, 1.0 - np.hypot(xs - cx, ys - cy) / r)
+    alpha = np.clip(dens / 0.6, 0, 1) ** 1.4
+    alpha = np.round(alpha * 6) / 6 * 0.9        # 6 basamak, en yoğun yerinde bile %90
+    up = np.zeros((n, n))
+    for cx, cy, r in lobes:
+        up = np.maximum(up, 1.0 - np.hypot(xs - cx, ys + 4 - cy) / r)
+    light = dens - up                               # lobların üst kenarı aydınlık
+    tone = np.where(light < -0.04, 2, np.where(light < 0.03, 1, 0))
+    out = np.zeros((n, n, 4), dtype=np.uint8)
+    for i, c in enumerate(CLOUD_COLORS):
+        m = tone == i
+        out[m, :3] = c
+    out[..., 3] = (alpha * 255).astype(np.uint8)
     return out
 
 
@@ -259,12 +317,14 @@ def main():
     hand, tip = hand_layer(old)
     hand = trim_fingers(hand)
     hand = add_palm(hand, np.asarray(canvas))
+    hand = cut_below_palm(hand)
     hand_img = Image.fromarray(hand, "RGBA")
     tx, ty = TRIGGER_FINGER_AT  # eski çizimin işaret parmağı, tetiğin önünde
     hand_img.alpha_composite(Image.fromarray(tip, "RGBA"), (round(tx - tip.shape[1] / 2), round(ty - tip.shape[0] / 2)))
     hand_img.save(ART / "menu_el.png")
     hand = np.asarray(hand_img)
     Image.fromarray(puff_sprite(), "RGBA").save(ART / "menu_pus.png")
+    Image.fromarray(cloud_sprite(), "RGBA").save(ART / "menu_toz_bulut.png")
     mx, my = muzzle_point(canvas)
     print(f"gercekci silah {gun.shape[1]}x{gun.shape[0]}, kabza merkezi ({gx:.0f},{gy:.0f}) -> kaydirma ({ox},{oy}), "
           f"namlu ucu ({mx},{my:.1f})")
