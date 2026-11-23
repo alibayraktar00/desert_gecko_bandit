@@ -130,7 +130,7 @@ namespace DesertGecko.Player
         {
             Vector2 direction = AimDirection();
             Vector2 mouth = MouthPosition();
-            if (FindBugTarget(mouth, direction) != null)
+            if (FindBugTarget(mouth, direction) != null || FindMagnetTarget(mouth, direction) != null)
                 return true;
             int count = OverlapTongue(mouth, direction);
             for (int i = 0; i < count; i++)
@@ -220,6 +220,12 @@ namespace DesertGecko.Player
                 StartCoroutine(CatchRoutine(bug, aim));
                 return true;
             }
+            ITongueMagnet magnet = FindMagnetTarget(mouth, aim);
+            if (magnet != null)
+            {
+                StartCoroutine(MagnetRoutine(magnet));
+                return true;
+            }
             // Dilin önünde düşman yoksa yerdeki silaha uzanır: uzaktaki silahı almak için.
             WeaponPickup pickup = EnemyInTongueReach(mouth, aim) ? null : FindPickupTarget(mouth, aim);
             StartCoroutine(pickup != null ? PullRoutine(pickup) : AttackRoutine(aim));
@@ -252,8 +258,38 @@ namespace DesertGecko.Player
             return best;
         }
 
+        /// <summary>
+        /// Havada süzülen düşman (ITongueMagnet): dilin yolu yakalama çemberine değiyorsa, böcekteki gibi dil ona
+        /// kıvrılır. Birden çoksa en yakını.
+        /// </summary>
+        ITongueMagnet FindMagnetTarget(Vector2 mouth, Vector2 direction)
+        {
+            ITongueMagnet best = null;
+            float bestDistance = float.MaxValue;
+            Vector2 tip = mouth + direction * Reach(mouth, direction);
+            IReadOnlyList<ITongueMagnet> magnets = TongueMagnets.Active;
+            for (int i = 0; i < magnets.Count; i++)
+            {
+                ITongueMagnet magnet = magnets[i];
+                if (magnet == null || !magnet.IsAlive)
+                    continue;
+                Vector2 center = magnet.TongueAnchor;
+                if (DistanceToSegment(center, mouth, tip) > magnet.TongueCatchRadius || WallBetween(mouth, center))
+                    continue;
+                float distance = Vector2.Distance(mouth, center);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = magnet;
+                }
+            }
+            return best;
+        }
+
         bool EnemyInTongueReach(Vector2 mouth, Vector2 direction)
         {
+            if (FindMagnetTarget(mouth, direction) != null)
+                return true;
             int count = OverlapTongue(mouth, direction);
             for (int i = 0; i < count; i++)
             {
@@ -447,6 +483,49 @@ namespace DesertGecko.Player
             if (health.IsAlive) // ölüm sırasında kilidi PlayerHealth yönetir
                 controller.MovementLocked = false;
             IsAttacking = false;
+        }
+
+        /// <summary>
+        /// Havadaki düşmana vuruş: dil gövdesine doğru kıvrılıp uzanır (süzülürken ucu onu izler), değince vurur,
+        /// kısa tutup geri sarılır. Böcek yakalamayla aynı his; düz yoldaki öbür hedefler bu vuruşta vurulmaz.
+        /// </summary>
+        IEnumerator MagnetRoutine(ITongueMagnet target)
+        {
+            IsAttacking = true;
+            readyAt = Time.time + cooldown;
+            controller.MovementLocked = true;
+            Attacked?.Invoke();
+
+            float reachTime = extendTime * 2f;
+            Vector2 grab = target.TongueAnchor;
+            float t = 0f;
+            while (t < reachTime)
+            {
+                t += Time.deltaTime;
+                if (target.IsAlive)
+                    grab = target.TongueAnchor;
+                Vector2 mouth = MouthPosition();
+                ShowTongue(mouth, (grab - mouth).normalized, Vector2.Distance(mouth, grab) * Mathf.Clamp01(t / reachTime));
+                yield return null;
+            }
+
+            if (target.IsAlive)
+            {
+                Vector2 mouth = MouthPosition();
+                target.TakeDamage(new DamageInfo(damage, new Vector2(grab.x >= mouth.x ? 1f : -1f, 0f), DamageKind.Tongue));
+            }
+
+            float retractTime = extendTime * 3f;
+            t = 0f;
+            while (t < retractTime)
+            {
+                t += Time.deltaTime;
+                Vector2 mouth = MouthPosition();
+                Vector2 tip = Vector2.Lerp(grab, mouth, Mathf.Clamp01(t / retractTime));
+                ShowTongue(mouth, (tip - mouth).normalized, Vector2.Distance(mouth, tip));
+                yield return null;
+            }
+            FinishAttack();
         }
 
         TreasureChest latchedChest; // bu saldırıda dilin açmaya başladığı sandık

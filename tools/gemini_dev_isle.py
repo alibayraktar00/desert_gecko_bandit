@@ -3,6 +3,8 @@ Mavi Dev'in (kobalt mavisi, hulk tarzı mini-boss) Gemini sayfalarını oyuna ha
 Sayfalar 4x2 hücreli, gri zeminli, altında yazı şeridi olan sunum sayfaları:
   dev_yuruyus.png : idle_01-02, walk_01-06
   dev_ziplama.png : jump_01-08 (hazırlık, çömelme, kalkış, yükselme, gülle 1-2, yere çarpma, şok dalgası)
+  dev_olum.png    : death_01-08 (darbe, diz çökme, diz üstü, öne eğilme, yıkılış, yere çarpma, yığılma, hareketsiz)
+  dev_galibiyet.png: victory_01-08 (duruş, yumruk sıkma, bağırış, kol kaldırma, gövde gösterisi, sevinç, indirme, galibiyet)
 Gri zemin kenardan taşma dolgusuyla silinir; toz, taş, hız çizgisi ve şok yayı gibi gövdeden kopuk
 parçalar atılır (şok dalgası oyunda ayrı efekt olarak doğar: dev_sok_*.png, pixelfx'ten).
 Kareler sağa bakar; sola bakış oyunda flipX.
@@ -11,7 +13,8 @@ Hizalama: her karenin en alt noktası tuvalin altına (pivot = yer). Yatayda say
 (ilk karenin başı tuvalin ortasında): hücrelerde çizildiği gibi oynar, titremez.
 
 Kare sırası (CombatSetupBuilder.BuildBlueGiant ile aynı olmalı):
-  0-1 bekleme, 2-7 yürüyüş, 8 hazırlık, 9 çömelme, 10 kalkış, 11 yükselme, 12-13 gülle, 14 yere çarpma
+  0-1 bekleme, 2-7 yürüyüş, 8 hazırlık, 9 çömelme, 10 kalkış, 11 yükselme, 12-13 gülle, 14 yere çarpma,
+  15-22 ölüm, 23-30 galibiyet
 
 Kullanım (proje kökünden):
   python tools/gemini_dev_isle.py [--preview onizleme.png]
@@ -32,16 +35,18 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE_DIR = ROOT / "Assets" / "Sprites" / "_Gelen"
 OUT_DIR = ROOT / "Assets" / "Sprites" / "Enemies" / "dev"
 CANVAS_W, CANVAS_H = 128, 96
-TARGET_HEIGHT = 74  # bekleme karesinin boyu: Gila (34) x ~2.2
+TARGET_HEIGHT = 67  # bekleme karesinin boyu: Gila (34) x ~2 (74 iken çok iri duruyordu)
 COLS = [(5, 253), (259, 509), (514, 764), (770, 1019)]
 ROWS = [(40, 370), (402, 736)]
 
 # (sayfa, hücre sırası, silinecek efekt). jump_08 (şok dalgası) kullanılmaz: yay gövdeye karışmış,
 # oyunda şok dalgası ayrı efekt, poz için çarpma karesi yeter.
 FRAMES = [("yuruyus", i, None) for i in range(8)] + [("ziplama", i, None) for i in range(5)] + [
-    ("ziplama", 5, "hiz"), ("ziplama", 6, "tas")]
+    ("ziplama", 5, "hiz"), ("ziplama", 6, "tas")] + [
+    ("olum", i, "tas" if i == 5 else None) for i in range(8)] + [("galibiyet", i, None) for i in range(8)]
 LABELS = ["bekleme 0", "bekleme 1"] + [f"yuruyus {i}" for i in range(6)] + [
-    "hazirlik", "comelme", "kalkis", "yukselme", "gulle 1", "gulle 2", "carpma"]
+    "hazirlik", "comelme", "kalkis", "yukselme", "gulle 1", "gulle 2", "carpma"] + [
+    f"olum {i}" for i in range(8)] + [f"galibiyet {i}" for i in range(8)]
 
 
 def cell(page, index):
@@ -129,7 +134,7 @@ def main():
     parser.add_argument("--preview", type=Path)
     args = parser.parse_args()
 
-    pages = {n: np.array(Image.open(SOURCE_DIR / f"dev_{n}.png").convert("RGB")) for n in ("yuruyus", "ziplama")}
+    pages = {n: np.array(Image.open(SOURCE_DIR / f"dev_{n}.png").convert("RGB")) for n in ("yuruyus", "ziplama", "olum", "galibiyet")}
 
     # Ölçek: ilk bekleme karesinin kaynak boyu -> TARGET_HEIGHT.
     first = cell(pages["yuruyus"], 0)

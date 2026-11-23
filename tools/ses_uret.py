@@ -24,6 +24,12 @@ Yılan silahşorün geçici ses efektlerini üretir (gerçek sesler gelene kadar
   Assets/Audio/sandik_acilma.wav  sandık patlayarak açılır: kapak fırlar, dökülen altın, parlak akor
   Assets/Audio/gitar_akor.wav     Bard'ın yarasa çağıran akoru: distorsiyonlu elektro gitar güç akoru
   Assets/Audio/bard_donusum.wav   Bard canavara dönüşür: yükselen hırıltı, gümbürtü, akor patlaması
+  Assets/Audio/siber_dalga.wav    Siber Hatip'in ses halkası: titreşen "vuuum" darbesi
+  Assets/Audio/siber_sarj.wav     frekans patlamasının uyarısı: yükselen elektronik vınlama (0.6 sn)
+  Assets/Audio/siber_isinma.wav   boğaz mikrofonu aşırı ısınır: kıvılcım çıtırtısı ve sönen uğultu
+  Assets/Audio/tambur_tik.wav     ana menü: revolver tamburu bir hazne döner, mandal yuvaya oturur ("tık")
+  Assets/Audio/horoz_kurma.wav    ana menü: horoz geriye çekilip kilitlenir ("çık-çak")
+  Assets/Audio/tambur_kapanma.wav ana menü: açık tambur bilekle silaha oturur ("klak")
 
 Kullanım (proje kökünden):  python tools/ses_uret.py
 Gereken paket: numpy
@@ -373,6 +379,78 @@ def monster_shift(rng, seconds=1.3):
     return np.tanh(out * 1.6) * 0.8
 
 
+def sonic_ring(rng, seconds=0.32):
+    """Ses halkası: aşağı kayan, hızla titreşen bir "vuuum"; üstünde ince dijital vızıltı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    freq = 520.0 * np.exp(-t * 3.2) + 140.0
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    wobble = 0.6 + 0.4 * np.sin(2 * np.pi * 38.0 * t)
+    tone = np.sin(phase) + 0.35 * np.sign(np.sin(phase * 2.0))
+    buzz = rng.normal(0.0, 1.0, t.size) * 0.08
+    envelope = np.minimum(t / 0.01, 1.0) * np.exp(-t * 7.0)
+    return (tone * wobble + buzz) * envelope * 0.55
+
+
+def sonic_charge(rng, seconds=0.6):
+    """Şarj: yükselen elektronik vınlama, sonuna doğru sıklaşan tıkırtı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    freq = 180.0 + 900.0 * (t / seconds) ** 2
+    phase = 2 * np.pi * np.cumsum(freq) / RATE
+    whine = np.sin(phase) + 0.3 * np.sin(phase * 3.01)
+    ticks = (np.sin(2 * np.pi * (10.0 + 30.0 * t / seconds) * t) > 0.9) * rng.normal(0.0, 0.4, t.size)
+    envelope = np.minimum(t / 0.05, 1.0) * (0.3 + 0.7 * t / seconds) * np.minimum((seconds - t) / 0.02, 1.0)
+    return (whine * 0.5 + ticks) * envelope * 0.6
+
+
+def overheat_crackle(rng, seconds=0.9):
+    """Aşırı ısınma: düzensiz kıvılcım çıtırtıları ve altında sönen elektrik uğultusu."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    hum = np.sign(np.sin(2 * np.pi * 100.0 * t)) * 0.15 * np.exp(-t * 3.0)
+    crackle = np.zeros(t.size)
+    for _ in range(26):
+        start = int(rng.uniform(0.0, seconds * 0.85) * RATE)
+        n = int(rng.uniform(0.004, 0.02) * RATE)
+        burst = rng.normal(0.0, 1.0, n) * np.exp(-np.arange(n) / (n / 3.0))
+        crackle[start:start + n] += burst[:max(0, t.size - start)] * rng.uniform(0.3, 0.9)
+    envelope = np.minimum(t / 0.01, 1.0) * np.minimum((seconds - t) / 0.05, 1.0)
+    return (hum + crackle * 0.6) * envelope
+
+
+def cylinder_tick(rng, seconds=0.12):
+    """Tambur tıkı: mandalın yuvaya oturduğu kuru madeni tık ve kısa, tiz bir çınlama."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    click = rng.normal(0.0, 1.0, t.size)
+    click = (click - np.convolve(click, np.ones(5) / 5, mode="same")) * np.exp(-t * 260.0)
+    ring = sum(np.sin(2 * np.pi * f * t) * a for f, a in ((3300.0, 0.35), (5200.0, 0.18))) * np.exp(-t * 70.0)
+    body = np.sin(2 * np.pi * 900.0 * t) * np.exp(-t * 90.0) * 0.25
+    return (click * 0.9 + ring + body) * 0.7
+
+
+def hammer_cock(rng, seconds=0.3):
+    """Horoz kurma: yay gerilirken ince sürtünme, sonra iki kademeli kilit tıkı."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    out = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(4) / 4, mode="same") * 0.12 * np.exp(-t * 9.0)
+    for start, pitch, gain in ((0.07, 2600.0, 0.6), (0.17, 2000.0, 1.0)):
+        u = np.clip(t - start, 0.0, None)
+        on = t >= start
+        click = rng.normal(0.0, 1.0, t.size) * np.exp(-u * 220.0)
+        ring = np.sin(2 * np.pi * pitch * u) * np.exp(-u * 55.0) * 0.45
+        out += (click + ring) * on * gain
+    return out * 0.6
+
+
+def cylinder_close(rng, seconds=0.28):
+    """Tambur kapanması: kısa hışırtılı kayış, ardından tok ve madeni bir "klak" (yuvaya oturma)."""
+    t = np.arange(int(seconds * RATE)) / RATE
+    swish = np.convolve(rng.normal(0.0, 1.0, t.size), np.ones(10) / 10, mode="same") * 0.5 * np.clip(t / 0.05, 0, 1) * (t < 0.06)
+    u = np.clip(t - 0.06, 0.0, None)
+    on = t >= 0.06
+    thunk = np.sin(2 * np.pi * (220.0 * u - 260.0 * u ** 2)) * np.exp(-u * 30.0) * 0.8
+    click = rng.normal(0.0, 1.0, t.size) * np.exp(-u * 180.0)
+    ring = sum(np.sin(2 * np.pi * f * u) * a for f, a in ((1800.0, 0.35), (2900.0, 0.2))) * np.exp(-u * 40.0)
+    return (swish + (thunk + click * 0.9 + ring) * on) * 0.65
+
+
 def main():
     rng = np.random.default_rng(7)  # her çalıştırmada aynı ses
     save("cingirak.wav", rattle(rng))
@@ -400,6 +478,12 @@ def main():
     save("sandik_gerilim.wav", chest_tease(np.random.default_rng(25)))
     save("gitar_akor.wav", power_chord(np.random.default_rng(23)))
     save("bard_donusum.wav", monster_shift(np.random.default_rng(24)))
+    save("siber_dalga.wav", sonic_ring(np.random.default_rng(26)))
+    save("siber_sarj.wav", sonic_charge(np.random.default_rng(27)))
+    save("siber_isinma.wav", overheat_crackle(np.random.default_rng(28)))
+    save("tambur_tik.wav", cylinder_tick(np.random.default_rng(29)))
+    save("horoz_kurma.wav", hammer_cock(np.random.default_rng(30)))
+    save("tambur_kapanma.wav", cylinder_close(np.random.default_rng(31)))
 
 
 if __name__ == "__main__":

@@ -47,7 +47,6 @@ namespace DesertGecko.EditorTools
             new Layer { Name = "GeceGokyuzu", Sprite = "bg_gece_gokyuzu_uzun", Follow = new Vector2(1f, 1f), HorizonY = -1.2f, Order = -99, Repeat = true, TileCount = 5 },
             new Layer { Name = "GeceMesalar", Sprite = "bg_gece_uzak", Follow = new Vector2(0.85f, 0.75f), HorizonY = 1.2f, Order = -89, Repeat = true, TileCount = 4 },
             new Layer { Name = "GeceTepeler", Sprite = "bg_gece_orta", Follow = new Vector2(0.6f, 0.5f), HorizonY = 0f, Order = -79, Repeat = true, TileCount = 4 },
-            new Layer { Name = "GeceOnPlan", Sprite = "bg_gece_on", Follow = new Vector2(0.4f, 0.3f), HorizonY = -1f, Order = -70, Repeat = true, TileCount = 4 },
         };
 
         const string UnlitMaterialPath = "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";

@@ -56,6 +56,26 @@ namespace DesertGecko.EditorTools
             BuildAll(null);
         }
 
+        /// <summary>Sadece ana menü sahnesini kurar ve görüntüsünü Temp/Screenshots/MainMenu.png'ye alır.</summary>
+        [MenuItem("Desert Gecko/Levelleri Kur/Ana Menü")]
+        public static string BuildMainMenu()
+        {
+            string blocked = EditorApplication.isPlaying ? "Play modunda kurulamaz."
+                : EditorSceneManager.GetActiveScene().isDirty ? "Açık sahnede kaydedilmemiş değişiklik var, önce kaydedin." : null;
+            if (blocked != null)
+            {
+                Debug.LogWarning("[DesertGecko] " + blocked);
+                return blocked;
+            }
+            string previous = EditorSceneManager.GetActiveScene().path;
+            MainMenuBuilder.Build(TestSceneBuilder.Prepare());
+            SceneCapture.Capture("Temp/Screenshots/MainMenu.png", new Vector3(0f, 1.5f, -10f));
+            AssetDatabase.SaveAssets();
+            if (!string.IsNullOrEmpty(previous) && File.Exists(previous))
+                EditorSceneManager.OpenScene(previous);
+            return "ana menü kuruldu";
+        }
+
         [MenuItem("Desert Gecko/Levelleri Kur/Level 1")]
         public static string BuildLevel1() => BuildSingleLevel(0, Level_1);
 
@@ -113,7 +133,7 @@ namespace DesertGecko.EditorTools
             var points = new System.Collections.Generic.List<Vector2>();
             for (float x = IstasyonX + 10f; x < KazaX + 50f; x += 20f)
                 points.Add(new Vector2(x, 3f));
-            for (float x = GumusVadiX + 5f; x < GumusVadiX + 62f; x += 18f)
+            for (float x = GumusVadiX + 5f; x < GumusVadiX + 82f; x += 18f)
                 points.Add(new Vector2(x, 3.5f));
             foreach (Vector2 c in points)
                 SceneCapture.Capture($"Temp/Screenshots/L4tren_{c.x:0}.png", new Vector3(c.x, c.y, -10f));
@@ -1468,7 +1488,7 @@ namespace DesertGecko.EditorTools
         // Level 4: Tozlu Dere. Çölden gelinir, kasaba yavaş yavaş belirir: önce yol kenarı, sonra çiftlikler, sonra
         // ana cadde. Trenle kasabadan çıkılır, tren raydan çıkar, çölde yürünüp ikinci kasabaya (Gümüş Vadi) varılır.
         // Gün batımında başlar, istasyonda gece olur, ikinci kasabaya yaklaşırken şafak söker.
-        // Düşmanlar karışık: kasabanın insanları (barmen, şerif, bard) ve çölün hayvanları (akrep, çalı faresi, armadillo,
+        // Düşmanlar karışık: kasabanın insanları (barmen, şerif, iki Siber Hatip) ve çölün hayvanları (akrep, çalı faresi, armadillo,
         // diken mutantı, yılan, çakal). Checkpoint'ler 35-45 birimde bir; çöl yürüyüşü kısa, hemen Gümüş Vadi gelir.
         // Tren film usulü: tren yerinde durur, dünya geriye akar (TrainRide). Lokomotife varınca kaza ara sahnesi (TrainCrash).
         // Binaların yüzeyleri (balkon, saçak, çatı) görselin sol alt köşesinden piksel olarak yazılır (1x görsel).
@@ -1599,7 +1619,7 @@ namespace DesertGecko.EditorTools
         }
 
         // Ana Cadde: kasaba. Altta sokak, üstte verandalar, balkonlar ve çatılar: iki yol yan yana gider, çatılarda kristal.
-        // Hapishanenin alt katı ve bankanın kasası katı: tırmanılarak aşılır. Merdivenle üst sokağa çıkılır.
+        // Hapishanenin taş alt katı tırmanılarak aşılır. Merdivenle üst sokağa çıkılır.
         static void Kasaba_AnaCadde(LevelPainter p)
         {
             const float street = 1f, upper = 3.5f;
@@ -1638,12 +1658,12 @@ namespace DesertGecko.EditorTools
             p.CrystalLine(39.8f, street + 4.7f, 3, 1.5f);
             p.CrystalLine(61.2f, street + 4.8f, 3, 1.4f);
 
-            // Üst sokak: banka kasası katı, üstünden aşılır
+            // Üst sokak: ortasında Mavi Dev nöbette, bankanın çatısına sandıklardan çıkılır
             p.Steps(68f, 73f, street, upper);
             p.Ground(73f, 135f, upper);
             p.Checkpoint(74f, upper);
             p.Building("kasaba_banka", 79.5f, upper);
-            p.Dev(82f, upper); // bankanın kapısını tutan muhafız: düz üst sokakta sıçrayıp şok dalgası yollar
+            p.Dev(93f, upper); // üst sokağın muhafızı: merdivenin kenarından uzakta, silahçıyla cenazecinin önündeki düz yolda sıçrar
             p.CrystalLine(78f, upper + 4f, 3, 1.4f);
             p.Building("kasaba_silahci", 87.5f, upper);
             p.Barmen(88f, upper + 10f / 32f); // silahçının verandasında (veranda tabanı 10 piksel)
@@ -1661,12 +1681,14 @@ namespace DesertGecko.EditorTools
             p.Deco("yuz_mezar", 119.5f, upper);
             p.Deco("yuz_kurukafa", 122f, upper);
             p.Deco("yuz_mezar", 124.5f, upper);
-            p.Bard(124f, upper); // mezarlıkta gitar çalıp yarasalarını çağırır
+            p.Siber(124f, upper); // mezarlıkta vaaz veren ikinci konuşmacı: mezar taşları siper
             p.TownDeco("kasaba_cit", 131f, upper);
         }
 
         // Maden ocağı: kasabanın arka yüzü. Maden ofisi, demirci, iskele ve su kulesi; sonra istasyona inen toprak yol.
-        // Demircinin önünde diken mutantı, yolda armadillo ve akrep, istasyonun girişinde şerif.
+        // Demircinin önünde diken mutantı; sandık yığınıyla su kulesinin arasında Siber Hatip süzülür (halkalardan
+        // sandığın arkasına saklanılır, dev dalgadan kulenin güvertesine çıkılır). Yolda armadillo ve akrep,
+        // istasyonun girişinde şerif.
         static void Kasaba_MadenOcagi(LevelPainter p)
         {
             const float yard = 1.5f;
@@ -1681,6 +1703,7 @@ namespace DesertGecko.EditorTools
             p.TownDeco("kasaba_sandiklar", 25.5f, yard, 1f, -9);
             p.Building("kasaba_su_kulesi", 33f, yard);
             p.Crystal(32.3f, yard + 4.4f); // tankın tepesinde
+            p.Siber(30f, yard); // avluyu tutan konuşmacı: sandıklar siper, kulenin güvertesi dev dalgadan kaçış
             p.TownDeco("kasaba_fici_teker", 39.5f, yard, 1f, -8);
 
             p.Ground(50f, 95f, 0f);
@@ -1788,42 +1811,55 @@ namespace DesertGecko.EditorTools
             p.Diken(52f, 1f);
         }
 
-        // Gümüş Vadi: ikinci kasaba, şafakta. Gümüş madeni kasabası: ana caddenin üstünden maden vagonlarının
-        // geçtiği yüksek tahta iskele uzanır. Alttan sokaktan (yılan, iskelenin gölgesinde) ya da üstten iskeleden
-        // (şerif, maden vagonları) gidilir. Su kulesinin dibinde bitiş: sonraki bölüm buradan devam eder.
+        // Gümüş Vadi: ikinci kasaba, şafakta. Ana cadde gibi iki yol yan yana gider: altta sokak, üstte binaların
+        // tenteleri, balkonları ve çatıları (çatılarda kristal). Demircinin tentesinden çatısına, sandık yığınından maden
+        // iskelesine (vagonlar, şerif) çıkılır; iskelenin ucundan bankanın balkonuna, oradan çatısına atlanır.
+        // Maden ofisinin tentesinden su kulesinin güvertesine inilir. Alttan sokaktan (fedai, yılan, çakal) da gidilir.
+        // Su kulesinin dibinde bitiş: sonraki bölüm buradan devam eder.
         static void Kasaba_GumusVadi(LevelPainter p)
         {
             const float street = 0f, deck = 3f;
 
-            p.Ground(0f, 70f, street);
+            p.Ground(0f, 84f, street);
             p.Sign(2.5f, street, "Gümüş Vadi\nNüfus: 340");
             p.Checkpoint(4.5f, street);
-            p.TownDeco("kasaba_cit", 6.5f, street);
-            p.TownDeco("kasaba_yalak", 10.5f, street, 0.7f);
-            p.Building("kasaba_demirci_2", 17f, street);
+            p.TownDeco("kasaba_cit", 7f, street);
+
+            // Demirci: tente (3 birim), tabelalı cephenin tepesi, baca. Sağdaki kulübenin çatısı sokağa iner.
+            p.Building("kasaba_demirci_2", 15f, street);
             p.Lamp(16.4f, street + 1.1f, 2.2f); // ocağın ateşi
-            p.Barmen(22.5f, street); // demircinin önünde
+            p.Barmen(13f, street); // ocağın önünde
+            p.CrystalLine(12.8f, street + 5.4f, 3, 1.6f); // cephenin tepesinde
 
-            // Maden iskelesi: caddenin üstünde, tahta ayaklı yüksek yol. Merdivenle çıkılır.
-            p.Steps(24f, 27f, street, deck);
-            p.Ledge(27f, 46f, deck, register: true);
-            p.Deco("mgr_vagon", 31f, deck, -9);
-            p.Deco("mgr_vagon", 34.2f, deck, -9);
+            // Sandık yığını iskeleye basamak
+            p.TownDeco("kasaba_sandiklar", 24.5f, street, 1f, -9);
+            // Maden iskelesi: caddenin üstünde tahta yol, vagonlar ve şerif. Altı açık: sokaktan da geçilir.
+            p.Ledge(23.5f, 47.5f, deck, register: true, style: "plat_tahta");
+            p.Deco("mgr_vagon", 30f, deck, -9);
+            p.Deco("mgr_vagon", 33.2f, deck, -9);
             p.Serif(39.5f, deck);
-            p.CrystalLine(28f, deck + 1.4f, 5, 1.6f);
-            p.Snake(36f, street); // iskelenin gölgesinde, alttan gidene
-            p.Deco("kasaba_banka_2", 36.5f, street, -12); // iskelenin arkasında: yalnız görsel, alt sokak açık kalsın
+            p.CrystalLine(26f, deck + 1.4f, 3, 1.6f);
             p.Checkpoint(44.5f, deck);
-            // İskeleden aşağı: sandık yığını basamak
-            p.TownDeco("kasaba_sandiklar", 48f, street, 1f, -9);
+            p.Snake(36f, street); // iskelenin gölgesinde, alttan gidene
 
-            p.TownDeco("kasaba_pazar", 53.5f, street);
-            p.Jackal(57f, street);
-            p.Building("kasaba_su_kulesi", 62f, street);
-            p.Crystal(61.3f, street + 4.4f); // tankın tepesinde
-            p.TownDeco("kasaba_fici_teker", 66f, street, 1f, -8);
-            p.Goal(68f, street);
-            p.Boundary(70f);
+            // Banka: iskelenin ucundan balkonuna, oradan çatısına
+            p.Building("kasaba_banka_2", 52f, street);
+            p.Lamp(49.6f, street + 2.4f, 1.6f);
+            p.Lamp(54.4f, street + 2.4f, 1.6f);
+            p.CrystalLine(50.4f, street + 6.6f, 3, 1.6f);
+            p.Jackal(57.5f, street);
+
+            // Maden ofisi: veranda, tente, çatı
+            p.Building("kasaba_maden_ofisi", 62.5f, street);
+            p.Lamp(60.6f, street + 1.3f, 1.6f);
+            p.Crystal(62.5f, street + 4.2f);
+
+            p.TownDeco("kasaba_pazar", 67.6f, street);
+            p.Building("kasaba_su_kulesi", 73f, street);
+            p.Crystal(72.3f, street + 4.4f); // tankın tepesinde
+            p.TownDeco("kasaba_fici_teker", 78.5f, street, 1f, -8);
+            p.Goal(81.5f, street);
+            p.Boundary(84f);
         }
 
         // =====================================================================
@@ -2729,14 +2765,14 @@ namespace DesertGecko.EditorTools
             };
 
             /// <summary>Geçirgen çıkıntı: alttan zıplayarak geçilen, S + Space ile inilen tek yönlü platform.</summary>
-            public void Ledge(float xMin, float xMax, float top, bool register = false)
+            public void Ledge(float xMin, float xMax, float top, bool register = false, string style = null)
             {
                 xMin += OriginX;
                 xMax += OriginX;
                 if (register)
                     platforms.Add((xMin, xMax, top));
                 // 30 birimlik bölgeler aynı türü alır: bir odadaki çıkıntılar birbirine benzer, odadan odaya değişir.
-                string style = LedgeStyles[Mathf.Abs(Mathf.FloorToInt(xMin / 30f)) % LedgeStyles.Length];
+                style ??= LedgeStyles[Mathf.Abs(Mathf.FloorToInt(xMin / 30f)) % LedgeStyles.Length];
                 Sprite s = LayerArt(style);
                 float rise = (LedgeSurfaces.TryGetValue(style, out int px) ? px : 0) / 32f;
                 SpriteRenderer sr = TiledArt(geometry, Name("Cikinti"), s, new Vector2((xMin + xMax) / 2f, top + rise),
@@ -3588,10 +3624,13 @@ namespace DesertGecko.EditorTools
             static readonly Dictionary<string, BuildingPart[]> BuildingParts = new Dictionary<string, BuildingPart[]>
             {
                 // Saloon: veranda, balkon, saçaklı çatı. Çatının ortasında tabela yükselir: üstünde de durulur
-                // (çatı yüzeyleri görselin üst silüetine göre: cephenin tepesi ve tabelanın tepesi).
-                { "kasaba_saloon", new[] { Gecit(12, 180, 10), Gecit(15, 175, 68), Gecit(25, 54, 127), Gecit(54, 140, 143), Gecit(140, 168, 127) } },
-                // Otel: saloonun ikizi, balkonu daha geniş; çatının ortasında HOTEL tabelası yükselir
-                { "kasaba_otel", new[] { Gecit(8, 200, 10), Gecit(5, 200, 68), Gecit(30, 68, 124), Gecit(68, 138, 137), Gecit(138, 175, 124) } },
+                // (çatı yüzeyleri görselin üst silüetine göre: cephenin tepesi ve tabelanın tepesi). Çatıdan tabelaya
+                // iki yanda kısa eğim: yürüyen Gila basamağa kendiliğinden çıkar, aradaki boşluktan balkona düşmez.
+                { "kasaba_saloon", new[] { Gecit(12, 180, 10), Gecit(15, 175, 68), Gecit(25, 42, 127), Egim(42, 127, 58, 143),
+                    Gecit(58, 136, 143), Egim(136, 143, 152, 127), Gecit(152, 168, 127) } },
+                // Otel: saloonun ikizi, balkonu daha geniş; çatının ortasında HOTEL tabelası yükselir (iki yanda aynı eğim)
+                { "kasaba_otel", new[] { Gecit(8, 200, 10), Gecit(5, 200, 68), Gecit(30, 56, 124), Egim(56, 124, 72, 137),
+                    Gecit(72, 134, 137), Egim(134, 137, 150, 124), Gecit(150, 175, 124) } },
                 // Dükkân, silahçı, berber: veranda, tente, çatı
                 { "kasaba_dukkan", new[] { Gecit(10, 185, 10), Gecit(15, 180, 78), Gecit(22, 165, 122) } },
                 { "kasaba_silahci", new[] { Gecit(10, 190, 10), Gecit(20, 185, 80), Gecit(30, 175, 124) } },
@@ -3601,9 +3640,9 @@ namespace DesertGecko.EditorTools
                 // Hapishane: alt kat taş ve demir, içinden geçilmez; tırmanılıp pervaza çıkılır, pencerelerin önünden
                 // yürünür, çatıya ya da yandaki ek binanın çatısına atlanır
                 { "kasaba_hapishane", new[] { Blok(22, 158, 0, 62), Gecit(30, 167, 128), Egim(152, 76, 200, 63) } },
-                // Banka (öbür binalardan biraz küçük çıkarılır): tuğla kasa, içinden geçilmez; duvarından tırmanılıp üstünden
-                // aşılır. Yanındaki sandıklar basamak.
-                { "kasaba_banka", new[] { Blok(12, 144, 0, 100), Gecit(144, 160, 31) } },
+                // Banka (öbür binalardan biraz küçük çıkarılır): önünden yürünerek geçilir (katı değil: Mavi Dev kapısında
+                // nöbet tutar, Gila'ya sıçrayabilsin). Çatısına yanındaki sandıklardan zıplanıp çıkılır.
+                { "kasaba_banka", new[] { Gecit(12, 144, 100), Gecit(144, 160, 31) } },
                 // Cenazeci: veranda ve düz çatı
                 { "kasaba_cenazeci", new[] { Gecit(20, 180, 10), Gecit(30, 167, 128), Egim(165, 72, 210, 55) } },
                 // Maden ofisi: veranda, tente, çatı
@@ -3618,6 +3657,11 @@ namespace DesertGecko.EditorTools
                 { "kasaba_kilise", new[] { Gecit(0, 60, 8), Gecit(65, 150, 100) } },
                 // Demirci: açık ocağın sundurma çatısı
                 { "kasaba_demirci", new[] { Egim(4, 57, 40, 68), Gecit(40, 170, 108), Egim(170, 104, 198, 72) } }, // iki yanda eğik çatılar
+                // Gümüş Vadi demircisi (büyük): ocağın tentesi, tabelalı cephenin tepesi, baca; sağdaki ek kulübenin
+                // eğik çatısı tenteden sokağa iner
+                { "kasaba_demirci_2", new[] { Gecit(37, 200, 95), Gecit(40, 202, 148), Gecit(152, 180, 170), Egim(200, 89, 250, 72) } },
+                // Gümüş Vadi bankası: sütunlu girişin çatısı (balkon) ve cephenin tepesi. Kapısı açık: önünden geçilir.
+                { "kasaba_banka_2", new[] { Gecit(12, 198, 119), Gecit(10, 200, 189) } },
                 // Su kulesi: iki kat. Güverte boydan boya yürünür (tank oyuncunun arkasında kalır, yolu kesmez);
                 // tankın kenarı ikinci kat, güverteden zıplanıp çıkılır.
                 { "kasaba_su_kulesi", new[] { Gecit(37, 112, 67), Gecit(47, 103, 113) } },
@@ -3649,6 +3693,7 @@ namespace DesertGecko.EditorTools
                 sr.transform.position = new Vector3(wx, groundTop - 1f / 32f, 0f); // alttaki toprak çizgisi zemine gömülsün
                 sr.sprite = s;
                 sr.sortingOrder = BuildingOrder;
+                sr.gameObject.AddComponent<DesertGecko.Effects.DestructibleSprite>(); // Mavi Dev'in darbesiyle kenarları kırılır
                 occupied.Add((wx, width / 2f));
                 bareGround.Add((wx - width / 2f, wx + width / 2f));
                 PlaceParts(sprite, wx - width / 2f, groundTop, 1f, 0f);
@@ -3722,6 +3767,7 @@ namespace DesertGecko.EditorTools
                 sr.sprite = s;
                 sr.flipX = flip;
                 sr.sortingOrder = order;
+                sr.gameObject.AddComponent<DesertGecko.Effects.DestructibleSprite>();
                 float half = s.bounds.size.x * scale / 2f;
                 occupied.Add((wx, half));
                 bareGround.Add((wx - half, wx + half));
@@ -3780,6 +3826,7 @@ namespace DesertGecko.EditorTools
                 sr.transform.position = new Vector3(wx, y - sink, 0f);
                 sr.sprite = s;
                 sr.sortingOrder = order;
+                sr.gameObject.AddComponent<DesertGecko.Effects.DestructibleSprite>();
                 occupied.Add((wx, s.bounds.size.x / 2f));
                 if (InCave)
                 {
@@ -4208,6 +4255,11 @@ namespace DesertGecko.EditorTools
             public void Diken(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.SpikeMutant, actors, Name("DikenMutanti"), x + OriginX, groundTop);
             /// <summary>Mavi Dev: sıçrayıp yere çarpan, şok dalgası çıkaran mini-boss. Önünde düz, geniş zemin ister.</summary>
             public void Dev(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.BlueGiant, actors, Name("MaviDev"), x + OriginX, groundTop);
+            /// <summary>
+            /// Siber Hatip: yerin biraz üstünde süzülüp ses halkası (yatay, çapraz, yukarı) ve dev frekans dalgası atar.
+            /// Yuvasından en fazla 7 birim kayar: önünde düz zemin, yakınında saklanılacak kasa ve çıkılacak balkon iyi olur.
+            /// </summary>
+            public void Siber(float x, float groundTop) => CombatSetupBuilder.Place(ctx.Combat.CyberOrator, actors, Name("SiberHatip"), x + OriginX, groundTop);
             /// <summary>
             /// Altın damarlı kaya: kazmayla iki, dinamitle tek darbede kırılır, içinden kristal fırlar. İsteğe bağlı ödül;
             /// yolu kapatmaz, üstünden atlanabilir. Default katmanında: Gila'yı ve düşmanları durdurur.

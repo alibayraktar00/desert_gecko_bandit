@@ -36,6 +36,7 @@ namespace DesertGecko.EditorTools
             public Bard Bard;
             public SpikeMutant SpikeMutant;
             public BlueGiant BlueGiant;
+            public CyberOrator CyberOrator;
             public Checkpoint Checkpoint;
             public Sprite Tongue, HeartFull, HeartHalf, HeartEmpty, Ring, CrystalIcon, TailIcon;
         }
@@ -67,6 +68,7 @@ namespace DesertGecko.EditorTools
             a.Bard = BuildBard(a.Crystal); // yarasanın dinamitini kullanır: ondan sonra
             a.SpikeMutant = BuildSpikeMutant(a.Crystal);
             a.BlueGiant = BuildBlueGiant(a.Crystal);
+            a.CyberOrator = BuildCyberOrator(a.Crystal);
             a.Checkpoint = BuildCheckpoint();
             return a;
         }
@@ -933,11 +935,12 @@ namespace DesertGecko.EditorTools
         }
 
         // Kare sırası (tools/gemini_dev_isle.py): 0-1 bekleme, 2-7 yürüyüş, 8 hazırlık, 9 çömelme, 10 kalkış,
-        // 11 yükselme, 12 gülle (tepede top), 13 hızlı düşüş, 14 yere çarpma.
+        // 11 yükselme, 12 gülle (tepede top), 13 hızlı düşüş, 14 yere çarpma, 15-22 ölüm (diz çöküp öne yıkılır),
+        // 23-30 galibiyet (yumruk sıkar, bağırır, kas gösterir).
         // Şok dalgası: dev_sok_0..71 (tools/dev_sok_isle.py, pixelfx impacts/ground-slam), 30 fps.
         static BlueGiant BuildBlueGiant(Crystal crystalPrefab)
         {
-            Sprite[] f = LoadEnemyFrames("dev", 15);
+            Sprite[] f = LoadEnemyFrames("dev", 31);
             Sprite[] shock = Enumerable.Range(0, 72)
                 .Select(i => LoadCollectible($"{SpriteImportRules.EnemiesFolder}dev/dev_sok_{i}"))
                 .ToArray();
@@ -953,10 +956,10 @@ namespace DesertGecko.EditorTools
             body.gravityScale = 3f;
             body.freezeRotation = true;
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
-            // 74 piksel boy (Gila 34'ün ~2.2 katı), gövde ~40 piksel geniş.
+            // 67 piksel boy (Gila 34'ün ~2 katı), gövde ~36 piksel geniş.
             var box = root.AddComponent<BoxCollider2D>();
-            box.size = new Vector2(1.2f, 2.1f);
-            box.offset = new Vector2(0f, 1.05f);
+            box.size = new Vector2(1.1f, 1.9f);
+            box.offset = new Vector2(0f, 0.95f);
 
             SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
             var audio = root.AddComponent<AudioSource>();
@@ -979,14 +982,15 @@ namespace DesertGecko.EditorTools
             SetField(giant, "fallFrame", f[13]);
             SetField(giant, "slamFrame", f[14]);
             SetField(giant, "stunnedFrame", f[9]);
-            SetArray(giant, "defeatFrames", new Object[] { f[14], f[9] });
+            SetArray(giant, "defeatFrames", f.Skip(15).Take(8).ToArray());
+            SetArray(giant, "victoryFrames", f.Skip(23).Take(8).ToArray());
             SetArray(giant, "shockFrames", shock);
 
-            // Kareler sağa bakar. Ağır yürür; uzaktan fark eder. Yalnız yere çarptıktan sonra vurulur.
+            // Kareler sağa bakar. Gila'yı ekranda görünce yürüyerek peşine düşer. Yalnız yere çarptıktan sonra vurulur.
             var so = new SerializedObject(giant);
             so.FindProperty("spriteFacesLeft").boolValue = false;
             so.FindProperty("patrolSpeed").floatValue = 0.9f;
-            so.FindProperty("chaseSpeed").floatValue = 1.4f;
+            so.FindProperty("chaseSpeed").floatValue = 2f;
             so.FindProperty("patrolDistance").floatValue = 2f;
             so.FindProperty("detectRange").floatValue = 10f;
             so.FindProperty("loseRange").floatValue = 16f;
@@ -999,6 +1003,106 @@ namespace DesertGecko.EditorTools
             var drop = root.AddComponent<CrystalDrop>();
             SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
             return Save<BlueGiant>(root, "BlueGiant");
+        }
+
+        // Kare sırası (tools/gemini_siber_isle.py): 0-7 süzülme, 8 hazırlık (el uzanmış), 9 bağırış,
+        // 10-17 ölüm (irtifa kaybı, düşüş, diz çökme, yıkılma, serilme, başparmak 1-2, hareketsiz), 18-25 galibiyet.
+        // Ses halkası: siber_dalga.png (aynı betikte çizilir).
+        static CyberOrator BuildCyberOrator(Crystal crystalPrefab)
+        {
+            Sprite[] f = LoadEnemyFrames("siber", 26);
+            AudioClip Clip(string file)
+            {
+                string path = "Assets/Audio/" + file;
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            }
+
+            SoundWave wave = BuildSoundWave();
+
+            // Transform botların altı (pivot alt orta). 51 piksel boy (Gila 34'ün ~1.5 katı), gövde ~24 piksel geniş.
+            var root = new GameObject("CyberOrator") { layer = LayerMask.NameToLayer(GameLayers.Enemy) };
+            var body = root.AddComponent<Rigidbody2D>();
+            body.gravityScale = 0f;
+            body.mass = 3f;
+            body.freezeRotation = true;
+            body.interpolation = RigidbodyInterpolation2D.Interpolate;
+            var box = root.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.75f, 1.45f);
+            box.offset = new Vector2(0f, 0.78f);
+
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", f[0], 8);
+            var audio = root.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            // Kalkan: gövdenin önünde yarı saydam enerji kabuğu, ışıktan etkilenmez (gece de görünür). Kapalı başlar.
+            string shieldPath = $"{SpriteImportRules.EnemiesFolder}siber/siber_kalkan.png";
+            AssetDatabase.ImportAsset(shieldPath, ImportAssetOptions.ForceSynchronousImport);
+            SpriteRenderer shield = AddSprite(root.transform, "Kalkan", AssetDatabase.LoadAssetAtPath<Sprite>(shieldPath), 9);
+            shield.transform.localPosition = new Vector3(0f, -0.15f, 0f);
+            shield.color = new Color(1f, 1f, 1f, 0.6f);
+            var shieldMaterial = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+            if (shieldMaterial != null)
+                shield.sharedMaterial = shieldMaterial;
+            shield.gameObject.SetActive(false);
+
+            var orator = root.AddComponent<CyberOrator>();
+            SetField(orator, "shieldRenderer", shield);
+            SetField(orator, "shieldClip", Clip("sekme.wav"));
+            SetField(orator, "spriteRenderer", sr);
+            SetMask(orator, "groundMask", GameLayers.GroundMask);
+            SetField(orator, "wavePrefab", Fresh(wave));
+            SetField(orator, "audioSource", audio);
+            SetField(orator, "ringClip", Clip("siber_dalga.wav"));
+            SetField(orator, "chargeClip", Clip("siber_sarj.wav"));
+            SetField(orator, "overheatClip", Clip("siber_isinma.wav"));
+            SetField(orator, "dashClip", Clip("savurma.wav"));
+            SetArray(orator, "hoverFrames", f.Take(8).ToArray());
+            SetField(orator, "telegraphFrame", f[8]);
+            SetField(orator, "shoutFrame", f[9]);
+            SetField(orator, "staggerFrame", f[11]);
+            SetArray(orator, "defeatFrames", f.Skip(10).Take(8).ToArray());
+            SetArray(orator, "victoryFrames", f.Skip(18).Take(8).ToArray());
+
+            // Kareler sağa bakar. Sekiz can; mermi yiyince kalkan açar (CyberOrator.shieldDuration), asıl hasar penceresi
+            // konuşurken vurulup sendelediği an. Mermi sonrası kısa koruma da uzun (0.3 sn): seri atışın ilk taneleri eritmesin.
+            var so = new SerializedObject(orator);
+            so.FindProperty("spriteFacesLeft").boolValue = false;
+            so.FindProperty("maxHealth").intValue = 8;
+            so.FindProperty("rapidHitGuardDuration").floatValue = 0.3f;
+            so.FindProperty("contactDamage").intValue = 1;
+            so.FindProperty("knockbackVelocity").vector2Value = Vector2.zero; // darbe onu itmez: zemininden kaymasın
+            so.FindProperty("deathBurstColor").colorValue = new Color32(0x56, 0xD6, 0xFF, 0xFF);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var drop = root.AddComponent<CrystalDrop>();
+            SetField(drop, "crystalPrefab", Fresh(crystalPrefab));
+            return Save<CyberOrator>(root, "CyberOrator");
+        }
+
+        /// <summary>Ses halkası: büyüyerek uçan turkuaz yaylar. Gece de görünsün diye ışıktan etkilenmez.</summary>
+        static SoundWave BuildSoundWave()
+        {
+            string path = $"{SpriteImportRules.EnemiesFolder}siber/siber_dalga.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+
+            var root = new GameObject("SoundWave");
+            SpriteRenderer sr = AddSprite(root.transform, "Visual", sprite, 12);
+            // Alt-orta pivotlu sprite yarı boyu kadar aşağıda: dalga tam ortasından döner ve uçar.
+            if (sprite != null)
+                sr.transform.localPosition = new Vector3(0f, -sprite.bounds.size.y / 2f, 0f);
+            var unlit = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+            if (unlit != null)
+                sr.sharedMaterial = unlit;
+            var wave = root.AddComponent<SoundWave>();
+            SetField(wave, "spriteRenderer", sr);
+            return Save<SoundWave>(root, "SoundWave");
         }
 
         /// <summary>Diken mermisi: yılan mermisiyle aynı davranış, kendi görseli ve hızıyla.</summary>
