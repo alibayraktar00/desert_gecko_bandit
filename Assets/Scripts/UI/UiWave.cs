@@ -19,7 +19,7 @@ namespace DesertGecko.UI
         [Tooltip("Dalga boyu (kanvas birimi)")]
         [SerializeField] float wavelength = 150f;
         [Tooltip("Dalganın akış hızı (radyan/saniye); pozitif = sağa akar")]
-        [SerializeField] float speed = 5f;
+        [SerializeField] float speed = 3.5f;
         [Tooltip("Kaymaların yuvarlandığı ızgara (kanvas birimi; 1 = bir piksel)")]
         [SerializeField] float pixelSnap = 1f;
         [Range(0f, 1f)] [SerializeField] float reveal = 1f;

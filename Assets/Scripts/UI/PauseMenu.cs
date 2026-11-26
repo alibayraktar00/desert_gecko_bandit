@@ -47,6 +47,11 @@ namespace DesertGecko.UI
         [SerializeField] Sprite cartridgeSelectedSprite;
         [Tooltip("Hazne halkasının yarıçapı (kanvas birimi)")]
         [SerializeField] float chamberRadius = 54f;
+        [Tooltip("Görseldeki hazne merkezleri, tambur görselinin ortasına göre (sprite pikseli, y yukarı), saat 12'den " +
+                 "saat yönünde. Gemini'nin çizdiği hazneler tam düzgün altıgen değil; boşsa chamberRadius çemberi kullanılır.")]
+        [SerializeField] Vector2[] holeOffsets = Array.Empty<Vector2>();
+        [Tooltip("Tambur görselinin ekrandaki piksel büyütmesi (holeOffsets'i kanvas birimine çevirir)")]
+        [SerializeField] float drumPixelScale = 2f;
         [Tooltip("Yazıların merkeze uzaklığı (kanvas birimi); üstteki yazı tabelaya oturur")]
         [SerializeField] float labelRadius = 128f;
         [SerializeField] LabelArt[] labelArt = Array.Empty<LabelArt>();
@@ -68,10 +73,10 @@ namespace DesertGecko.UI
         [SerializeField] float volumeLabelAt = 0.3f;
         [SerializeField] float volumeAt = 0.6f;
         [Tooltip("Bandananın açılma süresi (saniye)")]
-        [SerializeField] float unrollTime = 0.28f;
+        [SerializeField] float unrollTime = 0.5f;
         [Tooltip("Bandananın tamburun arkasına sarılma süresi (saniye)")]
-        [SerializeField] float closeTime = 0.14f;
-        [SerializeField] float smokeTime = 0.6f;
+        [SerializeField] float closeTime = 0.24f;
+        [SerializeField] float smokeTime = 0.9f;
 
         [Header("Ses göstergesi (ayarlar sayfası)")]
         [SerializeField] GameObject volumeRoot;
@@ -87,8 +92,10 @@ namespace DesertGecko.UI
 
         [Header("Zamanlama")]
         [Tooltip("Bir haznelik dönüş süresi (saniye)")]
-        [SerializeField] float stepTime = 0.16f;
-        [SerializeField] float openTime = 0.45f;
+        [SerializeField] float stepTime = 0.3f;
+        [SerializeField] float openTime = 0.75f;
+        [Tooltip("Tamburun yerine otururken geçip geri gelme miktarı (ağır tambur: küçük)")]
+        [SerializeField] float settleOvershoot = 0.9f;
 
         public bool IsPaused { get; private set; }
 
@@ -404,7 +411,7 @@ namespace DesertGecko.UI
             if (openStart >= 0f)
             {
                 float p = Mathf.Clamp01((Time.unscaledTime - openStart) / openTime);
-                drum.localScale = Vector3.one * Mathf.LerpUnclamped(0.55f, 1f, EaseOutBack(p));
+                drum.localScale = Vector3.one * Mathf.LerpUnclamped(0.55f, 1f, EaseOutBack(p, settleOvershoot));
                 if (dim != null)
                     dim.color = new Color(dim.color.r, dim.color.g, dim.color.b, dimAlpha * Mathf.Clamp01(p * 2f));
                 if (p >= 1f)
@@ -415,7 +422,7 @@ namespace DesertGecko.UI
                 float span = Mathf.Abs(to - from);
                 float duration = openStart >= 0f ? openTime : stepTime * Mathf.Max(1f, Mathf.Sqrt(span));
                 float p = Mathf.Clamp01((Time.unscaledTime - moveStart) / duration);
-                shown = Mathf.LerpUnclamped(from, to, EaseOutBack(p));
+                shown = Mathf.LerpUnclamped(from, to, EaseOutBack(p, settleOvershoot));
                 int notch = Mathf.RoundToInt(shown);
                 if (notch != lastTick && p < 0.95f)
                 {
@@ -466,7 +473,7 @@ namespace DesertGecko.UI
             bool isVolume = art != null && art.key == "ses";
             float labelAt = isVolume ? volumeLabelAt : bannerLabelAt;
             // yazı, kumaş onun hizasını geçtikçe belirir / kapanırken söner
-            float visible = art == null ? 0f : Mathf.Clamp01((reveal - (labelAt - 0.05f)) / 0.2f);
+            float visible = art == null ? 0f : Mathf.Clamp01((reveal - (labelAt - 0.05f)) / 0.3f);
             Vector2 at = OnBanner(labelAt);
             if (!puffed && open && visible > 0f)
             {
@@ -553,7 +560,12 @@ namespace DesertGecko.UI
             // piksel sanatı döndürme kırıklığı olmadan keskin görünür.
             // Görselde hazneler saat 12'den başlar; seçili hazne selectedAngle'da olsun diye görsel o kadar saat yönünde
             // çevrilir (90 derecenin katı: piksel sanatı keskin kalır).
-            drum.localRotation = Quaternion.Euler(0f, 0f, -selectedAngle + Mathf.Repeat(shown, 1f) * 60f);
+            // Küsurat en yakın hazneye göre alınır (-0.5..0.5): görsel başa sarma anı iki haznenin ortasına, tambur
+            // hızla dönerken denk gelir. Durup otururken (ve geri esnerken) sarma olmaz; hazneler tam eşit aralıklı
+            // olmadığından sarma anında görülen küçük sıçrama yerine oturma sırasında titreme yapmaz.
+            int turned = Mathf.RoundToInt(shown);
+            float spin = -selectedAngle + (shown - turned) * 60f;
+            drum.localRotation = Quaternion.Euler(0f, 0f, spin);
             Vector2 center = drum.anchoredPosition;
             float scale = drum.localScale.x;
             int top = Mathf.RoundToInt(Mathf.Repeat(shown, Chambers)) % Chambers;
@@ -568,7 +580,11 @@ namespace DesertGecko.UI
                     cartridges[k].enabled = used;
                     cartridges[k].sprite = isTop && adjust == null ? cartridgeSelectedSprite : cartridgeSprite;
                     cartridges[k].rectTransform.sizeDelta = PixelSize(cartridges[k].sprite);
-                    cartridges[k].rectTransform.anchoredPosition = Snap(center + dir * chamberRadius * scale);
+                    // 2'lik ızgaraya yuvarlanmaz: delik merkezleri tambur pikselinin kenarında (tek sayılı birimde) durur,
+                    // yuvarlamak fişeği yarım piksel kaydırır ve dönerken titretirdi
+                    Vector2 pos = center + ChamberOffset(k, turned, spin, dir) * scale;
+                    cartridges[k].rectTransform.anchoredPosition = moveStart < 0f && openStart < 0f
+                        ? new Vector2(Mathf.Round(pos.x), Mathf.Round(pos.y)) : pos;
                     cartridges[k].rectTransform.localScale = Vector3.one * scale;
                 }
                 if (labels[k] != null)
@@ -590,6 +606,18 @@ namespace DesertGecko.UI
         // UI'da piksel sanatı 2x çizilir (SetNativeSize sprite PPU'su yüzünden 3 kattan fazla büyütürdü)
         static Vector2 PixelSize(Sprite sprite) => sprite != null ? sprite.rect.size * 2f : Vector2.zero;
 
+        // Hazne k'nın tambur merkezine göre yeri: görseldeki gerçek deliğin (k - turned) tamburla birlikte döndürülmüş
+        // hali. Böylece fişek, tambur nereye dönerse dönsün tam deliğin ortasına oturur.
+        Vector2 ChamberOffset(int k, int turned, float spin, Vector2 idealDir)
+        {
+            if (holeOffsets == null || holeOffsets.Length != Chambers)
+                return idealDir * chamberRadius;
+            int hole = ((k - turned) % Chambers + Chambers) % Chambers;
+            Vector2 o = holeOffsets[hole] * drumPixelScale;
+            float r = spin * Mathf.Deg2Rad, c = Mathf.Cos(r), sn = Mathf.Sin(r);
+            return new Vector2(o.x * c - o.y * sn, o.x * sn + o.y * c);
+        }
+
         static Vector2 Snap(Vector2 v) => new Vector2(Mathf.Round(v.x / 2f) * 2f, Mathf.Round(v.y / 2f) * 2f); // 2x piksel ızgarası
 
         void RefreshVolume()
@@ -609,9 +637,10 @@ namespace DesertGecko.UI
             audioSource.PlayOneShot(clip);
         }
 
-        static float EaseOutBack(float x)
+        // c1: geçip geri gelme miktarı (1.70158 klasik; küçüldükçe daha ağır, sakin oturur)
+        static float EaseOutBack(float x, float c1)
         {
-            const float c1 = 1.70158f, c3 = c1 + 1f;
+            float c3 = c1 + 1f;
             return 1f + c3 * Mathf.Pow(x - 1f, 3f) + c1 * Mathf.Pow(x - 1f, 2f);
         }
     }

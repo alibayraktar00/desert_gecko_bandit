@@ -18,6 +18,13 @@ namespace DesertGecko.EditorTools
         const float Scale = 2f;
         // tools/durdur_tambur_isle.py çıktısı: hazne halkası yarıçapı ~27 px (sprite pikseli)
         const float ChamberRadiusPx = 27f;
+        // tools/durdur_tambur_isle.py'nin ölçtüğü hazne merkezleri (sprite pikseli, görsel ortasına göre, y yukarı),
+        // saat 12'den saat yönünde. Görsel değişirse aracın çıktısıyla güncellenir.
+        static readonly Vector2[] HoleOffsetsPx =
+        {
+            new Vector2(-0.5f, 27.5f), new Vector2(22.5f, 13.5f), new Vector2(22.5f, -12.5f),
+            new Vector2(-0.5f, -26.5f), new Vector2(-23.5f, -12.5f), new Vector2(-23.5f, 13.5f),
+        };
         static readonly Vector2 DrumCenter = new Vector2(-140f, 0f);
         const float BannerScale = 1.5f; // bandana ince pikselli; tamburla orantılı dursun
         const float LabelRadius = 118f;
@@ -78,6 +85,11 @@ namespace DesertGecko.EditorTools
             so.FindProperty("cartridgeSprite").objectReferenceValue = cartridge;
             so.FindProperty("cartridgeSelectedSprite").objectReferenceValue = Load("durdur_fisek_secili.png");
             so.FindProperty("chamberRadius").floatValue = ChamberRadiusPx * Scale;
+            SerializedProperty holes = so.FindProperty("holeOffsets");
+            holes.arraySize = HoleOffsetsPx.Length;
+            for (int i = 0; i < HoleOffsetsPx.Length; i++)
+                holes.GetArrayElementAtIndex(i).vector2Value = HoleOffsetsPx[i];
+            so.FindProperty("drumPixelScale").floatValue = Scale;
             so.FindProperty("labelRadius").floatValue = LabelRadius;
             so.FindProperty("banner").objectReferenceValue = wave;
             so.FindProperty("bannerLabel").objectReferenceValue = bannerLabel;

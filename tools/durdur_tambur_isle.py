@@ -40,6 +40,7 @@ OUT = ROOT / "Assets" / "Sprites" / "UI" / "Pause"
 
 OUTLINE = (20, 8, 16)
 GOLD = (232, 184, 72)
+BRASS_EDGE = (120, 82, 38)  # fişeğin kenarı: koyu pirinç (siyah hat hazne çerçevesini kalınlaştırıyordu)
 GOLD_LIGHT = (251, 230, 168)
 CREAM = (242, 230, 208)
 CREAM_SHADE = (176, 150, 120)
@@ -130,7 +131,8 @@ def chambers(tambur):
 
 
 def shrink(rgba, size):
-    """Büyük fişek görselini hazne boyuna indirir: renk ortalaması + keskin alfa + koyu dış hat."""
+    """Büyük fişek görselini hazne boyuna indirir: renk ortalaması + keskin alfa. Kenar siyah değil koyu pirinç:
+    fişek haznenin gri çerçevesinin içine oturur, çerçeveyi kalınlaştırmaz."""
     im = Image.fromarray(rgba, "RGBA")
     pre = Image.new("RGBA", im.size)
     pre.paste(im, (0, 0))
@@ -139,14 +141,13 @@ def shrink(rgba, size):
     out = np.zeros_like(small)
     out[a, :3] = small[a, :3]
     out[a, 3] = 255
-    # kenar pikselleri koyu hat
     edge = a & ~(np.roll(a, 1, 0) & np.roll(a, -1, 0) & np.roll(a, 1, 1) & np.roll(a, -1, 1))
-    out[edge, :3] = OUTLINE
+    out[edge, :3] = BRASS_EDGE
     return out
 
 
 def selected_variant(fisek):
-    """Seçili fişek: biraz daha parlak, çevresinde 1 piksel altın hare."""
+    """Seçili fişek: daha parlak, çevresinde 1 piksel açık altın çerçeve (haznenin gri kenarının üstüne oturur)."""
     h, w = fisek.shape[:2]
     out = np.zeros((h + 2, w + 2, 4), dtype=np.uint8)
     body = fisek.copy()
@@ -244,11 +245,15 @@ def main():
     hole_r = sum(r for *_, r in holes) / len(holes)
     print(f"tambur {side}x{side}, merkez ({cx:.1f},{cy:.1f}), {len(holes)} hazne, "
           f"halka yarıçapı {sum(radii) / len(radii):.2f} px, hazne yarıçapı {hole_r:.2f} px")
-    for x, y, r in holes:
-        print(f"  hazne ({x:.1f},{y:.1f}) açı {math.degrees(math.atan2(cx - x, cy - y)):.1f}")
+    # PauseMenuBuilder.HoleOffsetsPx: saat 12'den saat yönünde, görsel ortasına göre, y yukarı
+    for x, y, r in sorted(holes, key=lambda t: math.degrees(math.atan2(t[0] - cx, cy - t[1])) % 360):
+        print(f"  hazne ofseti ({x - cx:+.1f}, {cy - y:+.1f})")
 
     fisek_big = crop(cut_gray(np.array(Image.open(SRC / "durdur_fisek_ham.png").convert("RGB"))))
-    size = int(round(hole_r * 2)) + 1
+    # Fişek deliğin karanlık içi kadar (14 px): haznenin gri çerçevesi, boş haznelerdeki gibi fişeğin etrafında
+    # görünür kalır. Boyut çift olmalı: delik merkezleri piksel kenarında, tek boyutlu fişek yarım piksel kayık durur.
+    size = int(round(hole_r * 2))
+    size += size % 2
     fisek = save(shrink(fisek_big, size), "durdur_fisek.png")
     secili = save(selected_variant(fisek), "durdur_fisek_secili.png")
     print(f"fişek {size}x{size}")
