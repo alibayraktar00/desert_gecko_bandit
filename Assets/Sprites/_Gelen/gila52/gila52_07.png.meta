@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 43618ebf869a4f14d88a1eb39a272d2b
+guid: 5a0ebc925324ad349946dd3c9511be4b
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3579197128167573146
-    second: kiris_ham_0
+      213: 6632815248904131734
+    second: gila52_07_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -115,13 +115,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: kiris_ham_0
+      name: gila52_07_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 2064
-        height: 512
+        width: 1376
+        height: 768
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -130,8 +130,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6693972ec23245ec0800000000000000
-      internalID: -3579197128167573146
+      spriteID: 69499b3a35e7c0c50800000000000000
+      internalID: 6632815248904131734
       vertices: []
       indices: 
       edges: []
@@ -150,7 +150,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      kiris_ham_0: -3579197128167573146
+      gila52_07_0: 6632815248904131734
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

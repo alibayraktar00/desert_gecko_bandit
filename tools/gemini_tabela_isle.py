@@ -116,10 +116,11 @@ def render_label(text, selected):
     return out
 
 
-POLE_TOTAL = 186   # direk ekranın tepesine kadar uzanır (2x: 372 ekran pikseli); tepesine başlık tabelasının kolu çakılır
 MOUND_ROWS = 18    # direğin altındaki toprak tümseği satırları
 # Tümseğin oturduğu zemin: arka planda (640x360) direğin dibinin altındaki bölge (MainMenuBuilder PoleCenterXPx=62)
 GROUND_BOX = (14, 326, 112, 360)   # x0, y0, x1, y1
+# Gila'nın dayandığı direğin dibi (sağ alt köşe); bu tümsek direğin önüne konur (MainMenuBuilder.BuildGila)
+GROUND_BOX_RIGHT = (566, 326, 640, 360)
 BACKGROUND = ROOT / "Assets" / "Sprites" / "UI" / "MainMenu" / "menu_arka_plan.png"
 
 
@@ -129,11 +130,11 @@ def pole_columns(sprite):
     return upper.mean(axis=0) > 0.6
 
 
-def blend_mound(sprite):
+def blend_mound(sprite, box=GROUND_BOX):
     """Toprak tümseğini arka plandaki zeminle kaynaştırır: renkler zeminden örneklenen renklere (parlaklık
     sırasıyla) eşlenir, dış kenardaki koyu hat kalkar ve kenar dama deseniyle seyrelir (yumuşak geçiş)."""
     bg = np.asarray(Image.open(BACKGROUND).convert("RGB")).astype(np.int32)
-    x0, y0, x1, y1 = GROUND_BOX
+    x0, y0, x1, y1 = box
     ground = bg[y0:y1, x0:x1].reshape(-1, 3)
     lum = lambda c: c[..., 0] * 0.3 + c[..., 1] * 0.59 + c[..., 2] * 0.11  # noqa: E731
     ground = ground[np.argsort(lum(ground))]
@@ -171,19 +172,6 @@ def blend_mound(sprite):
     return out
 
 
-def extend_pole(sprite, total):
-    """Direği ortasından uzatır: kapak üstte, tümsek altta kalır; aradaki gövde satırları tekrarlanır."""
-    h = sprite.shape[0]
-    if total <= h:
-        return sprite
-    mid0, mid1 = int(h * 0.35), int(h * 0.55)
-    band = sprite[mid0:mid1].copy()
-    band[..., 3] = np.where(pole_columns(sprite)[None, :], band[..., 3], 0)
-    need = total - h
-    fill = np.concatenate([band] * (need // len(band) + 1))[:need]
-    return np.concatenate([sprite[:mid0], fill, sprite[mid0:]])
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview")
@@ -201,12 +189,26 @@ def main():
     plank = downscale(plank_rgb, plank_m, *PLANK_SIZE)
     pal = palette_of([pole, plank], PALETTE)
     pole, plank = snap(pole, pal), snap(plank, pal)
-    pole = blend_mound(pole)
-    pole = extend_pole(pole, POLE_TOTAL)
+    raw_pole = pole
+    pole = blend_mound(raw_pole)
+    # Gila'nın direği için tümsek: sağdaki zeminin renkleri, direğin önünde durur
+    right = blend_mound(raw_pole, GROUND_BOX_RIGHT)[-MOUND_ROWS:].copy()
+    cols = pole_columns(raw_pole)
+    # kum direğin önüne yığılır: direk sütunları yanlardaki kum sütunlarıyla doldurulur (soldaki yarı sol komşudan,
+    # sağdaki yarı sağ komşudan); böylece Gila'nın direği kumun içinden çıkar
+    xs = np.nonzero(cols)[0]
+    left_col, right_col, mid = xs.min() - 1, xs.max() + 1, (xs.min() + xs.max()) / 2
+    for x in xs:
+        right[:, x] = right[:, left_col if x <= mid else right_col]
+    # direğin ortası görselin ortasına gelsin (MainMenuBuilder tümseği direğin ortasına koyar)
+    xs = np.nonzero(cols)[0]
+    shift = int(round(right.shape[1] / 2 - (xs.min() + xs.max() + 1) / 2))
+    right = np.pad(right, ((0, 0), (max(0, shift), max(0, -shift)), (0, 0)))
 
     OUT.mkdir(parents=True, exist_ok=True)
     Image.fromarray(pole, "RGBA").save(OUT / "tabela_direk.png")
     Image.fromarray(plank, "RGBA").save(OUT / "tabela_tahta.png")
+    Image.fromarray(right, "RGBA").save(OUT / "direk_tumsek.png")
     for key, text in LABELS.items():
         for sel in (0, 1):
             Image.fromarray(render_label(text, sel), "RGBA").save(OUT / f"tabela_yazi_{key}_{sel}.png")

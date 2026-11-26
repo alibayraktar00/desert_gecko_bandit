@@ -26,9 +26,10 @@ SRC = ROOT / "Assets" / "Sprites" / "_Gelen" / "akbaba_ham.png"
 OUT = ROOT / "Assets" / "Sprites" / "UI" / "MainMenu" / "Gila"
 
 FRAMES = 4
-FACTOR = 6.0     # direk ~13 sanat pikseli olsun (Gila'daki inceltilmiş direkle aynı)
+FACTOR = 10.5    # akbabanın direği ~8 sanat pikseli olsun (Gila karelerindeki inceltilmiş direkle aynı)
 PALETTE = 24
 CAP_ROWS = 5     # ayakların altında kalan direk satırı (kapak)
+FEET_ROWS = 4    # ayakların bu kadar satır üstüne kadar her kare tabanla aynı (pençeler ve kapak kıpırdamaz)
 
 
 def main():
@@ -40,9 +41,14 @@ def main():
     w = img.shape[1] / FRAMES
     frames = [img[:, int(round(k * w)):int(round((k + 1) * w))] for k in range(FRAMES)]
     masks = [~g.background(f) for f in frames]
+    # hizalama direğe ve ayaklara göre (alt yarı): direkle birleşim yeri kareden kareye kaymasın
+    def lower(m):
+        b = m.copy()
+        b[: m.shape[0] // 2] = False
+        return b
     aligned, amasks = [frames[0]], [masks[0]]
     for f, m in zip(frames[1:], masks[1:]):
-        dy, dx = g.align(masks[0], m)
+        dy, dx = g.align(lower(masks[0]), lower(m))
         aligned.append(g.shift(f, dy, dx, np.array([122, 122, 122])))
         amasks.append(g.shift(m.astype(np.uint8), dy, dx, 0).astype(bool))
 
@@ -52,11 +58,17 @@ def main():
     pal = g.palette_of(small, PALETTE)
     small = [g.snap(s, pal) for s in small]
     base = small[0]
+    # ayaklar ve direk kapağı hep tabandan: sadece ayakların birkaç satır üstünden yukarısı (gövde, baş) hareket eder
+    balpha = base[..., 3] > 0
+    brows = balpha.sum(axis=1)
+    base_feet = max(y for y in range(len(brows)) if brows[y] > balpha[-1].sum() * 1.4)
+    moving = np.zeros_like(balpha)
+    moving[: base_feet - FEET_ROWS] = True
     result = [base]
     for s in small[1:]:
         diff = np.abs(s[..., :3].astype(int) - base[..., :3].astype(int)).sum(axis=2)
         changed = (diff > g.CHANGE) | ((s[..., 3] > 0) != (base[..., 3] > 0))
-        region = g.dilate(g.blobs(changed, 6))
+        region = g.dilate(g.blobs(changed, 6)) & moving
         frame = base.copy()
         frame[region] = s[region]
         result.append(frame)

@@ -118,10 +118,10 @@ TextureImporter:
       name: gila_puro_02_0
       rect:
         serializedVersion: 2
-        x: 3
-        y: 2
-        width: 88
-        height: 240
+        x: 1
+        y: 5
+        width: 69
+        height: 114
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

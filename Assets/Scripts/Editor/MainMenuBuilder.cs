@@ -10,8 +10,8 @@ namespace DesertGecko.EditorTools
 {
     /// <summary>
     /// Giriş ekranını kurar: Gemini çizimi çöl arka planı (ekranı kaplar); sol altta yön tabelası menüsü
-    /// (SignpostMenu: direğe çakılı ok tahtaları), aynı direğin tepesindeki kola zincirle asılı, sallanan başlık
-    /// tabelası; sağda ince bir direğe yaslanıp sakin sakin puro tüttüren Gila (24 kare, beklemeli) ve direğin
+    /// (SignpostMenu: direğe çakılı ok tahtaları), ekranın tepesinden zincirle sarkan, sallanan başlık tabelası;
+    /// sağda ince bir direğe yaslanıp puro tüttüren Gila (24 kare, eşit hızda), direğin dibinde kum tümseği ve
     /// tepesinde akbaba. Sol grup ekranın soluna, Gila sağına yapışır (ScreenEdgeAnchor), böylece farklı ekran
     /// oranlarında yerleşim bozulmaz. En altta seçili seçeneğin açıklaması ve ses göstergesi, en üstte toplam altın.
     /// LevelBuilder çağırır.
@@ -33,8 +33,8 @@ namespace DesertGecko.EditorTools
             var audio = audioGo.AddComponent<AudioSource>();
             audio.playOnAwake = false;
             SignpostMenu signpost = BuildSignpost(cam, audio);
-            BuildTitleSign(signpost.transform);
-            // yön tabelası, kolu ve başlık birlikte ekranın soluna yapışır (hepsi 640x360 yerleşimiyle kurulduktan sonra)
+            BuildTitleSign(cam);
+            // yön tabelası ekranın soluna yapışır (640x360 yerleşimiyle kurulduktan sonra)
             signpost.gameObject.AddComponent<ScreenEdgeAnchor>().Configure(ScreenEdgeAnchor.Edge.Left, PoleCenterXPx / PixelsPerUnit, false, cam);
 
             Canvas canvas = UiKit.CreateCanvas("Menu", cam, 100);
@@ -88,23 +88,17 @@ namespace DesertGecko.EditorTools
         const int VolumeSegments = 10;
 
         // ---- sağda direğe yaslanmış, puro tüttüren Gila; direğin tepesinde akbaba ----
-        const int GilaFrames = 24;
-        const float GilaFps = 6f;
+        const int GilaFrames = 34;
+        const float GilaFps = 7f;
         const float GilaRightInsetPx = 18f; // karenin sağ kenarı ekranın sağından bu kadar içeride
-        // Sakin içiş: her kare kaç tık (6 fps) ekranda kalır. 0-7 nefes çekiş (7 en derin an), 8-11 puroyu indirme,
-        // 12-19 duman verme ve dağılma, 20-23 puroyu ağza götürme; sonra 0'da bir süre durur.
-        static readonly int[] GilaHolds =
-        {
-            6, 2, 2, 2, 2, 2, 2, 5,
-            2, 2, 2, 3,
-            2, 2, 3, 3, 3, 3, 3, 3,
-            2, 2, 2, 2,
-        };
-        const float GilaPostCenterArt = 72.5f;  // tools/gemini_gila_puro_isle.py çıktısı: direğin ortası (karenin solundan)
+        // Her kare eşit süre: beklemeli sıra kareler arasında takılıp geri sarıyormuş gibi görünüyordu.
+        static readonly int[] GilaHolds = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Repeat(1, GilaFrames));
+        const float GilaPostTopArt = 11f;     // tools/gemini_gila_puro_isle.py çıktısı: direğin tepesi (karenin üstünden; üstünde duman payı)
+        const float GilaPostCenterArt = 64f;  // tools/gemini_gila_puro_isle.py çıktısı: direğin ortası (karenin solundan)
         const int VultureFrames = 4;
         const float VultureFps = 5f;
         static readonly int[] VultureHolds = { 14, 5, 4, 2 }; // çoğu zaman kıpırdamaz, ara ara başını eğip tüylerini kabartır
-        const float VulturePostCenterArt = 23f; // tools/gemini_akbaba_isle.py çıktısı
+        const float VulturePostCenterArt = 13.5f; // tools/gemini_akbaba_isle.py çıktısı
 
         static Sprite[] Sequence(string pattern, int count, int[] holds)
         {
@@ -154,38 +148,38 @@ namespace DesertGecko.EditorTools
             bsr.sortingOrder = 16;
             Vector2 birdArt = vulture[0].rect.size;
             float x = (GilaPostCenterArt - art.x / 2f) - (VulturePostCenterArt - birdArt.x / 2f);
-            float y = art.y / 2f + birdArt.y / 2f - 1f; // kapağın alt satırı direğin tepesiyle üst üste
+            float y = art.y / 2f - GilaPostTopArt + birdArt.y / 2f - 1f; // kapağın alt satırı direğin tepesiyle üst üste
             bird.transform.localPosition = new Vector3(x, y, 0f) / PixelsPerUnit;
             bird.AddComponent<SpriteLoop>().Configure(vulture, VultureFps, 1.3f);
+
+            // direğin dibine zeminle kaynaşan kum tümseği (tools/gemini_tabela_isle.py, sağdaki zeminin renkleri)
+            var moundSprite = AssetDatabase.LoadAssetAtPath<Sprite>(SignArt + "direk_tumsek.png");
+            if (moundSprite != null)
+            {
+                var mound = new GameObject("DirekTumsek").AddComponent<SpriteRenderer>();
+                mound.transform.SetParent(go.transform, false);
+                mound.sprite = moundSprite;
+                mound.sortingOrder = 17;
+                Vector2 m = moundSprite.rect.size;
+                mound.transform.localPosition = new Vector3(GilaPostCenterArt - art.x / 2f, -art.y / 2f + m.y / 2f - 2f, 0f) / PixelsPerUnit;
+            }
         }
 
-        // ---- başlık tabelası: yön tabelası direğinin tepesine çakılı kola zincirle asılı ----
-        const float BeamTopPx = 2f;                      // kirişin üst kenarı (ekran pikseli)
-        const float PoleHalfWidthPx = 14f;               // direğin yarı genişliği (7 sanat pikseli x2); kiriş direğin sol kenarından başlar
-        const float BeamHookLeftArt = 42f;               // tools/gemini_kiris_isle.py HOOKS_X[0]
-        const float BeamHookBottomArt = 10f;             // halkanın alt kenarı (kirişin tepesinden, sanat pikseli)
-        const float SignChainLeftPx = 60.5f;             // menu_tabela.png: sol zincirin tabela ortasına uzaklığı
+        // ---- başlık tabelası: ekranın tepesinden zincirle sarkar ----
+        const float TitleCenterXPx = 124f;   // tabelanın ortası ekranın solundan
+        const float TitleChainTopPx = 4f;    // eski kısa zincirin tepesi; zincir bunun ChainExtendPx üstünden başlar
+        const float ChainExtendPx = 36f;     // tools/menu_tabela_zincir.py EXTEND
 
-        static void BuildTitleSign(Transform signpostRoot)
+        static void BuildTitleSign(Camera cam)
         {
-            float beamLeftPx = PoleCenterXPx - PoleHalfWidthPx;
-            SpriteRenderer beam = Place(SignArt + "tabela_kiris.png", "Kiris", null, Vector2.zero, 25);
-            if (beam != null)
-            {
-                beam.transform.localScale = Vector3.one * ArtScale;
-                Vector2 art = beam.sprite.rect.size;
-                beam.transform.position = ScreenToWorld(new Vector2(beamLeftPx + art.x, BeamTopPx + art.y)); // merkez (2x)
-                beam.transform.SetParent(signpostRoot, true);
-            }
             var sign = new GameObject("BaslikTabelasi");
-            float hookX = beamLeftPx + BeamHookLeftArt * ArtScale;
-            float hookBottom = BeamTopPx + BeamHookBottomArt * ArtScale;
-            sign.transform.position = ScreenToWorld(new Vector2(hookX + SignChainLeftPx, hookBottom - 2f)); // asılma noktası
+            // asılma noktası zincirin tepesi, ekranın biraz üstünde: tabela oradan sarkar ve sallanır
+            sign.transform.position = ScreenToWorld(new Vector2(TitleCenterXPx, TitleChainTopPx - ChainExtendPx));
             sign.AddComponent<SignSway>();
-            SpriteRenderer signArt = Place(MenuArt + "menu_tabela.png", "TabelaGorsel", sign.transform, Vector2.zero, 30);
+            SpriteRenderer signArt = Place(MenuArt + "menu_tabela_asili.png", "TabelaGorsel", sign.transform, Vector2.zero, 30);
             if (signArt != null)
                 signArt.transform.localPosition = new Vector3(0f, -signArt.sprite.bounds.extents.y, 0f);
-            sign.transform.SetParent(signpostRoot, true);
+            sign.AddComponent<ScreenEdgeAnchor>().Configure(ScreenEdgeAnchor.Edge.Left, TitleCenterXPx / PixelsPerUnit, false, cam);
         }
 
         // ---- sol altta yön tabelası ----
