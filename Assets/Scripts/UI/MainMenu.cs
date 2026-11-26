@@ -7,17 +7,17 @@ using UnityEngine.UI;
 namespace DesertGecko.UI
 {
     /// <summary>
-    /// Giriş ekranı: bütün menü revolver tamburunun üstünde (RevolverMenu). Sayfalar tamburun yazılarını değiştirir:
+    /// Giriş ekranı: bütün menü sol alttaki yön tabelasında (SignpostMenu). Sayfa değişince tahtalar dönüp yeni yazıyı gösterir:
     ///   Ana sayfa : Başla/Devam Et, Level Seç, Ayarlar, Çıkış
-    ///   Leveller  : Level 1-4, Geri (açık level seçilince silah ateşlenir ve level yüklenir)
+    ///   Leveller  : Level 1-4, Geri (açık level seçilince tahta fırıl fırıl döner, ateş edilir, level yüklenir)
     ///   Ayarlar   : Ses, Tam Ekran, Sıfırla, Geri
-    ///   Ses       : tambur çevrildikçe ses seviyesi artar/azalır, en üstteki göstergede görünür
+    ///   Ses       : sağ/sol (ya da yukarı/aşağı) ses seviyesini değiştirir, en üstteki göstergede görünür
     /// Yalnızca oyunu başlatan seçimler ateş eder; diğerleri tıkırtıyla hemen açılır. En üstte seçili seçeneğin
     /// açıklaması (level adı ve durumu, ses yüzdesi, tam ekran) yazar.
     /// </summary>
     public class MainMenu : MonoBehaviour
     {
-        [SerializeField] RevolverMenu revolver;
+        [SerializeField] SignpostMenu signpost;
         [SerializeField] Text totalCrystalsLabel;
         [Tooltip("Ateşten sonra ekranı kaplayan toz; level ekran kapalıyken yüklenir (yoksa doğrudan yüklenir)")]
         [SerializeField] DustTransition dust;
@@ -36,7 +36,7 @@ namespace DesertGecko.UI
 
         void Awake()
         {
-            revolver.SelectionChanged += ShowInfo;
+            signpost.SelectionChanged += ShowInfo;
         }
 
         void Start()
@@ -54,7 +54,7 @@ namespace DesertGecko.UI
             RefreshVolume();
             int total = GameProgress.TotalCrystals;
             totalCrystalsLabel.text = total > 0 ? $"Toplam altın: {total}" : "";
-            revolver.SetPage(texts, actions, fire, back);
+            signpost.SetPage(texts, actions, fire, back);
         }
 
         void ShowInfo(int chamber)
@@ -78,7 +78,7 @@ namespace DesertGecko.UI
 
         void ShowLevels()
         {
-            int n = Mathf.Min(LevelCatalog.Count, RevolverMenu.Chambers - 1);
+            int n = Mathf.Min(LevelCatalog.Count, signpost.PlankCount - 1);
             var texts = new string[n + 1];
             var actions = new Action[n + 1];
             var fire = new bool[n + 1];
@@ -112,14 +112,14 @@ namespace DesertGecko.UI
                 showVolume: true);
         }
 
-        // Ses modu: tamburun bütün haznelerinde "SES" yazar, her dönüş sesi %10 değiştirir.
+        // Ses modu: seçili tahtada "SES" yazar, her sağ/sol basışı sesi %10 değiştirir.
         void EnterVolume()
         {
-            infos = new[] { "Tamburu çevir: ses  |  Onayla: tamam" };
+            infos = new[] { "Sağ/sol: ses  |  Onayla: tamam" };
             ShowInfo(0);
-            revolver.SetAdjust("Ses", dir =>
+            signpost.SetAdjust("Ses", dir =>
             {
-                GameProgress.Volume = Mathf.Clamp01(Mathf.Round((GameProgress.Volume - dir * 0.1f) * 10f) / 10f);
+                GameProgress.Volume = Mathf.Clamp01(Mathf.Round((GameProgress.Volume + dir * 0.1f) * 10f) / 10f);
                 RefreshVolume();
             }, ShowSettings);
         }
