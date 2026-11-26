@@ -1475,23 +1475,7 @@ namespace DesertGecko.EditorTools
             return ui;
         }
 
-        static void BuildPauseMenu(Transform canvas, PlayerInputReader input)
-        {
-            RectTransform overlay = UiKit.Overlay("Duraklat", canvas, new Color(0f, 0f, 0f, 0.55f));
-            RectTransform box = UiKit.Panel("Kutu", overlay, Vector2.zero, new Vector2(240f, 190f));
-            UiKit.Shadowed(UiKit.Label("Baslik", box, "Duraklatıldı", new Vector2(0f, 62f), new Vector2(220f, 30f), 22, UiKit.ButtonHighlight));
-            Button resume = UiKit.Button("Devam", box, "Devam Et", new Vector2(0f, 18f), new Vector2(170f, 30f), out _);
-            Button restart = UiKit.Button("Yeniden", box, "Yeniden Başlat", new Vector2(0f, -18f), new Vector2(170f, 30f), out _);
-            Button menu = UiKit.Button("AnaMenu", box, "Ana Menü", new Vector2(0f, -54f), new Vector2(170f, 30f), out _);
-
-            var pause = canvas.gameObject.AddComponent<PauseMenu>();
-            TestSceneBuilder.SetField(pause, "panel", overlay.gameObject);
-            TestSceneBuilder.SetField(pause, "resumeButton", resume);
-            TestSceneBuilder.SetField(pause, "restartButton", restart);
-            TestSceneBuilder.SetField(pause, "mainMenuButton", menu);
-            TestSceneBuilder.SetField(pause, "playerInput", input);
-            overlay.gameObject.SetActive(false); // ESC ile açılır
-        }
+        static void BuildPauseMenu(Transform canvas, PlayerInputReader input) => PauseMenuBuilder.Build(canvas, input);
 
         // =====================================================================
         // Level 4: Tozlu Dere. Çölden gelinir, kasaba yavaş yavaş belirir: önce yol kenarı, sonra çiftlikler, sonra

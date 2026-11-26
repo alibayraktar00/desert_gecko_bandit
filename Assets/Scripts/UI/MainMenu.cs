@@ -150,7 +150,7 @@ namespace DesertGecko.UI
         void StartLevel(int level)
         {
             if (dust != null)
-                dust.Play(() => SceneFlow.LoadLevel(level));
+                dust.Play(() => SceneFlow.BeginLevelLoad(level));
             else
                 SceneFlow.LoadLevel(level);
         }

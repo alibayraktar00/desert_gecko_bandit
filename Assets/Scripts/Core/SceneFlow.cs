@@ -38,6 +38,25 @@ namespace DesertGecko.Core
             Load(LevelCatalog.Levels[index].Scene);
         }
 
+        /// <summary>
+        /// Bölümü arka planda yüklemeye başlar ama etkinleştirmez; geçiş efekti doğru anda
+        /// allowSceneActivation = true diyerek sahneye geçer. Böylece yükleme sırasında ekran donmaz.
+        /// Geçersiz index'te ana menüyü yükler.
+        /// </summary>
+        public static AsyncOperation BeginLevelLoad(int index)
+        {
+            string scene = LevelCatalog.MainMenuScene;
+            if (index >= 0 && index < LevelCatalog.Count)
+            {
+                GameProgress.LastPlayed = index;
+                scene = LevelCatalog.Levels[index].Scene;
+            }
+            var op = SceneManager.LoadSceneAsync(scene);
+            if (op != null)
+                op.allowSceneActivation = false;
+            return op;
+        }
+
         public static void LoadMainMenu() => Load(LevelCatalog.MainMenuScene);
 
         public static void RestartCurrent() => Load(SceneManager.GetActiveScene().name);

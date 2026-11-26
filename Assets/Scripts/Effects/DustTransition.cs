@@ -48,21 +48,27 @@ namespace DesertGecko.Effects
                 veil.enabled = false;
         }
 
-        /// <summary>Tozu çalar; toz en yoğunken load çağrılır (ör. SceneFlow.LoadLevel).</summary>
-        public void Play(Action load)
+        /// <summary>
+        /// Tozu çalar. beginLoad hemen çağrılır ve sahneyi arka planda (allowSceneActivation = false) yüklemeye
+        /// başlar (ör. SceneFlow.BeginLevelLoad); toz en yoğunken sahne etkinleştirilir. Senkron yükleme
+        /// tozu ekranın ortasında dondurduğu için yükleme animasyonla paralel yürür.
+        /// </summary>
+        public void Play(Func<AsyncOperation> beginLoad)
         {
             if (playing)
                 return;
-            StartCoroutine(Run(load));
+            StartCoroutine(Run(beginLoad));
         }
 
-        IEnumerator Run(Action load)
+        IEnumerator Run(Func<AsyncOperation> beginLoad)
         {
             playing = true;
             transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
             if (sound != null)
                 sound.Play();
+
+            AsyncOperation op = beginLoad?.Invoke();
 
             float width = area.rect.width, height = area.rect.height;
             var rng = new System.Random(System.Environment.TickCount);
@@ -89,10 +95,12 @@ namespace DesertGecko.Effects
             }
 
             bool loaded = false;
-            float start = Time.unscaledTime;
+            float t = 0f;
             while (true)
             {
-                float t = Time.unscaledTime - start;
+                // Sahne etkinleşirken bir iki kare uzun sürebilir; gerçek zamanı izlersek topaklar ileri ışınlanır.
+                // Kare süresini sınırlayınca takılma olsa bile toz kaldığı yerden akıcı devam eder.
+                t += Mathf.Min(Time.unscaledDeltaTime, 1f / 30f);
                 bool any = false;
                 for (int i = 0; i < puffs.Length; i++)
                 {
@@ -129,7 +137,9 @@ namespace DesertGecko.Effects
                 if (!loaded && t >= loadTime)
                 {
                     loaded = true;
-                    load?.Invoke();
+                    Time.timeScale = 1f;
+                    if (op != null)
+                        op.allowSceneActivation = true;
                 }
                 if (loaded && !any && t > loadTime + 0.4f)
                     break;
