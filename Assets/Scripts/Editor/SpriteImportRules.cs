@@ -17,6 +17,8 @@ namespace DesertGecko.EditorTools
         public const string GroundFolder = "Assets/Sprites/Environment/Ground/";
         public const string EnemiesFolder = "Assets/Sprites/Enemies/";
         public const string LayerArtFolder = "Assets/Sprites/Environment/Katman/";
+        public const string ParchmentFolder = "Assets/Sprites/UI/Parsomen/";
+        const float ParchmentPaperBorder = 12f; // tools/parsomen_isle.py PAPER_BORDER
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
         const float PlatformCap = 30f; // tools/platform_paketi_isle.py CAP ile aynı
@@ -35,9 +37,10 @@ namespace DesertGecko.EditorTools
             bool isGround = assetPath.StartsWith(GroundFolder);
             bool isEnemy = assetPath.StartsWith(EnemiesFolder);
             bool isLayerArt = assetPath.StartsWith(LayerArtFolder);
+            bool isParchment = assetPath.StartsWith(ParchmentFolder);
             // Bu klasörlerdeki görseller script ile üretiliyor, ayarları hep zorla.
             // Diğerlerinde elle yapılan değişikliklere saygı duy.
-            if (!isGila && !isBackground && !isProp && !isGround && !isEnemy && !isLayerArt && !assetImporter.importSettingsMissing)
+            if (!isGila && !isBackground && !isProp && !isGround && !isEnemy && !isLayerArt && !isParchment && !assetImporter.importSettingsMissing)
                 return;
 
             var importer = (TextureImporter)assetImporter;
@@ -55,6 +58,17 @@ namespace DesertGecko.EditorTools
                 importer.ReadTextureSettings(settings);
                 settings.spriteAlignment = (int)SpriteAlignment.Custom;
                 settings.spritePivot = GilaPivot;
+                importer.SetTextureSettings(settings);
+            }
+            else if (isParchment)
+            {
+                // Eğitim parşömeni (UI Image): kâğıdın uçları sabit, ortası yan yana tekrar eder (Image.Type.Tiled).
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)SpriteAlignment.Center;
+                settings.spriteMeshType = SpriteMeshType.FullRect;
+                settings.spriteBorder = assetPath.EndsWith("parsomen_kagit.png")
+                    ? new Vector4(ParchmentPaperBorder, 0f, ParchmentPaperBorder, 0f) : Vector4.zero;
                 importer.SetTextureSettings(settings);
             }
             else if (isBackground)

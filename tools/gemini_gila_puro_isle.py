@@ -4,7 +4,8 @@ Ana menüdeki direğe yaslanmış, puro tüttüren Gila animasyonunu Gemini çı
 Girdi (Assets/Sprites/_Gelen/gila52, Gemini'den sayfadan indirilmiş, 1376x768, tek sıra 4 kare, gri zemin):
   gila52_01.png ... : 4'erli parçalar. Detaylı taban (gila_hd_renk.png) ve oyundaki Gila (renkler) referansıyla çizildi.
 Çıktı (Assets/Sprites/UI/MainMenu/Gila):
-  gila_puro_00.png ... : SEQUENCE sırasıyla aynı boyutta kareler, ayaklar alt kenarda
+  gila_puro_00.png ... : LOOP sırasıyla aynı boyutta kareler, ayaklar alt kenarda (her kare LOOP'taki tık sayısı
+  kadar ekranda kalır; sayılar MainMenuBuilder.GilaHolds'a yazdırılır)
 
 Gemini parçalar arası devamlılığı tutamadığı için (ör. duman her parçada küçükten başlıyor) döngü, karelerden
 seçilerek kurulur (SEQUENCE: (parça, kare) çiftleri; puroyu ağza geri götürme, indirme karelerinin tersidir).
@@ -12,8 +13,9 @@ Gemini görseli yatayda sıkıştırdığından piksel ızgarası iki eksende fa
 ızgarayla küçültülür, yani her sanat pikseli Gemini'nin bir pikselidir (kare piksel). Sonra:
   1) her kare ilk kareye kaydırılarak hizalanır (ön plan maskesinin örtüşmesi en büyük olacak şekilde),
   2) tek bir palete indirilir (duman grileri ayrı),
-  3) ilk kare "taban" olur; her karede sadece tabandan belirgin farklı, yeterince büyük bölgeler (kol, puro, yüz,
-     göğüs, duman) o karenin kendi piksellerinden alınır. Direk, kuyruk ve bacaklar böylece kıpırdamaz,
+  3) BASE karesi "taban" olur. Her kare iki katmana ayrılır: gövde pozu (POSE_REGION içinde tabandan belirgin
+     farklı, yeterince büyük piksel kümeleri: kol, puro, ağız, göz; gerisi tabandan) ve duman (gövdenin dışındaki
+     açık griler). Direk, kuyruk, bacaklar, şapka böylece hiç kıpırdamaz; LOOP poz ve dumanı ayrı ayrı seçer,
   4) direk inceltilir (Gila'nın dayandığı sol kenar korunur).
 
 Kullanım (proje kökünden):
@@ -39,24 +41,45 @@ SHIFT = 40            # hizalamada denenecek en büyük kayma (kaynak pikseli); 
 CHANGE = 95           # tabandan bu kadar (RGB toplam fark) farklı piksel "değişti" sayılır
 MIN_BLOB = 4          # değişen bölge en az bu kadar sanat pikseli olmalı (yoksa ızgara titremesidir)
 
-# Karelerden gelen (hareketli) bölgeler, direğin sol üst köşesine göre (x0, x1, y0, y1) sanat pikseli:
-# puro eli + ağız + üstteki duman (direğin solunda, göğüs hizasının üstü) ve göz. Geri kalan her yer tabandan.
-ANIM_BOXES = [
-    (-61, -17, -40, 31),   # şapkanın üstü: duman
-    (-61, -31, 31, 42),    # şapkanın solu: duman
-    (-61, -17, 42, 66),    # şapka kenarının altı: ağız, puro, puroyu tutan kol
-    (-21, -8, 42, 50),     # göz
-]
+# Pozun karelerden alınabileceği bölge, direğin sol üst köşesine göre (x0, x1, y0, y1) sanat pikseli: başın önü,
+# ağız, göz, puro ve puroyu tutan kol. Bu bölgede bile sadece tabandan gerçekten farklı pikseller kareden gelir;
+# dikdörtgen bir kutu bütünüyle kopyalanmaz (Gemini'nin her karede yeniden çizdiği baş kutunun içinde titriyordu).
+POSE_REGION = (-64, -6, 38, 78)
 HEAD_REF = (-22, 0, 22, 52)   # hizalama için şapka ve başın arkası (puro/kol yok)
-BASE_INDEX = 4                # taban kare: SEQUENCE'ta temiz kesilmiş bir kare (parça 1 figürleri birbirine değiyor)
-# Döngü: (parça, kare 0-3). 1-4 nefes çekiş ve tutma, 5 puroyu indirme, 7 ağızdan duman, 9'un son iki karesi
-# büyük bulut ve dağılma, 10 dumanın sönmesi, 5 tersten puroyu ağza götürme. (6 ve 8 devamlılığı bozduğu için yok.)
-SEQUENCE = ([(p, f) for p in (1, 2, 3, 4) for f in range(4)]
-            + [(5, f) for f in range(4)]
-            + [(7, f) for f in range(4)]
-            + [(9, 2), (9, 3)]
-            + [(10, f) for f in range(4)]
-            + [(5, f) for f in (3, 2, 1, 0)])
+BASE = (2, 0)                 # taban kare (parça, kare): temiz kesilmiş, puro ağızda, köz sönük
+# Kaynak kareler: bütün parçalar (6 devamlılığı bozduğu için yok)
+SEQUENCE = [(p, f) for p in (1, 2, 3, 4, 5, 7, 8, 9, 10) for f in range(4)]
+BASE_INDEX = SEQUENCE.index(BASE)
+TICK_FPS = 12                 # MainMenuBuilder.GilaFps ile aynı; her kare eşit süre ekranda kalır
+# Ana pozlar: (gövde pozu, duman karesi ya da None, bekleme karesi, sonrakine geçiş karesi). Gövde geçişin
+# ortasında yeni poza geçer (Gemini'nin gerçek ara kareleri; karıştırınca kol/puro beneklenir). Duman ise geçiş
+# boyunca eski yerinden yenisine kayarak Bayer düzeniyle erir, yenisi belirir: büyüyüp dağılması atlamaz.
+# Son anahtar ilkine geçer (döngü). Her kare eşit süre (TICK_FPS), ~10 sn.
+KEYS = [
+    ((2, 0), None, 10, 2),       # kısa bekleme
+    ((2, 2), None, 3, 2),        # 1. çekiş: köz parlar
+    ((2, 3), None, 4, 2),
+    ((3, 1), None, 6, 2),        # gözler kısılır
+    ((2, 3), None, 3, 2),
+    ((2, 2), None, 2, 2),
+    ((2, 0), None, 4, 2),
+    ((2, 2), None, 2, 2),        # 2. çekiş, daha derin
+    ((2, 3), None, 3, 2),
+    ((3, 1), None, 5, 2),
+    ((2, 3), None, 2, 2),
+    ((2, 0), None, 3, 2),
+    ((5, 1), None, 2, 2),        # puroyu indirir
+    ((5, 2), None, 2, 2),
+    ((5, 3), None, 3, 2),
+    ((7, 2), (7, 1), 2, 3),      # ağzı açılır, duman çıkar
+    ((7, 3), (7, 3), 2, 4),
+    ((7, 3), (8, 3), 3, 4),      # büyük bulut
+    ((5, 3), (9, 2), 1, 4),
+    ((5, 2), (10, 0), 1, 3),     # duman dağılırken puroyu ağzına götürür
+    ((5, 1), (10, 1), 1, 3),
+    ((2, 0), (10, 2), 2, 4),
+    ((2, 0), (10, 3), 2, 4),
+]
 POST_EXTEND = 0       # direk zaten şapkanın epey üstüne çıkıyor; tepesine akbaba oturur
 
 
@@ -292,6 +315,56 @@ POST_KEEP = 3
 POST_WIDTH = 8
 
 
+BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16 + 1 / 32
+
+
+def piece_shift(a, b, pa, pb, reach):
+    """a'daki hareketli parçayı (pa) b'dekine (pb) en iyi oturtan (dy, dx): opaklık ve renk uyuşmazlığı en az."""
+    if not pa.any() or not pb.any():
+        return 0, 0
+    ys, xs = np.nonzero(pa | pb)
+    y0, y1 = max(0, ys.min() - reach), ys.max() + reach + 1
+    x0, x1 = max(0, xs.min() - reach), xs.max() + reach + 1
+    ca, cb = a[y0:y1, x0:x1].astype(int), b[y0:y1, x0:x1].astype(int)
+    ma, mb = pa[y0:y1, x0:x1], pb[y0:y1, x0:x1]
+    best = None
+    for dy in range(-reach, reach + 1):
+        for dx in range(-reach, reach + 1):
+            sm = shift(ma.astype(np.uint8), dy, dx, 0).astype(bool)
+            sc = shift(ca, dy, dx, 0)
+            both = sm & mb
+            cost = np.count_nonzero(sm ^ mb) * 120 + np.abs(sc[both, :3] - cb[both, :3]).sum()
+            cost += 2 * (dy * dy + dx * dx)   # eşitlikte küçük kayma
+            if best is None or cost < best[0]:
+                best = (cost, dy, dx)
+    return best[1], best[2]
+
+
+def tween(a, b, f, reach):
+    """a ile b arası ara kare (0 < f < 1): farklı pikseller hareketli parça sayılır; a'nınki b'ye doğru kayarak
+    Bayer düzeniyle silinir, b'ninki ters yönden gelerek belirir. Ortak (değişmeyen) pikseller olduğu gibi kalır."""
+    diff = np.any(a != b, axis=-1)
+    pa = diff & (a[..., 3] > 0)
+    pb = diff & (b[..., 3] > 0)
+    dy, dx = piece_shift(a, b, pa, pb, reach)
+    out = a.copy()
+    out[diff] = 0
+    both = pa & pb
+    out[both] = (a if f < 0.5 else b)[both]
+    h, w = a.shape[:2]
+    thr = np.tile(BAYER, (h // 4 + 1, w // 4 + 1))[:h, :w]
+    pa_img = np.where(pa[..., None], a, 0).astype(np.uint8)
+    pb_img = np.where(pb[..., None], b, 0).astype(np.uint8)
+    sa = shift(pa_img, int(round(f * dy)), int(round(f * dx)), 0)
+    sb = shift(pb_img, -int(round((1 - f) * dy)), -int(round((1 - f) * dx)), 0)
+    keep_a = (sa[..., 3] > 0) & (thr >= f)
+    keep_b = (sb[..., 3] > 0) & (thr < f)
+    first, second = ((sa, keep_a), (sb, keep_b)) if f >= 0.5 else ((sb, keep_b), (sa, keep_a))
+    for img, keep in (first, second):
+        out[keep] = img[keep]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--preview")
@@ -318,9 +391,8 @@ def main():
     pal = palette_of(small, PALETTE)
     small = [snap(s, pal) for s in small]
 
-    # Taban kare ve direğe göre sabit kutular. Gemini her kareyi baştan çizdiği için gövde her karede biraz
-    # farklıdır; bu yüzden sadece ANIM_BOXES içi (puro eli, ağız, duman, göz) karelerden gelir, geri kalan her şey
-    # (bacaklar, kuyruk, karın, beldeki el, şapka, direk) tabandan birebir alınır ve hiç kıpırdamaz.
+    # Taban kare ve direğe göre bölge. Gemini her kareyi baştan çizdiği için gövde her karede biraz farklıdır; bu
+    # yüzden bacaklar, kuyruk, karın, şapka ve direk tabandan birebir alınır ve hiç kıpırdamaz.
     base = small[BASE_INDEX]
     by, bx = np.nonzero(base[..., 3] > 0)
     bcrop = base[by.min():by.max() + 1, bx.min():bx.max() + 1]
@@ -334,40 +406,81 @@ def main():
         m = np.zeros((hgt, wid), dtype=bool)
         m[max(0, post_y + y0):max(0, post_y + y1), max(0, post_x + x0):max(0, post_x + x1)] = True
         return m
-    anim = np.zeros((hgt, wid), dtype=bool)
-    for b in ANIM_BOXES:
-        anim |= box(*b)
-    head_ref = box(*HEAD_REF) & (base[..., 3] > 0)
+    region = box(*POSE_REGION)
+    base_op = base[..., 3] > 0
+    head_ref = box(*HEAD_REF) & base_op
+    body_area = ndimage.binary_dilation(base_op, iterations=1)
 
     def refine(sm):
-        """Kareyi şapka ve başın arkasına göre (±3 piksel) hizalar: kutunun kenarında dikiş olmasın."""
+        """Kareyi şapka ve başın arkasına göre (±3 piksel) hizalar: aktarılan pikseller tabana otursun."""
         best = None
         for dy in range(-3, 4):
             for dx in range(-3, 4):
                 t = shift(sm, dy, dx, 0)
                 d = np.abs(t[..., :3].astype(int) - base[..., :3].astype(int)).sum(axis=2)
-                d = d + 300 * ((t[..., 3] > 0) != (base[..., 3] > 0))
+                d = d + 300 * ((t[..., 3] > 0) != base_op)
                 c = d[head_ref].sum()
                 if best is None or c < best[0]:
                     best = (c, t)
         return best[1]
 
-    result = []
-    for sm in small:
-        t = refine(sm)
-        # komşu figürden kalan ince dikey çizgiler (kesim artığı): uzun ve en çok 2 piksel geniş parçalar silinir
-        # (iki yanı boş, 8 pikselden uzun dikey diziler; tepesi dumana bağlı olsa bile)
+    def smoke_mask(t):
+        return is_smoke(t[..., :3]) & (t[..., 3] > 0) & ~body_area
+
+    def pose(t):
+        """Gövde katmanı: POSE_REGION içinde tabandan belirgin farklı piksel kümeleri kareden, gerisi tabandan."""
+        t = t.copy()
+        t[smoke_mask(t)] = 0
+        d = np.abs(t[..., :3].astype(int) - base[..., :3].astype(int)).sum(axis=2)
         op = t[..., 3] > 0
-        lone = op.copy()
-        lone[:, 1:] &= ~op[:, :-1]
-        lone[:, :-1] &= ~op[:, 1:]
-        lab, n = ndimage.label(lone, structure=[[0, 1, 0], [0, 1, 0], [0, 1, 0]])
-        for i in range(1, n + 1):
-            if np.count_nonzero(lab == i) >= 8:
-                t[lab == i] = 0
-        frame = base.copy()
-        frame[anim] = t[anim]
-        result.append(frame)
+        change = ((op != base_op) | (op & base_op & (d > CHANGE))) & region
+        change = ndimage.binary_dilation(blobs(change, MIN_BLOB), iterations=1) & region
+        out = base.copy()
+        out[change] = t[change]
+        return out
+
+    def smoke(t):
+        """Duman katmanı: gövdenin dışındaki açık griler (tek tük kırıntılar hariç)."""
+        m = blobs(smoke_mask(t), 2)
+        out = np.zeros_like(t)
+        out[m] = t[m]
+        return out
+
+    refined = {}
+    def src(key):
+        if key not in refined:
+            t = refine(small[SEQUENCE.index(key)])
+            # komşu figürden kalan ince dikey çizgiler (kesim artığı): iki yanı boş, 8 pikselden uzun dikey diziler
+            op = t[..., 3] > 0
+            lone = op.copy()
+            lone[:, 1:] &= ~op[:, :-1]
+            lone[:, :-1] &= ~op[:, 1:]
+            lab, n = ndimage.label(lone, structure=[[0, 1, 0], [0, 1, 0], [0, 1, 0]])
+            for i in range(1, n + 1):
+                if np.count_nonzero(lab == i) >= 8:
+                    t[lab == i] = 0
+            refined[key] = t
+        return refined[key]
+
+    def layers(key):
+        body_key, smoke_key = key[0], key[1]
+        return pose(src(body_key)), (smoke(src(smoke_key)) if smoke_key is not None else np.zeros_like(base))
+
+    result = []
+    for i, key in enumerate(KEYS):
+        nxt = KEYS[(i + 1) % len(KEYS)]
+        body_a, smoke_a = layers(key)
+        body_b, smoke_b = layers(nxt)
+        frames = [(body_a, smoke_a)] * key[2]
+        n = key[3]
+        frames += [(body_a if (k + 1) / (n + 1) < 0.5 else body_b, tween(smoke_a, smoke_b, (k + 1) / (n + 1), 8))
+                   for k in range(n)]
+        for body_f, smoke_f in frames:
+            frame = body_f.copy()
+            m = smoke_f[..., 3] > 0
+            frame[m] = smoke_f[m]
+            result.append(frame)
+    print(f"GilaFrames = {len(result)} ({TICK_FPS} fps, {len(result) / TICK_FPS:.1f} sn)")
 
     # ortak kırpma: bütün karelerin opak alanını kapsayan kutu, alt kenar ayaklar
     alpha = np.any([r[..., 3] > 0 for r in result], axis=0)
@@ -382,16 +495,23 @@ def main():
           f"tepe {post_top} (GilaPostTopArt)")
 
     OUT.mkdir(parents=True, exist_ok=True)
+    names = {f"gila_puro_{i:03d}.png" for i in range(len(result))}
+    for old in OUT.glob("gila_puro_*.png"):   # önceki çalıştırmalardan kalan kareler
+        if old.name not in names:
+            old.unlink()
+            meta = old.with_suffix(".png.meta")
+            if meta.exists():
+                meta.unlink()
     for i, r in enumerate(result):
-        Image.fromarray(r, "RGBA").save(OUT / f"gila_puro_{i:02d}.png")
+        Image.fromarray(r, "RGBA").save(OUT / f"gila_puro_{i:03d}.png")
     print(f"{len(result)} kare -> {OUT} ({result[0].shape[1]}x{result[0].shape[0]})")
 
     if args.preview:
         ph, pw = result[0].shape[:2]
-        sheet = Image.new("RGBA", (pw * 9, ph * ((len(result) + 8) // 9)), (128, 128, 128, 255))
+        sheet = Image.new("RGBA", (pw * 12, ph * ((len(result) + 11) // 12)), (128, 128, 128, 255))
         for i, r in enumerate(result):
             tile = Image.fromarray(r, "RGBA")
-            sheet.alpha_composite(tile, ((i % 9) * pw, (i // 9) * ph))
+            sheet.alpha_composite(tile, ((i % 12) * pw, (i // 12) * ph))
         sheet = sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST)
         sheet.save(args.preview)
 

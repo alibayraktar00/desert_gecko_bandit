@@ -11,7 +11,7 @@ namespace DesertGecko.EditorTools
     /// <summary>
     /// Giriş ekranını kurar: Gemini çizimi çöl arka planı (ekranı kaplar); sol altta yön tabelası menüsü
     /// (SignpostMenu: direğe çakılı ok tahtaları), ekranın tepesinden zincirle sarkan, sallanan başlık tabelası;
-    /// sağda ince bir direğe yaslanıp puro tüttüren Gila (24 kare, eşit hızda), direğin dibinde kum tümseği ve
+    /// sağda ince bir direğe yaslanıp puro tüttüren Gila (127 kare, 12 fps, ~10 sn döngü), direğin dibinde kum tümseği ve
     /// tepesinde akbaba. Sol grup ekranın soluna, Gila sağına yapışır (ScreenEdgeAnchor), böylece farklı ekran
     /// oranlarında yerleşim bozulmaz. En altta seçili seçeneğin açıklaması ve ses göstergesi, en üstte toplam altın.
     /// LevelBuilder çağırır.
@@ -88,13 +88,14 @@ namespace DesertGecko.EditorTools
         const int VolumeSegments = 10;
 
         // ---- sağda direğe yaslanmış, puro tüttüren Gila; direğin tepesinde akbaba ----
-        const int GilaFrames = 34;
-        const float GilaFps = 7f;
+        const int GilaFrames = 127;
+        const float GilaFps = 12f;
         const float GilaRightInsetPx = 18f; // karenin sağ kenarı ekranın sağından bu kadar içeride
-        // Her kare eşit süre: beklemeli sıra kareler arasında takılıp geri sarıyormuş gibi görünüyordu.
+        // Her kare eşit süre: beklemeler ve duman geçişleri tools/gemini_gila_puro_isle.py KEYS'te kare olarak üretilir
+        // (~10 sn). Farklı bekleme süreleri oynatmayı takılıyormuş gibi gösteriyordu.
         static readonly int[] GilaHolds = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Repeat(1, GilaFrames));
-        const float GilaPostTopArt = 11f;     // tools/gemini_gila_puro_isle.py çıktısı: direğin tepesi (karenin üstünden; üstünde duman payı)
-        const float GilaPostCenterArt = 64f;  // tools/gemini_gila_puro_isle.py çıktısı: direğin ortası (karenin solundan)
+        const float GilaPostTopArt = 3f;      // tools/gemini_gila_puro_isle.py çıktısı: direğin tepesi (karenin üstünden; üstünde duman payı)
+        const float GilaPostCenterArt = 63f;  // tools/gemini_gila_puro_isle.py çıktısı: direğin ortası (karenin solundan)
         const int VultureFrames = 4;
         const float VultureFps = 5f;
         static readonly int[] VultureHolds = { 14, 5, 4, 2 }; // çoğu zaman kıpırdamaz, ara ara başını eğip tüylerini kabartır
@@ -116,7 +117,7 @@ namespace DesertGecko.EditorTools
 
         static void BuildGila(Camera cam)
         {
-            Sprite[] frames = Sequence(GilaArt + "gila_puro_{0:00}.png", GilaFrames, GilaHolds);
+            Sprite[] frames = Sequence(GilaArt + "gila_puro_{0:000}.png", GilaFrames, GilaHolds);
             if (frames == null)
             {
                 Debug.LogWarning("[DesertGecko] Gila menü kareleri yok (python tools/gemini_gila_puro_isle.py)");
@@ -188,7 +189,7 @@ namespace DesertGecko.EditorTools
         const float PoleBottomPx = 364f;         // tümseğin altı biraz ekran dışında
         const float FirstPlankTopPx = 166f;      // ilk tahtanın üst kenarı (başlık tabelasının altı)
         const float PlankStepPx = 38f;           // tahtalar arası (tahta 17 sanat pikseli = 34 ekran pikseli)
-        const float PlankNailPx = 14f;           // tahtanın sol ucu direğin ortasından bu kadar solda (çiviler direğin üstünde)
+        const float PlankNailPx = 8f;            // tahtanın sol ucu direğin ortasından bu kadar solda (çiviler direğin üstünde)
         const float LabelCenterArt = 33f;        // yazının ortası tahtanın solundan (sanat pikseli; gemini_tabela_isle.py TEXT_CENTER_X)
 
         static SignpostMenu BuildSignpost(Camera cam, AudioSource audio)

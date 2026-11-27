@@ -213,7 +213,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee2d6568abb02a840bdda9493ec10503, type: 3}
   m_Name: 
   m_EditorClassIdentifier: DesertGecko::DesertGecko.Enemies.Scorpion
-  maxHealth: 4
+  maxHealth: 3
   contactDamage: 1
   patrolSpeed: 2
   chaseSpeed: 4

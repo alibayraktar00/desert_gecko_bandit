@@ -336,7 +336,7 @@ namespace DesertGecko.EditorTools
         {
             // Koşma
             p.Ground(-8f, 16f, 0f);
-            p.Sign(3f, 0f, "A / D  ya da oklar: koş");
+            p.Sign(6f, 0f, "A / D: koş"); // doğar doğmaz açılmasın (SignPost.showDistance 3.5)
             p.Plant("kaktus_00", -4f, 0f);
             p.Plant("kaktus_21", 9.5f, 0f);
             p.CrystalLine(6f, 0.7f, 3, 1f);
@@ -362,7 +362,7 @@ namespace DesertGecko.EditorTools
             // Dil: böcek ve ilk akrep
             p.Sign(53f, 6f, "J: dil saldırısı\nBöcek yakala, can yenile");
             p.Bug(57f, 7.3f);
-            p.Sign(64f, 6f, "Akrebe J ile 4 kez vur\nDokunursa can yakar!");
+            p.Sign(64f, 6f, "Akrebe J ile 3 kez vur\nDokunursa can yakar!");
             p.Scorpion(71f, 6f);
             p.Plant("kaktus_16", 68f, 6f);
 
@@ -381,12 +381,12 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(105f, 10f);
 
             // Kuyruk
-            p.Sign(111f, 10f, "L: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
+            p.Sign(111f, 10f, "N: kuyruk fırlat. Kuyruk\nçıkana kadar süzülemezsin!");
             p.Bug(115f, 11.3f);
             p.Scorpion(121f, 10f);
             p.Scorpion(126f, 10f);
             p.Plant("kaktus_01", 118f, 10f);
-            p.Sign(131f, 10f, "Vadiye iniş:\nkayalardan aşağı atla");
+            p.ArrowSign(131.8f, 10f, "sag_asagi"); // vadiye iniş: kayalardan aşağı
         }
 
         // Bağlantı 1: eğitimin tepesinden kayalık basamaklarla vadi tabanına. Düşmansız nefes alma yeri;
@@ -425,17 +425,19 @@ namespace DesertGecko.EditorTools
 
             p.Ground(34f, 56f, 1f);
             p.Checkpoint(36f, 1f);
-            p.Sign(39f, 1f, "Çıngırak duyarsan kaç!\nMermi alçaktan gelir: zıpla");
-            p.Sign(44f, 1f, "Yılan ölünce silahı düşer: üstünden geç\nK: ateş et, W + K: yukarı nişan");
+            // İki tabela arası en az 7 birim: aynı anda iki parşömen açılmasın (SignPost.showDistance 3.5)
+            p.Sign(37.5f, 1f, "Çıngıraklı yılan: çıngırak = ateş geliyor!\nMermi alçaktan gelir, zıpla");
+            p.Sign(50.5f, 1f, "Yılan ölünce silahı düşer: üstünden geç\nK: ateş et, W + K: yukarı nişan");
             p.Snake(47f, 1f);
             p.Bug(41f, 2.4f);
             p.Plant("kaktus_25", 51f, 1f);
 
             // Kanyon duvarı: 11 birim tırmanış
-            p.Sign(53f, 1f, "Kanyonun tepesine tırman");
+            p.ArrowSign(54.6f, 1f, "yukari"); // kanyonun tepesine tırman
             p.Ground(56f, 79f, 12f);
             p.CrystalLine(55.4f, 4f, 4, 2f, vertical: true);
             p.Checkpoint(59f, 12f);
+            p.Sign(61.5f, 12f, "Çakal görünce üstüne koşar, durup\nçiftesini doğrultur: o an zıpla ya da kaç!");
             p.Scorpion(65f, 12f);
             p.Jackal(73f, 12f);
             p.Sign(77f, 12f, "J: uzaktaki silahı dille çek\nS + K: elindeki silahı bırak");
@@ -642,7 +644,7 @@ namespace DesertGecko.EditorTools
         {
             p.Ground(-8f, 12f, 0f);
             p.Plant("kaktus_07", -4f, 0f);
-            p.Sign(1.5f, 0f, "Terk Edilmiş Maden\nBu sefer yol daha sert");
+            p.Sign(5.5f, 0f, "Terk Edilmiş Maden\nBu sefer yol daha sert"); // doğar doğmaz açılmasın
             p.CrystalLine(4f, 0.7f, 2, 1f);
             p.Scorpion(8f, 0f);
 
@@ -721,6 +723,7 @@ namespace DesertGecko.EditorTools
 
             // Tanıtım: düşen kayayı boş yerde göster
             p.CaveFloor(0f, 30f, floorA);
+            p.Sign(11f, floorA, "Tavandaki kaya altına gelince titrer:\ndurma, hemen geç!");
             p.FallingRock(17f, roofA);
             p.Crystal(17f, 2f);
             p.Scorpion(25f, floorA);
@@ -735,6 +738,7 @@ namespace DesertGecko.EditorTools
             // Sertleşme: sıra sıra kaya, aralarda düşman
             p.CaveFloor(38f, 62f, floorA);
             p.Checkpoint(39.5f, floorA);
+            p.Sign(41.5f, floorA, "Haydut yarasa altından geçince uyanır.\nFitili yanınca kenara kaç: dinamit geliyor!");
             p.FallingRock(44f, roofA);
             p.FallingRock(47.5f, roofA);
             p.Scorpion(49f, floorA);
@@ -761,7 +765,7 @@ namespace DesertGecko.EditorTools
             p.Ledge(82f, 90f, 10f);
             p.Snake(86f, 10f);
             p.Crystal(83f, 10.8f);
-            p.Sign(89f, floorB, "Zırhına mermi işlemez, atla!\nDinamit kabuğunu çatlatır");
+            p.Sign(79f, floorB, "Yuvarlanan armadilloya mermi işlemez: atla!\nAçılınca vur ya da dinamitle kabuğunu çatlat");
             p.Armadillo(93f, floorB);
             // Armadillonun kazmasıyla ilk kaya: asansörün yanında, yolu kapatmaz. Sağ duvara dayalı (çarpışması ~1.06 geniş):
             // arada boşluk kalırsa oyuncu kayayla duvarın arasına saklanıyor, düşmanlar ulaşamıyordu.
@@ -834,6 +838,7 @@ namespace DesertGecko.EditorTools
             // Raflar üst üste biner: dümdüz düşülerek geçilmez.
             p.Sign(-7.2f, shaftTop, "Dikenli sarmaşık öldürür: hiçbir yere basma!\nSüzülerek in, halkaya dille yapış (J basılı)");
             p.Checkpoint(-1.2f, shaftTop); // kuyunun ağzı: ölen buradan tekrar dener
+            p.ArrowSign(-0.5f, shaftTop, "asagi"); // yol kuyunun içinden aşağı
             p.ThornWall(0f, lavaY - 1f, shaftTop - 0.4f, 1);
             p.ThornWall(16f, shelfB, shaftTop + 2f, -1);
             p.ThornShelf(0f, 9.5f, shelfA, shelfThick, -1);
@@ -859,11 +864,12 @@ namespace DesertGecko.EditorTools
             // Mağara: lavdan çıkılan taban
             p.CaveFloor(40f, 44.5f, lavaY + 0.8f); // lavın kıyısı: halkadan inilen basamak
             p.CaveFloor(44.5f, 88f, floorA);
-            p.Sign(46f, floorA, "Altın damarlı kaya:\nkazmayla iki kez vur ya da dinamitle patlat");
+            p.Sign(46f, floorA, "Altın damarlı kaya:\nkazmayla (K) iki kez vur ya da dinamitle patlat");
             p.TreasureRock(48f, floorA);
 
             // Dövüş odası: kapılar iner, dördü de ölmeden açılmaz. Çıkıntılar kaçış yeri.
             p.Checkpoint(52f, floorA);
+            p.Sign(53.5f, floorA, "Dövüş odası: kapılar kapanır,\nhepsi ölmeden açılmaz!");
             p.Arena(56f, 86f, 62f, floorA, roofA);
             p.Ledge(64f, 70f, 4.2f);
             p.Ledge(73f, 79f, 4.2f);
@@ -984,7 +990,7 @@ namespace DesertGecko.EditorTools
             // Tanıtım: ateşin başında başla, soğuğu tabela anlatır
             p.Ground(-8f, 16f, 0f);
             p.Camp(-2f, 0f); // çadır ve önündeki ateş: başlangıçta ısınılan yer
-            p.Sign(3f, 0f, "Güneş battı, çöl buz kesti.\nÜşüdükçe yavaşlarsın, ateşte ısın");
+            p.Sign(7f, 0f, "Güneş battı, çöl buz kesti.\nÜşüdükçe yavaşlarsın, ateşte ısın"); // doğar doğmaz açılmasın
             p.CrystalLine(7f, 0.8f, 3, 1.2f);
             p.Plant("kaktus_07", 12f, 0f);
 
@@ -1007,7 +1013,7 @@ namespace DesertGecko.EditorTools
 
             p.Ground(62f, 80f, 4f);
             p.Deco("yuz_araba", 66f, 4f);
-            p.Sign(63.5f, 4f, "Mermi dikenlerden seker!\nKazma ve dinamit dikenleri kırar");
+            p.Sign(63.5f, 4f, "Diken mutantı titreyince diken yağdırır.\nMermi seker: kazmayla (K) ya da dinamitle vur");
             p.SahteCali(69f, 4f);
             p.Diken(75f, 4f); // arabadan inen Gila'ya yaylım: salvoların arasında zıpla, kelleşince vur
             p.Firefly(76f, 5.6f);
@@ -1046,6 +1052,7 @@ namespace DesertGecko.EditorTools
             // Bard'ın alanı: geniş zemin ve üstünde raf. Dalışlardan ve dinamitten kaçacak yer, iki kat.
             p.Ground(50f, 62f + BardRoom, 3f);
             p.Checkpoint(52f, 3f);
+            p.Sign(50.8f, 3f, "Bard gitarıyla yarasa çağırır:\nyarasaları indir, sonra Bard'ı vur!");
             p.Pole(56f, 3f, 7f);
             p.Snake(56.5f, 3f); // önde yılan ateş eder, arkasında Bard yarasalarını salar
             p.Ledge(58f, 64f, 6f);
@@ -1136,6 +1143,7 @@ namespace DesertGecko.EditorTools
             p.Geyser(75f, 8.5f, 8.5f, 3.6f, 0.35f);
             p.Ledge(78f, 86f, 13.5f, register: true);
             p.Snake(84f, 13.5f);
+            p.ArrowSign(85.4f, 13.5f, "sag_asagi"); // gayzerden alçaktaki rafa in: baca alttan girilir
             p.Crystal(80f, 14.3f);
 
             // Bükülme: iki gayzer sırayla; ilki ikinciye atar
@@ -1144,6 +1152,7 @@ namespace DesertGecko.EditorTools
             p.Ledge(92f, 100f, 8f, register: true); // alçakta: baca dibinden girilir, üstten atlanamaz
             p.Checkpoint(94f, 8f);
             p.Bug(97f, 9.4f);
+            p.ArrowSign(98.7f, 8f, "sag"); // duvarın altından bacaya
 
             // Baca: dibi kapalı oda, çamur yükselir. Raflar sağa sola, ortadaki sütuna da tırmanılır.
             p.CaveFloor(100f, 118f, 6f);
@@ -1533,7 +1542,7 @@ namespace DesertGecko.EditorTools
         static void Kasaba_ColYolu(LevelPainter p)
         {
             p.Ground(-8f, 22f, 0f);
-            p.Sign(3f, 0f, "Tozlu Dere Kasabası 3 mil\nGün batmadan varmalı");
+            p.Sign(7f, 0f, "Tozlu Dere Kasabası 3 mil\nGün batmadan varmalı"); // doğar doğmaz açılmasın
             p.Plant("kaktus_07", -4f, 0f);
             p.Plant("kaktus_21", 10f, 0f);
             p.CrystalLine(6f, 0.7f, 3, 1f);
@@ -1552,6 +1561,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(44f, 5f);
 
             p.Ground(66f, 80f, 1f);
+            p.Sign(67f, 1f, "Fedaiye fıçısı varken bir şey işlemez:\nfıçıyı fırlatınca kaç, sonra vur!");
             p.TownDeco("kasaba_tuvalet", 70f, 1f);
             p.Barmen(76f, 1f); // yolu kesen fedai
 
@@ -1638,6 +1648,7 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_berber", 41.6f, street);
             p.TownDeco("kasaba_fici_teker", 46.3f, street, 1f, -8);
             p.Checkpoint(38.8f, street); // otelle berberin arasında
+            p.Sign(43.5f, street, "Şerif yardımcısı şapkasını itince\nüç el ateş eder: siper al ya da zıpla!");
             p.Serif(48f, street); // ofisinin önünde nöbette
             p.Building("kasaba_serif", 51.4f, street);
             p.TownDeco("kasaba_ilan_tahtasi", 57.5f, street, 0.8f, -11);
@@ -1655,6 +1666,7 @@ namespace DesertGecko.EditorTools
             p.Steps(68f, 73f, street, upper);
             p.Ground(73f, 135f, upper);
             p.Checkpoint(74f, upper);
+            p.Sign(76.5f, upper, "Mavi Dev çömelince üstüne sıçrar,\nyere çarpınca şok dalgası: zıpla!");
             p.Building("kasaba_banka", 79.5f, upper);
             p.Dev(93f, upper); // üst sokağın muhafızı: merdivenin kenarından uzakta, silahçıyla cenazecinin önündeki düz yolda sıçrar
             p.CrystalLine(78f, upper + 4f, 3, 1.4f);
@@ -1670,6 +1682,7 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_kilise", 113.5f, upper);
             p.Lamp(111.2f, upper + 1.2f, 1.6f);
             p.Crystal(113.6f, upper + 4f); // çatının sırtında
+            p.Sign(117.5f, upper, "Siber Hatip ses halkası fırlatır:\nmezar taşlarının arkasına saklan!");
             // Kilisenin arkasında mezarlık
             p.Deco("yuz_mezar", 119.5f, upper);
             p.Deco("yuz_kurukafa", 122f, upper);
@@ -1773,7 +1786,8 @@ namespace DesertGecko.EditorTools
             p.TownDeco("kasaba_erzak", 40.5f, floor, 1f, -8);
             p.Scorpion(28.5f, floor); // enkazın altından çıkan
             p.Checkpoint(42.5f, floor);
-            p.Sign(46f, floor, "Tren raydan çıktı!\nGümüş Vadi'ye yürü →");
+            p.Sign(46f, floor, "Tren raydan çıktı!\nGümüş Vadi'ye yürü");
+            p.ArrowSign(47.4f, floor, "sag");
             p.Barmen(39f, floor); // enkazdan sağ çıkan fedai
         }
 
@@ -1896,7 +1910,7 @@ namespace DesertGecko.EditorTools
             public float OriginX;
             public readonly List<Vector2> ShotPoints = new List<Vector2>();
 
-            static Sprite signSprite, poleSprite, flagSprite, pitSprite, glowSprite;
+            static Sprite poleSprite, flagSprite, pitSprite, glowSprite;
 
             public LevelPainter(TestSceneBuilder.SceneContext ctx)
             {
@@ -1905,7 +1919,6 @@ namespace DesertGecko.EditorTools
                 geometry = Child(root, "Zemin");
                 decor = Child(root, "Dekor");
                 actors = new GameObject("Oyun").transform;
-                signSprite = signSprite != null ? signSprite : PlaceholderArt.SignBoard();
                 poleSprite = poleSprite != null ? poleSprite : PlaceholderArt.GoalPole();
                 flagSprite = flagSprite != null ? flagSprite : PlaceholderArt.GoalFlag();
                 pitSprite = pitSprite != null ? pitSprite : PlaceholderArt.PitGradient();
@@ -4403,40 +4416,121 @@ namespace DesertGecko.EditorTools
                 }
             }
 
-            /// <summary>Eğitim tabelası: oyuncu yaklaşınca üstünde yazı belirir.</summary>
+            /// <summary>
+            /// Yön tabelası: kuma çakılı ahşap ok (tools/gemini_yon_oku_isle.py). dir: asagi, yukari, sag, sag_asagi,
+            /// sag_yukari; "sol" ile başlayanlar sağdakinin aynası (sol, sol_asagi, sol_yukari). Oyuncuya yolu gösterir.
+            /// </summary>
+            public void ArrowSign(float x, float groundTop, string dir)
+            {
+                bool left = dir.StartsWith("sol");
+                string art = "yon_oku_" + (left ? "sag" + dir.Substring(3) : dir);
+                Sprite s = TestSceneBuilder.Prop(art);
+                if (s == null)
+                {
+                    Debug.LogWarning($"[DesertGecko] Yön tabelası görseli yok: {art} (python tools/gemini_yon_oku_isle.py)");
+                    return;
+                }
+                float wx = x + OriginX;
+                var sr = new GameObject(Name("YonOku")).AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(decor);
+                sr.transform.position = new Vector3(wx, groundTop - 0.1f, 0f); // kum yığını toprağa gömülsün
+                sr.sprite = s;
+                sr.flipX = left;
+                sr.sortingOrder = 0; // kaktüs ve süslerin (-1) önünde: yol gösteren tabela hiçbir şeyin arkasında kalmasın
+                if (InCave)
+                    sr.color = CaveTint;
+                occupied.Add((wx, s.bounds.size.x / 2f));
+            }
+
+            /// <summary>Eğitim tabelası: oyuncu yaklaşınca üstünde parşömen açılır, ipucu harf harf yazılır (SignPost).</summary>
             public void Sign(float x, float groundTop, string text)
             {
                 occupied.Add((x + OriginX, 0.6f));
                 var root = new GameObject(Name("Tabela"));
                 root.transform.SetParent(decor);
                 root.transform.position = new Vector3(x + OriginX, groundTop, 0f);
-                var board = root.AddComponent<SpriteRenderer>();
-                board.sprite = signSprite;
-                board.sortingOrder = -1;
-
+                // Tahta tabela yok: parşömen kendisi tabeladır, oyuncu yaklaşınca havada açılır.
+                // Dünya-uzayı kanvas: 1 kanvas birimi = 1 sanat pikseli (32 PPU). Yazı okunaklı olsun diye piksel
+                // değil, 4 kat çözünürlükte yumuşak çizilir (dynamicPixelsPerUnit).
                 var canvasGo = new GameObject("Balon", typeof(RectTransform));
                 canvasGo.transform.SetParent(root.transform, false);
                 var canvas = canvasGo.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.WorldSpace;
                 canvas.sortingOrder = 50;
+                canvas.referencePixelsPerUnit = ParchmentPpu;   // tekrar eden kâğıt dokusu sanat pikseliyle örtüşsün
                 var scaler = canvasGo.AddComponent<CanvasScaler>();
-                scaler.dynamicPixelsPerUnit = 4f; // dünya uzayında yazı keskin dursun
+                scaler.dynamicPixelsPerUnit = 4f;
+                scaler.referencePixelsPerUnit = ParchmentPpu;
                 var rect = (RectTransform)canvasGo.transform;
-                rect.sizeDelta = new Vector2(240f, 56f);
-                rect.localScale = Vector3.one * 0.02f; // 240x56 → 4.8x1.1 birim
-                rect.localPosition = new Vector3(0f, 2.3f, 0f);
+                rect.sizeDelta = new Vector2(320f, 80f);
+                rect.localScale = Vector3.one / ParchmentPpu;
+                rect.localPosition = new Vector3(0f, ParchmentCenterY, 0f);
                 var group = canvasGo.AddComponent<CanvasGroup>();
                 group.alpha = 0f;
                 group.interactable = false;
                 group.blocksRaycasts = false;
 
-                var bg = canvasGo.AddComponent<Image>();
-                bg.color = UiKit.PanelColor;
-                Text label = UiKit.Label("Yazi", canvasGo.transform, text, Vector2.zero, new Vector2(230f, 52f), 15, UiKit.LightText);
-                label.lineSpacing = 0.9f;
+                var scroll = UiKit.Rect("Parsomen", canvasGo.transform, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+                Sprite paperSprite = LoadParchment("parsomen_kagit");
+                var reveal = UiKit.Rect("Acilan", scroll, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(0f, ParchmentHeight));
+                reveal.gameObject.AddComponent<RectMask2D>();
+                var paper = UiKit.Rect("Kagit", reveal, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(77f, ParchmentHeight));
+                var paperImage = paper.gameObject.AddComponent<Image>();
+                paperImage.sprite = paperSprite;
+                paperImage.type = Image.Type.Tiled;   // kenarlar sabit, orta yan yana: kâğıt yazının boyuna uzar
+                paperImage.raycastTarget = false;
+                Image Part(string name, string sprite, Transform parent)
+                {
+                    var r = UiKit.Rect(name, parent, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+                    var img = r.gameObject.AddComponent<Image>();
+                    img.sprite = LoadParchment(sprite);
+                    img.raycastTarget = false;
+                    if (img.sprite != null)
+                        r.sizeDelta = img.sprite.rect.size;   // 1 kanvas birimi = 1 sanat pikseli
+                    return img;
+                }
+                Image left = Part("SolTutamak", "parsomen_sol", scroll);
+                Image right = Part("SagTutamak", "parsomen_sag", scroll);
+                Image rolled = Part("Rulo", "parsomen_rulo_0", scroll);
+
+                Text label = UiKit.Label("Yazi", scroll, text, Vector2.zero, new Vector2(240f, 40f), ParchmentFontSize, ParchmentInk);
+                var font = AssetDatabase.LoadAssetAtPath<Font>(ParchmentFont);
+                if (font != null)
+                    label.font = font;
+                label.horizontalOverflow = HorizontalWrapMode.Overflow;   // satırları yazı belirler, kâğıt ona uyar
+                label.lineSpacing = 1f;
 
                 var sign = root.AddComponent<SignPost>();
                 TestSceneBuilder.SetField(sign, "bubble", group);
+                var so = new SerializedObject(sign);
+                so.FindProperty("scroll").objectReferenceValue = scroll;
+                so.FindProperty("rolled").objectReferenceValue = rolled;
+                SerializedProperty frames = so.FindProperty("rolledFrames");
+                frames.arraySize = 2;
+                frames.GetArrayElementAtIndex(0).objectReferenceValue = LoadParchment("parsomen_rulo_0");
+                frames.GetArrayElementAtIndex(1).objectReferenceValue = LoadParchment("parsomen_rulo_1");
+                so.FindProperty("reveal").objectReferenceValue = reveal;
+                so.FindProperty("paper").objectReferenceValue = paper;
+                so.FindProperty("leftRoller").objectReferenceValue = left.rectTransform;
+                so.FindProperty("rightRoller").objectReferenceValue = right.rectTransform;
+                so.FindProperty("label").objectReferenceValue = label;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            const string ParchmentArt = "Assets/Sprites/UI/Parsomen/";   // tools/parsomen_isle.py
+            const string ParchmentFont = "Assets/Fonts/Merriweather-Bold.ttf";
+            const float ParchmentPpu = 32f;
+            const float ParchmentHeight = 57f;     // tutamak boyu (sanat pikseli)
+            const float ParchmentCenterY = 2.75f;  // parşömenin ortası tabelanın dibinden (dünya birimi)
+            const int ParchmentFontSize = 10;      // sanat pikseli (1080p'de ~30 ekran pikseli)
+            static readonly Color ParchmentInk = new Color32(0x3B, 0x24, 0x14, 0xFF);
+
+            static Sprite LoadParchment(string name)
+            {
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(ParchmentArt + name + ".png");
+                if (sprite == null)
+                    Debug.LogWarning($"[DesertGecko] Parşömen görseli yok: {name} (python tools/parsomen_isle.py)");
+                return sprite;
             }
 
             public void Goal(float x, float groundTop)

@@ -243,9 +243,9 @@ namespace DesertGecko.EditorTools
             SetField(scorpion, "spriteRenderer", sr);
             SetField(scorpion, "visual", sr.transform);
             SetMask(scorpion, "groundMask", GameLayers.GroundMask);
-            // Dört can: dille dört darbe, silahla çabuk.
+            // Üç can: dille üç darbe; pompalı yakından tek atışta öldürür (Pompali.maxShotDamage 3).
             var health = new SerializedObject(scorpion);
-            health.FindProperty("maxHealth").intValue = 4;
+            health.FindProperty("maxHealth").intValue = 3;
             health.ApplyModifiedPropertiesWithoutUndo();
 
             var drop = root.AddComponent<CrystalDrop>();

@@ -32,9 +32,7 @@ namespace DesertGecko.Player
             move.AddCompositeBinding("2DVector")
                 .With("Up", "<Keyboard>/w").With("Down", "<Keyboard>/s")
                 .With("Left", "<Keyboard>/a").With("Right", "<Keyboard>/d");
-            move.AddCompositeBinding("2DVector")
-                .With("Up", "<Keyboard>/upArrow").With("Down", "<Keyboard>/downArrow")
-                .With("Left", "<Keyboard>/leftArrow").With("Right", "<Keyboard>/rightArrow");
+            // Ok tuşları hareket ettirmez (sadece WASD); menüler oklarla gezilmeye devam eder.
             move.AddBinding("<Gamepad>/leftStick");
             move.AddBinding("<Gamepad>/dpad");
 
@@ -52,7 +50,7 @@ namespace DesertGecko.Player
             fire.AddBinding("<Gamepad>/buttonEast");
 
             tail = new InputAction("Tail", InputActionType.Button);
-            tail.AddBinding("<Keyboard>/l");
+            tail.AddBinding("<Keyboard>/n");
             tail.AddBinding("<Gamepad>/buttonNorth");
 
             camouflage = new InputAction("Camouflage", InputActionType.Button);
