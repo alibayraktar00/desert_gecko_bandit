@@ -349,7 +349,6 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_12", 24f, 0f);
 
             // Basamak
-            p.Sign(30f, 0f, "Yüksek kenarlara zıpla");
             p.Ground(34f, 46f, 2f);
             p.Plant("kaktus_22", 40f, 2f);
 
@@ -360,9 +359,8 @@ namespace DesertGecko.EditorTools
             p.Checkpoint(49f, 6f);
 
             // Dil: böcek ve ilk akrep
-            p.Sign(53f, 6f, "J: dil saldırısı\nBöcek yakala, can yenile");
+            p.Sign(53f, 6f, "J: dil saldırısı\nBöcek yakala can yenile, akrebe 3 kez vur");
             p.Bug(57f, 7.3f);
-            p.Sign(64f, 6f, "Akrebe J ile 3 kez vur\nDokunursa can yakar!");
             p.Scorpion(71f, 6f);
             p.Plant("kaktus_16", 68f, 6f);
 
@@ -408,7 +406,7 @@ namespace DesertGecko.EditorTools
         {
             p.Ground(-8f, 18f, 0f);
             p.Checkpoint(-5f, 0f);
-            p.Sign(-0.5f, 0f, "Kanyon Duvarları");
+            p.PlaceSign(-0.5f, 0f, "Kanyon Duvarları");
             p.Scorpion(10f, 0f);
             p.CrystalLine(4f, 0.7f, 3, 1f);
             p.Plant("kaktus_02", -3f, 0f);
@@ -425,8 +423,6 @@ namespace DesertGecko.EditorTools
 
             p.Ground(34f, 56f, 1f);
             p.Checkpoint(36f, 1f);
-            // İki tabela arası en az 7 birim: aynı anda iki parşömen açılmasın (SignPost.showDistance 3.5)
-            p.Sign(37.5f, 1f, "Çıngıraklı yılan: çıngırak = ateş geliyor!\nMermi alçaktan gelir, zıpla");
             p.Sign(50.5f, 1f, "Yılan ölünce silahı düşer: üstünden geç\nK: ateş et, W + K: yukarı nişan");
             p.Snake(47f, 1f);
             p.Bug(41f, 2.4f);
@@ -437,7 +433,6 @@ namespace DesertGecko.EditorTools
             p.Ground(56f, 79f, 12f);
             p.CrystalLine(55.4f, 4f, 4, 2f, vertical: true);
             p.Checkpoint(59f, 12f);
-            p.Sign(61.5f, 12f, "Çakal görünce üstüne koşar, durup\nçiftesini doğrultur: o an zıpla ya da kaç!");
             p.Scorpion(65f, 12f);
             p.Jackal(73f, 12f);
             p.Sign(77f, 12f, "J: uzaktaki silahı dille çek\nS + K: elindeki silahı bırak");
@@ -452,7 +447,7 @@ namespace DesertGecko.EditorTools
             p.Crystal(92.5f, 16f);
 
             // Uzun süzülüş: karşı taraf neredeyse aynı yükseklikte, süzülmeden geçilmez
-            p.Sign(95.5f, 14f, "Uzun bir süzülüş!\nSpace basılı tut");
+            p.ArrowSign(97.2f, 14f, "sag"); // uzun süzülüş: karşı tepe
             p.CrystalArc(101f, 17.5f, 108f, 14.8f, 4);
             p.Ground(109f, 143f, 13f);
             p.Checkpoint(112f, 13f);
@@ -471,7 +466,7 @@ namespace DesertGecko.EditorTools
         static void Baglanti_MesayaSuzulus(LevelPainter p)
         {
             p.Checkpoint(140f, 13f);
-            p.Sign(142f, 13f, "Karşıdaki sekiye süzül:\nSpace basılı tut");
+            p.ArrowSign(142.4f, 13f, "sag"); // karşıdaki sekiye süzül
             p.CrystalArc(145.5f, 15f, 155.5f, 10.4f, 5); // zıplayıp süzülenin yolu: tepe noktasından sekiye
         }
 
@@ -482,7 +477,7 @@ namespace DesertGecko.EditorTools
             // Süzülüşün indiği seki, sonra basamakla vadi tabanına. Checkpoint sekinin ucunda: en uzun süzülüş de
             // sekinin üstünde biter, kimse havada geçip gitmez.
             p.Ground(-16f, -4f, 8f);
-            p.Sign(-13.5f, 8f, "Akbaba Gölgesi");
+            p.PlaceSign(-13.5f, 8f, "Akbaba Gölgesi");
             p.Plant("kaktus_00", -10f, 8f);
             p.Checkpoint(-5.5f, 8f);
             p.Ground(-4f, 1f, 4f);
@@ -538,7 +533,7 @@ namespace DesertGecko.EditorTools
             p.Jackal(59f, floor3);
 
             // Süzülüş: karşı taraf yüksekte, sonraki bölümler atlanamaz
-            p.Sign(62f, floor3, "Kapıdan atla, Space ile süzül");
+            p.ArrowSign(62.5f, floor3, "sag"); // kapıdan atla, süzül
             p.CrystalArc(68f, floor3 + 3f, 76f, floor3 - 0.6f, 5);
             p.Ground(78f, 97f, 9f);
             p.Checkpoint(80f, 9f);
@@ -644,7 +639,7 @@ namespace DesertGecko.EditorTools
         {
             p.Ground(-8f, 12f, 0f);
             p.Plant("kaktus_07", -4f, 0f);
-            p.Sign(5.5f, 0f, "Terk Edilmiş Maden\nBu sefer yol daha sert"); // doğar doğmaz açılmasın
+            p.PlaceSign(1.5f, 0f, "Terk Edilmiş Maden"); // altınların (4-5) gerisinde
             p.CrystalLine(4f, 0.7f, 2, 1f);
             p.Scorpion(8f, 0f);
 
@@ -684,7 +679,7 @@ namespace DesertGecko.EditorTools
             p.Plant("kaktus_16", 94.5f, 12f);
             p.SahteCali(84f, 12f);
             p.Fare(95.5f, 12f);
-            p.Sign(97f, 12f, "Eski maden kuyusu.\nTahtalar çürük, dikkat!");
+            p.PlaceSign(97f, 12f, "Maden Kuyusu\nDikkat: çürük tahta!");
         }
 
         // Maden Şaftı (yer altı). Giriş: üstünden geçilen tahtalar yıkılır, oyuncu kuyuya düşer.
@@ -723,7 +718,6 @@ namespace DesertGecko.EditorTools
 
             // Tanıtım: düşen kayayı boş yerde göster
             p.CaveFloor(0f, 30f, floorA);
-            p.Sign(11f, floorA, "Tavandaki kaya altına gelince titrer:\ndurma, hemen geç!");
             p.FallingRock(17f, roofA);
             p.Crystal(17f, 2f);
             p.Scorpion(25f, floorA);
@@ -738,7 +732,6 @@ namespace DesertGecko.EditorTools
             // Sertleşme: sıra sıra kaya, aralarda düşman
             p.CaveFloor(38f, 62f, floorA);
             p.Checkpoint(39.5f, floorA);
-            p.Sign(41.5f, floorA, "Haydut yarasa altından geçince uyanır.\nFitili yanınca kenara kaç: dinamit geliyor!");
             p.FallingRock(44f, roofA);
             p.FallingRock(47.5f, roofA);
             p.Scorpion(49f, floorA);
@@ -765,7 +758,6 @@ namespace DesertGecko.EditorTools
             p.Ledge(82f, 90f, 10f);
             p.Snake(86f, 10f);
             p.Crystal(83f, 10.8f);
-            p.Sign(79f, floorB, "Yuvarlanan armadilloya mermi işlemez: atla!\nAçılınca vur ya da dinamitle kabuğunu çatlat");
             p.Armadillo(93f, floorB);
             // Armadillonun kazmasıyla ilk kaya: asansörün yanında, yolu kapatmaz. Sağ duvara dayalı (çarpışması ~1.06 geniş):
             // arada boşluk kalırsa oyuncu kayayla duvarın arasına saklanıyor, düşmanlar ulaşamıyordu.
@@ -869,7 +861,6 @@ namespace DesertGecko.EditorTools
 
             // Dövüş odası: kapılar iner, dördü de ölmeden açılmaz. Çıkıntılar kaçış yeri.
             p.Checkpoint(52f, floorA);
-            p.Sign(53.5f, floorA, "Dövüş odası: kapılar kapanır,\nhepsi ölmeden açılmaz!");
             p.Arena(56f, 86f, 62f, floorA, roofA);
             p.Ledge(64f, 70f, 4.2f);
             p.Ledge(73f, 79f, 4.2f);
@@ -901,7 +892,7 @@ namespace DesertGecko.EditorTools
             p.Yarasa(121f, roofB); // galerinin tavanında uyur, yılanla birlikte iki kat baskı
             p.Snake(123f, floorB);
             p.Armadillo(129f, floorB);
-            p.Sign(134.5f, floorB, "Sıcak hava bacası:\nSpace basılı tut, yukarı!");
+            p.ArrowSign(134.5f, floorB, "yukari"); // sıcak hava bacası
 
             // Baca: yer altından gökyüzüne
             p.Thermal(137f, 143f, floorB, 24f, 16f);
@@ -1013,7 +1004,6 @@ namespace DesertGecko.EditorTools
 
             p.Ground(62f, 80f, 4f);
             p.Deco("yuz_araba", 66f, 4f);
-            p.Sign(63.5f, 4f, "Diken mutantı titreyince diken yağdırır.\nMermi seker: kazmayla (K) ya da dinamitle vur");
             p.SahteCali(69f, 4f);
             p.Diken(75f, 4f); // arabadan inen Gila'ya yaylım: salvoların arasında zıpla, kelleşince vur
             p.Firefly(76f, 5.6f);
@@ -1052,7 +1042,6 @@ namespace DesertGecko.EditorTools
             // Bard'ın alanı: geniş zemin ve üstünde raf. Dalışlardan ve dinamitten kaçacak yer, iki kat.
             p.Ground(50f, 62f + BardRoom, 3f);
             p.Checkpoint(52f, 3f);
-            p.Sign(50.8f, 3f, "Bard gitarıyla yarasa çağırır:\nyarasaları indir, sonra Bard'ı vur!");
             p.Pole(56f, 3f, 7f);
             p.Snake(56.5f, 3f); // önde yılan ateş eder, arkasında Bard yarasalarını salar
             p.Ledge(58f, 64f, 6f);
@@ -1116,7 +1105,6 @@ namespace DesertGecko.EditorTools
             p.RockEdge(100f + BardRoom, roofShaft, roofB, 1);
 
             p.HotZone(26f, 125f + BardRoom, -5f, 40f);
-            p.Sign(28f, 9f, "Kaplıcanın sıcağı içine işler:\nburada daha hızlısın");
             Dekor_Kaplica(p);
 
             // Tünelden aşağı basamak basamak
@@ -1260,7 +1248,6 @@ namespace DesertGecko.EditorTools
             p.Deco("yuz_kaya_1", 120f, 16f);
             p.Deco("yuz_cadir", 131f, 16f);
             p.Checkpoint(135f, 16f);
-            p.Sign(138f, 16f, "Fırtına ateşe yaklaşamaz.\nGün doğmak üzere");
         }
 
         // Şafak (yüzey). Fikir: gece biter, ayaz kalkar. Son grup gün ışığında, bitiş tepede.
@@ -1542,7 +1529,7 @@ namespace DesertGecko.EditorTools
         static void Kasaba_ColYolu(LevelPainter p)
         {
             p.Ground(-8f, 22f, 0f);
-            p.Sign(7f, 0f, "Tozlu Dere Kasabası 3 mil\nGün batmadan varmalı"); // doğar doğmaz açılmasın
+            p.PlaceSign(3f, 0f, "Tozlu Dere\n3 mil"); // altınların (6-8) gerisinde
             p.Plant("kaktus_07", -4f, 0f);
             p.Plant("kaktus_21", 10f, 0f);
             p.CrystalLine(6f, 0.7f, 3, 1f);
@@ -1561,7 +1548,6 @@ namespace DesertGecko.EditorTools
             p.Crystal(44f, 5f);
 
             p.Ground(66f, 80f, 1f);
-            p.Sign(67f, 1f, "Fedaiye fıçısı varken bir şey işlemez:\nfıçıyı fırlatınca kaç, sonra vur!");
             p.TownDeco("kasaba_tuvalet", 70f, 1f);
             p.Barmen(76f, 1f); // yolu kesen fedai
 
@@ -1578,7 +1564,7 @@ namespace DesertGecko.EditorTools
         static void Kasaba_Ciftlikler(LevelPainter p)
         {
             p.Ground(0f, 40f, 0f);
-            p.Sign(2.5f, 0f, "Tozlu Dere çiftlikleri\nKasaba hemen ileride");
+            p.PlaceSign(2.5f, 0f, "Tozlu Dere\nÇiftlikleri");
             p.Scorpion(14f, 0f); // kümesle bostanın arasında
             p.TownDeco("kasaba_kuyu", 8f, 0f);
             p.TownDeco("kasaba_kumes", 12.5f, 0f);
@@ -1628,7 +1614,7 @@ namespace DesertGecko.EditorTools
             const float street = 1f, upper = 3.5f;
 
             p.Ground(0f, 68f, street);
-            p.Sign(1.5f, street, "Tozlu Dere\nNüfus: 112");
+            p.PlaceSign(1.5f, street, "Tozlu Dere\nNüfus: 112");
             p.Checkpoint(3.5f, street);
             p.TownDeco("kasaba_posta_diregi", 5.8f, street, 1f, -11);
             p.Lamp(6.1f, street + 2.6f, 1.6f);
@@ -1648,7 +1634,6 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_berber", 41.6f, street);
             p.TownDeco("kasaba_fici_teker", 46.3f, street, 1f, -8);
             p.Checkpoint(38.8f, street); // otelle berberin arasında
-            p.Sign(43.5f, street, "Şerif yardımcısı şapkasını itince\nüç el ateş eder: siper al ya da zıpla!");
             p.Serif(48f, street); // ofisinin önünde nöbette
             p.Building("kasaba_serif", 51.4f, street);
             p.TownDeco("kasaba_ilan_tahtasi", 57.5f, street, 0.8f, -11);
@@ -1666,7 +1651,6 @@ namespace DesertGecko.EditorTools
             p.Steps(68f, 73f, street, upper);
             p.Ground(73f, 135f, upper);
             p.Checkpoint(74f, upper);
-            p.Sign(76.5f, upper, "Mavi Dev çömelince üstüne sıçrar,\nyere çarpınca şok dalgası: zıpla!");
             p.Building("kasaba_banka", 79.5f, upper);
             p.Dev(93f, upper); // üst sokağın muhafızı: merdivenin kenarından uzakta, silahçıyla cenazecinin önündeki düz yolda sıçrar
             p.CrystalLine(78f, upper + 4f, 3, 1.4f);
@@ -1682,7 +1666,6 @@ namespace DesertGecko.EditorTools
             p.Building("kasaba_kilise", 113.5f, upper);
             p.Lamp(111.2f, upper + 1.2f, 1.6f);
             p.Crystal(113.6f, upper + 4f); // çatının sırtında
-            p.Sign(117.5f, upper, "Siber Hatip ses halkası fırlatır:\nmezar taşlarının arkasına saklan!");
             // Kilisenin arkasında mezarlık
             p.Deco("yuz_mezar", 119.5f, upper);
             p.Deco("yuz_kurukafa", 122f, upper);
@@ -1714,7 +1697,7 @@ namespace DesertGecko.EditorTools
 
             p.Ground(50f, 95f, 0f);
             p.Checkpoint(52f, 0f);
-            p.Sign(54.5f, 0f, "İstasyon ileride\nSon tren kalkıyor!");
+            p.PlaceSign(54.5f, 0f, "İstasyon");
             p.TownDeco("kasaba_odun", 60f, 0f);
             p.Armadillo(66f, 0f);
             p.TownDeco("kasaba_tabela_sandik", 76f, 0f);
@@ -1786,7 +1769,7 @@ namespace DesertGecko.EditorTools
             p.TownDeco("kasaba_erzak", 40.5f, floor, 1f, -8);
             p.Scorpion(28.5f, floor); // enkazın altından çıkan
             p.Checkpoint(42.5f, floor);
-            p.Sign(46f, floor, "Tren raydan çıktı!\nGümüş Vadi'ye yürü");
+            p.PlaceSign(45f, floor, "Gümüş Vadi");
             p.ArrowSign(47.4f, floor, "sag");
             p.Barmen(39f, floor); // enkazdan sağ çıkan fedai
         }
@@ -1828,7 +1811,7 @@ namespace DesertGecko.EditorTools
             const float street = 0f, deck = 3f;
 
             p.Ground(0f, 84f, street);
-            p.Sign(2.5f, street, "Gümüş Vadi\nNüfus: 340");
+            p.PlaceSign(2.5f, street, "Gümüş Vadi\nNüfus: 340");
             p.Checkpoint(4.5f, street);
             p.TownDeco("kasaba_cit", 7f, street);
 
@@ -4441,6 +4424,71 @@ namespace DesertGecko.EditorTools
                     sr.color = CaveTint;
                 occupied.Add((wx, s.bounds.size.x / 2f));
             }
+
+            /// <summary>
+            /// Yer adı tabelası (kasaba, vadi, bölüm adı): iki direkli ahşap levha, yazı üstüne boyalı. Levha
+            /// (tools/gemini_yer_tabelasi_isle.py) uçları sabit, ortası yan yana tekrar ederek yazının boyuna uzar.
+            /// Parşömen değil: her zaman görünür, oyuncu yaklaşınca bir şey açılmaz. Satır sonu "\n" ile iki satır.
+            /// </summary>
+            public void PlaceSign(float x, float groundTop, string text)
+            {
+                Sprite board = TestSceneBuilder.Prop(PlaceSignArt);
+                if (board == null)
+                {
+                    Debug.LogWarning($"[DesertGecko] Yer tabelası görseli yok: {PlaceSignArt} (python tools/gemini_yer_tabelasi_isle.py)");
+                    return;
+                }
+                float wx = x + OriginX;
+                var root = new GameObject(Name("YerTabelasi"));
+                root.transform.SetParent(decor);
+                root.transform.position = new Vector3(wx, groundTop - PlaceSignSinkPx / PlaceSignPpu, 0f);
+
+                // Yazı: dünya-uzayı kanvas, 1 birim = 1 sanat pikseli; 4 kat çözünürlükte yumuşak (parşömenle aynı font)
+                var canvasGo = new GameObject("Yazi", typeof(RectTransform));
+                canvasGo.transform.SetParent(root.transform, false);
+                var canvas = canvasGo.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.WorldSpace;
+                canvas.sortingOrder = 1;
+                canvas.referencePixelsPerUnit = PlaceSignPpu;
+                var scaler = canvasGo.AddComponent<CanvasScaler>();
+                scaler.dynamicPixelsPerUnit = 4f;
+                scaler.referencePixelsPerUnit = PlaceSignPpu;
+                var rect = (RectTransform)canvasGo.transform;
+                rect.sizeDelta = new Vector2(400f, 60f);
+                rect.localScale = Vector3.one / PlaceSignPpu;
+                rect.localPosition = new Vector3(0f, PlaceSignTextCenterPx / PlaceSignPpu, 0f);
+                Text label = UiKit.Label("Metin", canvasGo.transform, text, Vector2.zero, new Vector2(400f, 60f), PlaceSignFontSize, PlaceSignPaint);
+                var font = AssetDatabase.LoadAssetAtPath<Font>(ParchmentFont);
+                if (font != null)
+                    label.font = font;
+                label.horizontalOverflow = HorizontalWrapMode.Overflow;
+                label.lineSpacing = 0.95f;
+                var shadow = label.gameObject.AddComponent<Shadow>(); // boya kenarı: koyu ahşapta okunsun
+                shadow.effectColor = new Color(0.12f, 0.06f, 0.03f, 0.9f);
+                shadow.effectDistance = new Vector2(0.6f, -0.6f);
+
+                // Levha yazıya göre: en uzun satır + iki yan boşluk, en az görselin kendi boyu; tam piksel
+                float width = Mathf.Max(board.rect.width, Mathf.Ceil(label.preferredWidth + 2f * PlaceSignPaddingPx));
+                var sr = new GameObject("Levha").AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(root.transform, false);
+                sr.sprite = board;
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = new Vector2(width / PlaceSignPpu, board.rect.height / PlaceSignPpu);
+                sr.sortingOrder = 0;
+                canvas.sortingOrder = 1;
+                if (InCave)
+                    sr.color = CaveTint;
+                occupied.Add((wx, width / PlaceSignPpu / 2f));
+            }
+
+            const string PlaceSignArt = "tabela_yer";          // Props klasöründe; SpriteImportRules kenarlığı ayarlar
+            const float PlaceSignPpu = 32f;
+            const float PlaceSignPaddingPx = 8f;                // yazı ile levhanın ucu arası
+            const float PlaceSignTextCenterPx = 25.5f;          // levhanın ortası tabanından (tabela_yer.png: levha üstten 4-26. satır, boy 41)
+            const float PlaceSignSinkPx = 2f;                   // kum yığınının dibi toprağa gömülür
+            const int PlaceSignFontSize = 8;
+            static readonly Color PlaceSignPaint = new Color32(0xF6, 0xE6, 0xC0, 0xFF);   // kirli beyaz boya
 
             /// <summary>Eğitim tabelası: oyuncu yaklaşınca üstünde parşömen açılır, ipucu harf harf yazılır (SignPost).</summary>
             public void Sign(float x, float groundTop, string text)

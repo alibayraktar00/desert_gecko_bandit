@@ -19,6 +19,7 @@ namespace DesertGecko.EditorTools
         public const string LayerArtFolder = "Assets/Sprites/Environment/Katman/";
         public const string ParchmentFolder = "Assets/Sprites/UI/Parsomen/";
         const float ParchmentPaperBorder = 12f; // tools/parsomen_isle.py PAPER_BORDER
+        const float PlaceSignBorder = 25f;      // tabela_yer.png: direk ve kum yığını uçlarda sabit, ortadaki 37 px tekrar eder
         const string SpritesFolder = "Assets/Sprites/";
         const string RawFolder = "Assets/Sprites/_Gelen/";
         const float PlatformCap = 30f; // tools/platform_paketi_isle.py CAP ile aynı
@@ -93,6 +94,12 @@ namespace DesertGecko.EditorTools
                     // Dövüş odası kapısı odanın boyuna uzar: kirişler ve dikenler sabit, ortadaki tahtalar tekrar eder.
                     settings.spriteMeshType = SpriteMeshType.FullRect;
                     settings.spriteBorder = new Vector4(0f, 11f, 0f, 11f);
+                }
+                else if (assetPath.EndsWith("tabela_yer.png"))
+                {
+                    // Yer adı tabelası: direkli uçlar sabit, levhanın ortası yazının boyuna göre yan yana tekrar eder.
+                    settings.spriteMeshType = SpriteMeshType.FullRect;
+                    settings.spriteBorder = new Vector4(PlaceSignBorder, 0f, PlaceSignBorder, 0f);
                 }
                 else if (assetPath.EndsWith("tavan_kapi_ust.png"))
                 {

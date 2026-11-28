@@ -21,7 +21,7 @@ namespace DesertGecko.EditorTools
             importer.includeFontData = true;
         }
 
-        /// <summary>Kurallar sonradan eklendiğinde fontu ve parşömen görsellerini yeniden içe aktarır.</summary>
+        /// <summary>Kurallar sonradan eklendiğinde fontu, parşömen görsellerini ve yer adı tabelasını yeniden içe aktarır.</summary>
         [MenuItem("Desert Gecko/Parşömen ve Fontu Yeniden İçe Aktar")]
         public static string ReimportParchment()
         {
@@ -32,7 +32,9 @@ namespace DesertGecko.EditorTools
                     AssetDatabase.ImportAsset(AssetDatabase.GUIDToAssetPath(guid), ImportAssetOptions.ForceUpdate);
                     n++;
                 }
-            return n + " dosya";
+            // yer adı tabelası (Props): kenarlığı sonradan eklenen kuralla gelir
+            AssetDatabase.ImportAsset(SpriteImportRules.PropsFolder + "tabela_yer.png", ImportAssetOptions.ForceUpdate);
+            return n + 1 + " dosya";
         }
     }
 }
